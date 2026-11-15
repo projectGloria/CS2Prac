@@ -7,11 +7,16 @@ import {
   emptyProfile,
   MAX_NAMETAG,
   MAX_SEED,
+  normalizeProfile,
+  STICKER_SLOTS,
+  type AgentSel,
   type GloveSel,
+  type KeychainSel,
   type KnifeSel,
   type LoadoutStore,
   type Profile,
   type SkinSel,
+  type StickerSel,
   type Team
 } from '@shared/skins'
 
@@ -25,7 +30,7 @@ export function defaultStore(owner: string | null): LoadoutStore {
 export async function loadStore(defaultOwner: () => Promise<string | null>): Promise<LoadoutStore> {
   try {
     const s = JSON.parse(await readFile(storeFile(), 'utf8')) as LoadoutStore
-    if (s.profiles?.length) return s
+    if (s.profiles?.length) return { ...s, profiles: s.profiles.map(normalizeProfile) }
   } catch {
     /* first run */
   }
@@ -43,11 +48,19 @@ export async function saveStore(s: LoadoutStore): Promise<void> {
 
 /** The file the C# plugin reads. Keep in sync with plugin/PracSkins. */
 export interface LoadoutFile {
-  schema: 1
+  schema: 2
   owner: string | null
-  weapons: Record<string, PaintOut>
+  weapons: Record<string, WeaponOut>
   knife: Record<Team, (PaintOut & { defIndex: number; className: string }) | null>
   gloves: Record<Team, GloveOut | null>
+  agents: Record<Team, AgentSel | null>
+  /** every agent model, precached by the plugin at map load */
+  precache: string[]
+}
+interface WeaponOut extends PaintOut {
+  /** always STICKER_SLOTS entries; null = empty slot */
+  stickers: (StickerSel | null)[]
+  keychain: KeychainSel | null
 }
 interface PaintOut {
   paintKit: number
@@ -79,6 +92,38 @@ function paint(s: SkinSel): PaintOut {
   }
 }
 
+function sticker(s: StickerSel | null | undefined): StickerSel | null {
+  if (!s || !(s.defIndex > 0)) return null
+  return {
+    defIndex: int(s.defIndex, 1, 1_000_000),
+    wear: clamp(s.wear, 0, 1),
+    scale: clamp(s.scale ?? 1, 0.1, 3),
+    rotation: clamp(s.rotation ?? 0, -360, 360),
+    x: clamp(s.x ?? 0, -2, 2),
+    y: clamp(s.y ?? 0, -2, 2)
+  }
+}
+
+function keychain(k: KeychainSel | null | undefined): KeychainSel | null {
+  if (!k || !(k.defIndex > 0)) return null
+  return {
+    defIndex: int(k.defIndex, 1, 1_000_000),
+    x: clamp(k.x ?? 0, -10, 10),
+    y: clamp(k.y ?? 0, -10, 10),
+    z: clamp(k.z ?? 0, -10, 10),
+    seed: int(k.seed ?? 0, 0, 100_000)
+  }
+}
+
+function weapon(s: SkinSel): WeaponOut | null {
+  const stickers = Array.from({ length: STICKER_SLOTS }, (_, i) => sticker(s.stickers?.[i]))
+  const out = { ...paint(s), stickers, keychain: keychain(s.keychain) }
+  return out.paintKit > 0 || stickers.some(Boolean) || out.keychain ? out : null
+}
+
+const agent = (a: AgentSel | null | undefined): AgentSel | null =>
+  a && a.defIndex > 0 && MODEL.test(a.model) ? { defIndex: a.defIndex, model: a.model } : null
+
 const knife = (k: KnifeSel | null) =>
   k && /^weapon_(knife|bayonet)/.test(k.className) ? { ...paint(k), defIndex: k.defIndex, className: k.className } : null
 
@@ -87,17 +132,22 @@ const glove = (g: GloveSel | null): GloveOut | null =>
     ? { defIndex: g.defIndex, paintKit: int(g.paintKit, 1, 100_000), wear: clamp(g.wear, 0, 1), seed: int(g.seed, 0, MAX_SEED) }
     : null
 
-export function toLoadoutFile(profile: Profile, owner: string | null): LoadoutFile {
+const MODEL = /^[\w/.-]+\.vmdl$/
+
+export function toLoadoutFile(profile: Profile, owner: string | null, precache: string[] = []): LoadoutFile {
   const weapons: LoadoutFile['weapons'] = {}
   for (const [def, sel] of Object.entries(profile.weapons)) {
-    if (/^\d+$/.test(def) && sel.paintKit > 0) weapons[def] = paint(sel)
+    const w = /^\d+$/.test(def) ? weapon(sel) : null
+    if (w) weapons[def] = w
   }
   return {
-    schema: 1,
+    schema: 2,
     owner: owner && /^\d{17}$/.test(owner) ? owner : null,
     weapons,
     knife: { t: knife(profile.knife.t), ct: knife(profile.knife.ct) },
-    gloves: { t: glove(profile.gloves.t), ct: glove(profile.gloves.ct) }
+    gloves: { t: glove(profile.gloves.t), ct: glove(profile.gloves.ct) },
+    agents: { t: agent(profile.agents?.t), ct: agent(profile.agents?.ct) },
+    precache: [...new Set(precache.filter((m) => MODEL.test(m)))]
   }
 }
 
@@ -105,11 +155,11 @@ export const pluginConfigDir = (csgoDir: string) =>
   join(csgoDir, 'addons', 'counterstrikesharp', 'configs', 'plugins', 'PracSkins')
 
 /** Writes loadout.json for the active profile. Returns false when CounterStrikeSharp isn't installed yet. */
-export async function exportLoadout(csgoDir: string, store: LoadoutStore): Promise<boolean> {
+export async function exportLoadout(csgoDir: string, store: LoadoutStore, precache: string[] = []): Promise<boolean> {
   if (!existsSync(join(csgoDir, 'addons', 'counterstrikesharp'))) return false
   const profile = store.profiles.find((p) => p.id === store.activeId) ?? store.profiles[0]
   const dir = pluginConfigDir(csgoDir)
   await mkdir(dir, { recursive: true })
-  await writeFile(join(dir, 'loadout.json'), JSON.stringify(toLoadoutFile(profile, store.owner), null, 2))
+  await writeFile(join(dir, 'loadout.json'), JSON.stringify(toLoadoutFile(profile, store.owner, precache), null, 2))
   return true
 }

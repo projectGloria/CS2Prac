@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LoadoutSaveResult } from '@shared/ipc'
 import {
+  emptyKeychain,
   emptyProfile,
+  emptySticker,
+  isEmptySel,
   MAX_NAMETAG,
   MAX_SEED,
+  STICKER_SLOTS,
   wearName,
+  type AgentSel,
   type Catalog,
+  type CatalogAgent,
+  type CatalogKeychain,
   type CatalogSkin,
+  type CatalogSticker,
   type CatalogWeapon,
   type GloveSel,
+  type KeychainSel,
+  type StickerSel,
   type KnifeSel,
   type LoadoutStore,
   type Profile,
@@ -17,7 +27,7 @@ import {
   type Team
 } from '@shared/skins'
 
-type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves'; team: Team }
+type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent'; team: Team }
 type SaveState = { state: 'idle' | 'saving' | 'error'; result?: LoadoutSaveResult; error?: string }
 
 const TEAM_LABEL: Record<Team, string> = { t: 'T', ct: 'CT' }
@@ -71,7 +81,9 @@ export default function Loadout() {
     for (const s of catalog?.skins ?? []) byDef.set(s.defIndex, [...(byDef.get(s.defIndex) ?? []), s])
     for (const w of catalog?.weapons ?? []) weaponByDef.set(w.defIndex, w)
     const skin = (def: number, paint: number) => byDef.get(def)?.find((s) => s.paintKit === paint)
-    return { byDef, weaponByDef, skin }
+    const stickerByDef = new Map((catalog?.stickers ?? []).map((s) => [s.defIndex, s]))
+    const keychainByDef = new Map((catalog?.keychains ?? []).map((k) => [k.defIndex, k]))
+    return { byDef, weaponByDef, skin, stickerByDef, keychainByDef }
   }, [catalog])
 
   function update(fn: (s: LoadoutStore) => LoadoutStore) {
@@ -111,6 +123,14 @@ export default function Loadout() {
   }
   const gloveLabel = (g: GloveSel | null) =>
     g ? `${index.weaponByDef.get(g.defIndex)?.name ?? 'Gloves'} | ${index.skin(g.defIndex, g.paintKit)?.name ?? g.paintKit}` : 'Default'
+  const agentLabel = (a: AgentSel | null) =>
+    a ? (catalog.agents.find((x) => x.defIndex === a.defIndex)?.name.split(' | ')[0] ?? `Agent ${a.defIndex}`) : 'Default'
+  const weaponLabel = (defIndex: number, sel: SkinSel | undefined) => {
+    if (!sel) return 'Default'
+    const finish = sel.paintKit > 0 ? (index.skin(defIndex, sel.paintKit)?.name ?? `Paint ${sel.paintKit}`) : 'Default'
+    const n = sel.stickers?.filter(Boolean).length ?? 0
+    return finish + (n ? ` · ${n} sticker${n > 1 ? 's' : ''}` : '') + (sel.keychain ? ' · charm' : '')
+  }
 
   return (
     <div className="loadout">
@@ -210,6 +230,17 @@ export default function Loadout() {
               onClick={() => setSlot({ kind: 'gloves', team })}
             />
           ))}
+          <h4>Agents</h4>
+          {(['t', 'ct'] as Team[]).map((team) => (
+            <SlotButton
+              key={`a${team}`}
+              active={sameSlot(slot, { kind: 'agent', team })}
+              title={`Agent (${TEAM_LABEL[team]})`}
+              sub={agentLabel(profile.agents[team])}
+              set={!!profile.agents[team]}
+              onClick={() => setSlot({ kind: 'agent', team })}
+            />
+          ))}
           {WEAPON_CATEGORIES.map((cat) => {
             const list = weapons.filter((w) => w.category === cat)
             if (!list.length) return null
@@ -223,7 +254,7 @@ export default function Loadout() {
                       key={w.defIndex}
                       active={sameSlot(slot, { kind: 'weapon', defIndex: w.defIndex })}
                       title={w.name}
-                      sub={sel ? (index.skin(w.defIndex, sel.paintKit)?.name ?? `Paint ${sel.paintKit}`) : 'Default'}
+                      sub={weaponLabel(w.defIndex, sel)}
                       color={sel ? index.skin(w.defIndex, sel.paintKit)?.rarityColor : undefined}
                       set={!!sel}
                       onClick={() => setSlot({ kind: 'weapon', defIndex: w.defIndex })}
@@ -247,10 +278,14 @@ export default function Loadout() {
               weapon={index.weaponByDef.get(slot.defIndex)!}
               skins={index.byDef.get(slot.defIndex) ?? []}
               sel={profile.weapons[slot.defIndex] ?? null}
+              stickers={catalog.stickers}
+              keychains={catalog.keychains}
+              stickerByDef={index.stickerByDef}
+              keychainByDef={index.keychainByDef}
               onChange={(sel) =>
                 updateProfile((p) => {
                   const weaponsNext = { ...p.weapons }
-                  if (sel) weaponsNext[slot.defIndex] = sel
+                  if (sel && !isEmptySel(sel)) weaponsNext[slot.defIndex] = sel
                   else delete weaponsNext[slot.defIndex]
                   return { ...p, weapons: weaponsNext }
                 })
@@ -269,6 +304,15 @@ export default function Loadout() {
                 const other: Team = slot.team === 't' ? 'ct' : 't'
                 updateProfile((p) => ({ ...p, knife: { ...p.knife, [other]: structuredClone(p.knife[slot.team]) } }))
               }}
+            />
+          )}
+          {slot.kind === 'agent' && (
+            <AgentPanel
+              key={`agent-${slot.team}`}
+              team={slot.team}
+              agents={catalog.agents.filter((a) => a.team === slot.team)}
+              sel={profile.agents[slot.team]}
+              onChange={(sel) => updateProfile((p) => ({ ...p, agents: { ...p.agents, [slot.team]: sel } }))}
             />
           )}
           {slot.kind === 'gloves' && (
@@ -424,16 +468,29 @@ function PaintEditor(props: {
   )
 }
 
+const blankSel = (): SkinSel => ({ paintKit: 0, wear: 0.01, seed: 0, statTrak: null, nameTag: '' })
+
 function WeaponPanel(props: {
   weapon: CatalogWeapon
   skins: CatalogSkin[]
   sel: SkinSel | null
+  stickers: CatalogSticker[]
+  keychains: CatalogKeychain[]
+  stickerByDef: Map<number, CatalogSticker>
+  keychainByDef: Map<number, CatalogKeychain>
   onChange: (sel: SkinSel | null) => void
 }) {
   const { weapon, skins, sel, onChange } = props
-  const current = sel ? skins.find((s) => s.paintKit === sel.paintKit) : undefined
+  const current = sel?.paintKit ? skins.find((s) => s.paintKit === sel.paintKit) : undefined
   const tiles: Tile[] = [
-    { key: 'default', name: 'Default', image: weapon.image, selected: !sel, onClick: () => onChange(null) },
+    {
+      key: 'default',
+      name: 'Default',
+      image: weapon.image,
+      selected: !sel || sel.paintKit === 0,
+      // keeps stickers and charm on the default finish
+      onClick: () => onChange(sel ? { ...sel, paintKit: 0, legacyModel: false } : null)
+    },
     ...skins.map((s) => ({
       key: s.id,
       name: s.name,
@@ -443,26 +500,239 @@ function WeaponPanel(props: {
       onClick: () =>
         onChange({
           paintKit: s.paintKit,
-          wear: sel ? clamp(sel.wear, s.minFloat, s.maxFloat) : defaultWear(s),
+          wear: sel?.paintKit ? clamp(sel.wear, s.minFloat, s.maxFloat) : defaultWear(s),
           seed: sel?.seed ?? 0,
           statTrak: sel?.statTrak ?? null,
           nameTag: sel?.nameTag ?? '',
-          legacyModel: s.legacyModel
+          legacyModel: s.legacyModel,
+          stickers: sel?.stickers,
+          keychain: sel?.keychain
         })
     }))
   ]
+  const base = sel ?? blankSel()
   return (
     <div className="panel-split">
       <div className="panel-main">
         <h2>{weapon.name}</h2>
         <SkinGrid key={weapon.defIndex} tiles={tiles} search />
       </div>
-      {sel && (
-        <aside className="panel-side">
-          <h3>{current?.name ?? `Paint kit ${sel.paintKit}`}</h3>
+      <aside className="panel-side">
+        <h3>{current?.name ?? 'Default finish'}</h3>
+        {sel && sel.paintKit > 0 && (
           <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
-        </aside>
+        )}
+        <StickerEditor
+          stickers={base.stickers ?? []}
+          catalog={props.stickers}
+          byDef={props.stickerByDef}
+          onChange={(stickers) => onChange({ ...base, stickers })}
+        />
+        <KeychainEditor
+          keychain={base.keychain ?? null}
+          catalog={props.keychains}
+          byDef={props.keychainByDef}
+          onChange={(keychain) => onChange({ ...base, keychain })}
+        />
+      </aside>
+    </div>
+  )
+}
+
+const PICKER_LIMIT = 150
+
+/** Searchable grid for big lists (11 000+ stickers); shows at most PICKER_LIMIT matches. */
+function Picker<T extends { defIndex: number; name: string; image: string; rarityColor: string }>(props: {
+  items: T[]
+  filters?: { label: string; test: (t: T) => boolean }[]
+  onPick: (t: T) => void
+  onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const [filter, setFilter] = useState(0)
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean)
+  const test = props.filters?.[filter]?.test
+  const matches = props.items.filter(
+    (t) => (!test || test(t)) && words.every((w) => t.name.toLowerCase().includes(w) || ('event' in t && String(t.event ?? '').toLowerCase().includes(w)))
+  )
+  return (
+    <div className="picker">
+      <div className="row tight">
+        <input autoFocus className="grid-search" placeholder="Search… (e.g. katowice 2014 holo)" value={q} onChange={(e) => setQ(e.target.value)} />
+        {props.filters && (
+          <select value={filter} onChange={(e) => setFilter(Number(e.target.value))}>
+            {props.filters.map((f, i) => (
+              <option key={f.label} value={i}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        )}
+        <button onClick={props.onClose}>Cancel</button>
+      </div>
+      <p className="muted small">
+        {matches.length > PICKER_LIMIT ? `Showing ${PICKER_LIMIT} of ${matches.length}; type to narrow down.` : `${matches.length} found`}
+      </p>
+      <div className="skin-grid small-tiles">
+        {matches.slice(0, PICKER_LIMIT).map((t) => (
+          <button key={t.defIndex} className="skin-tile" style={{ borderBottomColor: t.rarityColor }} title={t.name} onClick={() => props.onPick(t)}>
+            <img src={t.image} alt="" loading="lazy" draggable={false} />
+            <span>{t.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const STICKER_FILTERS: { label: string; test: (s: CatalogSticker) => boolean }[] = [
+  { label: 'All stickers', test: () => true },
+  { label: 'Team', test: (s) => s.type === 'Team' },
+  { label: 'Autograph', test: (s) => s.type === 'Autograph' },
+  { label: 'Event', test: (s) => s.type === 'Event' },
+  { label: 'Other', test: (s) => s.type === 'Other' }
+]
+
+function Num(props: { label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+  return (
+    <label className="inline-field">
+      {props.label}
+      <input
+        type="number"
+        className="small-num"
+        min={props.min}
+        max={props.max}
+        step={props.step}
+        value={props.value}
+        onChange={(e) => props.onChange(clamp(Number(e.target.value) || 0, props.min, props.max))}
+      />
+    </label>
+  )
+}
+
+function StickerEditor(props: {
+  stickers: (StickerSel | null)[]
+  catalog: CatalogSticker[]
+  byDef: Map<number, CatalogSticker>
+  onChange: (s: (StickerSel | null)[]) => void
+}) {
+  const [picking, setPicking] = useState<number | null>(null)
+  const slots = Array.from({ length: STICKER_SLOTS }, (_, i) => props.stickers[i] ?? null)
+  const set = (i: number, s: StickerSel | null) => props.onChange(slots.map((x, j) => (j === i ? s : x)))
+  return (
+    <div className="extras">
+      <h4>Stickers</h4>
+      {picking != null && (
+        <Picker
+          items={props.catalog}
+          filters={STICKER_FILTERS}
+          onPick={(s) => {
+            set(picking, { ...(slots[picking] ?? emptySticker(s.defIndex)), defIndex: s.defIndex })
+            setPicking(null)
+          }}
+          onClose={() => setPicking(null)}
+        />
       )}
+      {slots.map((s, i) => {
+        const info = s ? props.byDef.get(s.defIndex) : undefined
+        return (
+          <div key={i} className="extra-slot">
+            <button className="extra-pick" onClick={() => setPicking(i)} title="Choose sticker">
+              {info ? <img src={info.image} alt="" /> : <span className="muted small">Slot {i + 1}</span>}
+            </button>
+            {s ? (
+              <div className="extra-fields">
+                <span className="small">{info?.name ?? `Sticker ${s.defIndex}`}</span>
+                <label className="inline-field">
+                  Scrape
+                  <input type="range" min={0} max={1} step={0.01} value={s.wear} onChange={(e) => set(i, { ...s, wear: Number(e.target.value) })} />
+                </label>
+                <details>
+                  <summary className="muted small">Position</summary>
+                  <Num label="Scale" value={s.scale} min={0.1} max={3} step={0.05} onChange={(v) => set(i, { ...s, scale: v })} />
+                  <Num label="Rotation" value={s.rotation} min={-360} max={360} step={5} onChange={(v) => set(i, { ...s, rotation: v })} />
+                  <Num label="X" value={s.x} min={-2} max={2} step={0.01} onChange={(v) => set(i, { ...s, x: v })} />
+                  <Num label="Y" value={s.y} min={-2} max={2} step={0.01} onChange={(v) => set(i, { ...s, y: v })} />
+                </details>
+                <button className="link small" onClick={() => set(i, null)}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <span className="muted small">Empty</span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function KeychainEditor(props: {
+  keychain: KeychainSel | null
+  catalog: CatalogKeychain[]
+  byDef: Map<number, CatalogKeychain>
+  onChange: (k: KeychainSel | null) => void
+}) {
+  const [picking, setPicking] = useState(false)
+  const k = props.keychain
+  const info = k ? props.byDef.get(k.defIndex) : undefined
+  return (
+    <div className="extras">
+      <h4>Charm</h4>
+      {picking && (
+        <Picker
+          items={props.catalog}
+          onPick={(c) => {
+            props.onChange({ ...(k ?? emptyKeychain(c.defIndex)), defIndex: c.defIndex })
+            setPicking(false)
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+      <div className="extra-slot">
+        <button className="extra-pick" onClick={() => setPicking(true)} title="Choose charm">
+          {info ? <img src={info.image} alt="" /> : <span className="muted small">None</span>}
+        </button>
+        {k && (
+          <div className="extra-fields">
+            <span className="small">{info?.name ?? `Charm ${k.defIndex}`}</span>
+            <Num label="Pattern" value={k.seed} min={0} max={100000} step={1} onChange={(v) => props.onChange({ ...k, seed: Math.round(v) })} />
+            <details>
+              <summary className="muted small">Position</summary>
+              <Num label="X" value={k.x} min={-10} max={10} step={0.1} onChange={(v) => props.onChange({ ...k, x: v })} />
+              <Num label="Y" value={k.y} min={-10} max={10} step={0.1} onChange={(v) => props.onChange({ ...k, y: v })} />
+              <Num label="Z" value={k.z} min={-10} max={10} step={0.1} onChange={(v) => props.onChange({ ...k, z: v })} />
+            </details>
+            <button className="link small" onClick={() => props.onChange(null)}>
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AgentPanel(props: { team: Team; agents: CatalogAgent[]; sel: AgentSel | null; onChange: (a: AgentSel | null) => void }) {
+  const { team, agents, sel, onChange } = props
+  const tiles: Tile[] = [
+    { key: 'default', name: 'Default agent', image: null, selected: !sel, onClick: () => onChange(null) },
+    ...agents.map((a) => ({
+      key: String(a.defIndex),
+      name: a.name,
+      image: a.image,
+      color: a.rarityColor,
+      selected: sel?.defIndex === a.defIndex,
+      onClick: () => onChange({ defIndex: a.defIndex, model: a.model })
+    }))
+  ]
+  return (
+    <div className="panel-split">
+      <div className="panel-main">
+        <h2>Agent ({TEAM_LABEL[team]})</h2>
+        <SkinGrid tiles={tiles} search />
+      </div>
     </div>
   )
 }

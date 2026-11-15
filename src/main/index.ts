@@ -23,7 +23,7 @@ import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
-import { getCatalog } from './skins/catalog'
+import { cachedCatalog, getCatalog } from './skins/catalog'
 import { exportLoadout, loadStore, saveStore } from './skins/loadoutStore'
 import { listSteamAccounts } from './steam/accounts'
 import { log, logError, logsDir } from './logger'
@@ -88,6 +88,9 @@ async function removeMirror(installDir: string, log: (line: string) => void) {
   log('[cs2prac] removing the linked server folder before downloading the dedicated server')
   await rm(serverDir, { recursive: true, force: true })
 }
+
+/** Every agent model, so the plugin can precache them and agents switch without a map change. */
+const agentModels = async () => (await cachedCatalog())?.agents.map((a) => a.model) ?? []
 
 /** IPv4 LAN addresses, for connecting from another PC on the network. */
 function lanAddresses(): string[] {
@@ -212,7 +215,7 @@ function registerIpc() {
       if (r.linked || r.removed) send(IPC.serverLog, `[cs2prac] game files updated: ${r.linked} linked, ${r.removed} removed`)
     }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
-    await exportLoadout(csgoDir, await loadStore(async () => null))
+    await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
     // Every Steam account that has logged in on this PC is a root admin on the server.
     const accounts = await listSteamAccounts()
     await ensureAdmins(csgoDir, accounts.map((a) => a.steamId))
@@ -242,7 +245,7 @@ function registerIpc() {
   ipcMain.handle(IPC.loadoutSave, async (_e, store: LoadoutStore) => {
     await saveStore(store)
     const { installDir } = await loadSettings()
-    const exported = installDir ? await exportLoadout(layout(installDir).csgoDir, store) : false
+    const exported = installDir ? await exportLoadout(layout(installDir).csgoDir, store, await agentModels()) : false
     let reloaded = false
     if (exported && server.getStatus().state === 'running') {
       reloaded = await server.exec(RELOAD_SKINS_CMD).then(

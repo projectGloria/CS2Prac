@@ -28,16 +28,79 @@ export interface CatalogSkin {
   legacyModel: boolean
 }
 
-export const CATALOG_VERSION = 2
+export interface CatalogAgent {
+  defIndex: number
+  name: string
+  team: Team
+  /** e.g. agents/models/tm_professional/tm_professional_varf5.vmdl */
+  model: string
+  image: string
+  rarityColor: string
+}
+
+export interface CatalogSticker {
+  defIndex: number
+  /** without the "Sticker | " prefix */
+  name: string
+  image: string
+  rarityColor: string
+  /** Event, Team, Autograph, Other */
+  type: string
+  /** tournament name, if any */
+  event: string | null
+}
+
+export interface CatalogKeychain {
+  defIndex: number
+  /** without the "Charm | " prefix */
+  name: string
+  image: string
+  rarityColor: string
+}
+
+export const CATALOG_VERSION = 3
 
 export interface Catalog {
   version: number
   fetchedAt: number
   weapons: CatalogWeapon[]
   skins: CatalogSkin[]
+  agents: CatalogAgent[]
+  stickers: CatalogSticker[]
+  keychains: CatalogKeychain[]
 }
 
 // ---------- loadout (what the user picks) ----------
+
+export const STICKER_SLOTS = 5
+
+export interface StickerSel {
+  defIndex: number
+  /** 0 = pristine, 1 = fully scraped */
+  wear: number
+  /** 1 = default size */
+  scale: number
+  /** degrees */
+  rotation: number
+  /** placement offsets; 0,0 = the slot's default spot */
+  x: number
+  y: number
+}
+
+export interface KeychainSel {
+  defIndex: number
+  /** attachment offsets; 0 = default */
+  x: number
+  y: number
+  z: number
+  /** pattern seed */
+  seed: number
+}
+
+export interface AgentSel {
+  defIndex: number
+  model: string
+}
 
 export interface SkinSel {
   paintKit: number
@@ -47,6 +110,10 @@ export interface SkinSel {
   statTrak: number | null
   nameTag: string
   legacyModel?: boolean
+  /** STICKER_SLOTS entries, null = empty slot (weapons only) */
+  stickers?: (StickerSel | null)[]
+  /** weapons only */
+  keychain?: KeychainSel | null
 }
 
 export interface KnifeSel extends SkinSel {
@@ -70,6 +137,7 @@ export interface Profile {
   weapons: Record<string, SkinSel>
   knife: Record<Team, KnifeSel | null>
   gloves: Record<Team, GloveSel | null>
+  agents: Record<Team, AgentSel | null>
 }
 
 export interface LoadoutStore {
@@ -101,5 +169,18 @@ export const MAX_SEED = 1000
 export const MAX_NAMETAG = 20
 
 export function emptyProfile(id: string, name: string): Profile {
-  return { id, name, weapons: {}, knife: { t: null, ct: null }, gloves: { t: null, ct: null } }
+  return { id, name, weapons: {}, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null } }
+}
+
+/** Fills in fields added after a profile was saved. */
+export function normalizeProfile(p: Profile): Profile {
+  return { ...p, agents: p.agents ?? { t: null, ct: null } }
+}
+
+export const emptySticker = (defIndex: number): StickerSel => ({ defIndex, wear: 0, scale: 1, rotation: 0, x: 0, y: 0 })
+export const emptyKeychain = (defIndex: number): KeychainSel => ({ defIndex, x: 0, y: 0, z: 0, seed: 0 })
+
+/** A weapon selection with nothing on it can be dropped. */
+export function isEmptySel(s: SkinSel): boolean {
+  return s.paintKit <= 0 && !s.stickers?.some(Boolean) && !s.keychain && s.statTrak == null && !s.nameTag
 }

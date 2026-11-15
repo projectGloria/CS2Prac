@@ -56,3 +56,24 @@ describe('buildCatalog', () => {
     expect(c.skins.find((s) => s.paintKit === 282)).toMatchObject({ defIndex: 7, minFloat: 0.1, maxFloat: 0.7, legacyModel: true })
   })
 })
+
+describe('catalog extras', () => {
+  const c = buildCatalog([], [], 1, {
+    agents: [
+      { name: 'Bloody Darryl', def_index: '4613', team: { id: 'terrorists' }, model_player: 'agents/models/tm_professional/tm_professional_varf5.vmdl', image: 'a' },
+      { name: 'Seal', def_index: '4619', team: { id: 'counter-terrorists' }, model_player: 'agents/models/ctm_st6/ctm_st6_variantj.vmdl', image: 'b' },
+      { name: 'No model', def_index: '1', team: { id: 'terrorists' }, model_player: null, image: 'c' }
+    ],
+    stickers: [{ name: 'Sticker | Shooter', def_index: '1', type: 'Event', tournament: { name: '2013 DreamHack Winter' }, image: 's' }],
+    keychains: [{ name: "Charm | Lil' Ava", def_index: '1', image: 'k' }]
+  })
+
+  it('keeps agents with a model and maps their team', () => {
+    expect(c.agents.map((a) => [a.defIndex, a.team])).toEqual([[4613, 't'], [4619, 'ct']])
+  })
+
+  it('strips the Sticker / Charm prefixes', () => {
+    expect(c.stickers[0]).toMatchObject({ defIndex: 1, name: 'Shooter', type: 'Event', event: '2013 DreamHack Winter' })
+    expect(c.keychains[0]).toMatchObject({ defIndex: 1, name: "Lil' Ava" })
+  })
+})

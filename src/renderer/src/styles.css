@@ -128,3 +128,12 @@ button.small-btn { padding: 4px 10px; font-size: 12px; }
 .mz-help table { border-collapse: collapse; margin-top: 6px; width: 100%; }
 .mz-help td { padding: 3px 6px 3px 0; vertical-align: top; }
 .mz-help code { font-size: 12px; white-space: nowrap; }
+.extras { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 8px; }
+.extras h4 { margin: 4px 0 8px; }
+.extra-slot { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+button.extra-pick { width: 72px; height: 54px; padding: 2px; display: grid; place-items: center; flex: none; }
+button.extra-pick img { max-width: 100%; max-height: 100%; }
+.extra-fields { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.extra-fields details .inline-field { margin: 4px 0; }
+.picker { border: 1px solid var(--accent); border-radius: 6px; padding: 8px; margin-bottom: 10px; }
+.picker .skin-grid { max-height: 360px; overflow-y: auto; }

@@ -17,7 +17,31 @@ describe('toLoadoutFile', () => {
 
   it('exports weapon paints, clamps values and trims name tags', () => {
     expect(Object.keys(f.weapons)).toEqual(['7'])
-    expect(f.weapons['7']).toEqual({ paintKit: 282, wear: 0.15, seed: 661, statTrak: 1337, nameTag: 'x'.repeat(20), legacyModel: false })
+    expect(f.weapons['7']).toEqual({
+      paintKit: 282, wear: 0.15, seed: 661, statTrak: 1337, nameTag: 'x'.repeat(20), legacyModel: false,
+      stickers: [null, null, null, null, null], keychain: null
+    })
+  })
+
+  it('exports stickers and keychains, even on a weapon without a finish', () => {
+    const q = emptyProfile('q', 'Q')
+    q.weapons['9'] = {
+      paintKit: 0, wear: 0, seed: 0, statTrak: null, nameTag: '',
+      stickers: [null, { defIndex: 4682, wear: 2, scale: 1, rotation: 0, x: 0, y: 0 }, { defIndex: 0, wear: 0, scale: 1, rotation: 0, x: 0, y: 0 }],
+      keychain: { defIndex: 12, x: 0, y: 0, z: 0, seed: 7 }
+    }
+    q.weapons['4'] = { paintKit: 0, wear: 0, seed: 0, statTrak: null, nameTag: '', stickers: [null] }
+    const out = toLoadoutFile(q, null)
+    expect(Object.keys(out.weapons)).toEqual(['9'])
+    expect(out.weapons['9'].stickers).toEqual([null, { defIndex: 4682, wear: 1, scale: 1, rotation: 0, x: 0, y: 0 }, null, null, null])
+    expect(out.weapons['9'].keychain).toEqual({ defIndex: 12, x: 0, y: 0, z: 0, seed: 7 })
+  })
+
+  it('exports agents with a valid model path only', () => {
+    const q = emptyProfile('q', 'Q')
+    q.agents.t = { defIndex: 4613, model: 'agents/models/tm_professional/tm_professional_varf5.vmdl' }
+    q.agents.ct = { defIndex: 1, model: 'x; quit' }
+    expect(toLoadoutFile(q, null).agents).toEqual({ t: q.agents.t, ct: null })
   })
 
   it('keeps vanilla knives, rejects non-knife classes, clamps seeds', () => {

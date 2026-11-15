@@ -36,26 +36,29 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [ ] **User check in game:** practice mode on join, `.bot`, `.rethrow`, `.savenade`, and that your skins survive `.prac` / `.bot`.
 
 ## Phase 4: Full item catalog (req 5: all skins, agents, stickers, keychains)
-- [ ] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.
+- [x] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.
   - Try ByMykel `inventory.json` / `all.json` first.
   - Fallback: read `scripts/items/items_game.txt` from the local CS2 `pak01_dir.vpk` with a small TS VPK and KeyValues reader. This always matches the installed game.
   - Decide based on what the data actually contains.
-- [ ] Extend `catalog.ts` and `shared/skins.ts`:
+- [x] Extend `catalog.ts` and `shared/skins.ts`:
   - agents: per team, with model path
   - stickers: id, name, image
   - keychains: id, name, image
 
   Then bump `CATALOG_VERSION`.
-- [ ] Loadout schema 2 (`loadoutStore.ts` ↔ `plugin/PracSkins/Loadout.cs`):
+- [x] Loadout schema 2 (`loadoutStore.ts` ↔ `plugin/PracSkins/Loadout.cs`):
   - each weapon: `stickers[5]` `{id, wear, scale, rotation, x, y}` and `keychain {id, x, y, z, seed}`
   - `agent {t, ct}`
   - migrate schema 1 files
-- [ ] Plugin, using the WeaponPaints technique:
+- [x] Plugin, using the WeaponPaints technique:
   - stickers: `sticker slot N id/wear/scale/rotation/offset x/offset y`, with the id passed through `BitConverter.Int32BitsToSingle`
   - keychain: `keychain slot 0 id/offset x/y/z/seed`
   - agent: `pawn.SetModel("agents/models/<model>.vmdl")` on spawn, in NextFrame
-- [ ] Loadout page: an agent picker per team, and a sticker-slot and keychain editor per weapon with search and images.
-- [ ] Live refresh: `css_prac_reload` re-gives the current weapons (keeping ammo and the active slot) and re-applies gloves and agent, with no respawn needed.
+- [x] Loadout page: an agent picker per team, and a sticker-slot and keychain editor per weapon with search and images.
+- [x] Live refresh: `css_prac_reload` re-gives the current weapons (keeping ammo and the active slot) and re-applies gloves and agent, with no respawn needed.
+- [x] Result of the data spike: ByMykel has `def_index` for agents, stickers (11k) and keychains, and `model_player` for agents (`agents/models/...vmdl`, confirmed in pak01_dir.vpk). No VPK reader needed.
+- [x] Server-side verified with bots: agents applied, sticker/keychain attributes set (also on a default-finish weapon), `css_prac_reload` swaps finishes live.
+- [ ] **User check in game:** stickers/charm look right (slot positions, scrape, the Position offsets), agent model and arms, instant refresh keeps ammo and active weapon.
 
 ## Phase 5: In-game menu (req 4: press K, pick skins live)
 - [ ] The app exports a compact `catalog.json` next to `loadout.json` for the plugin. It holds names and ids for weapons, knives, gloves, agents, stickers and keychains.

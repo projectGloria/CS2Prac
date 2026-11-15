@@ -34,7 +34,8 @@ src/main/            Electron main process (Node). Does all the real work.
   server/launchArgs.ts     builds the cs2.exe arguments
   server/rcon.ts     minimal Source RCON client
   server/maps.ts     official map list + workshop handling
-  skins/catalog.ts   builds the skin catalog from ByMykel/CSGO-API (cached 7 days)
+  skins/catalog.ts   builds the catalog from ByMykel/CSGO-API (cached 7 days): weapons, skins, agents
+                     (model_player), stickers (~11k), keychains; bump CATALOG_VERSION when the shape changes
   skins/loadoutStore.ts  profiles in userData; exports loadout.json for the plugin
 src/preload/         contextBridge typed API (window.api)
 src/shared/          ipc.ts (IPC contract + types), skins.ts (catalog/loadout types)
@@ -77,6 +78,15 @@ npm run dist           # build + NSIS installer into dist/ (never publishes)
 (windows-latest) checks the tag matches, type-checks, tests, builds the plugin and runs `npm run release`, which publishes the
 installer + `latest.yml` to GitHub Releases. Installed apps pick it up through auto-update. Only tag when the user asks.
 
+## Loadout schema 2 (Phase 4)
+- loadout.json `schema: 2`: per weapon `stickers[5]` ({defIndex, wear, scale, rotation, x, y} or null) and `keychain`
+  ({defIndex, x, y, z, seed}); `agents.{t,ct}` ({defIndex, model}); `precache` = every agent model. The plugin
+  precaches those in OnServerPrecacheResources so agents can change without a map change. Schema 1 still loads.
+- Sticker/keychain ids and keychain seed go through `BitsAsFloat`; they're written to NetworkedDynamicAttributes only.
+- `css_prac_reload` calls RefreshPlayer: kills and re-gives guns + knife (keeping clip/reserve, re-selecting the active
+  weapon), then re-applies agent and gloves.
+- `css_prac_status` shows each pawn's model and each weapon's dynamic attribute count (useful to see stickers landed).
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs) and an `rcon_address …; rcon_password …` line.
   The RCON password is generated once and kept in settings.json (`rconPassword`).
@@ -99,4 +109,4 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–3 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–4 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.

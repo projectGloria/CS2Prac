@@ -54,6 +54,12 @@ public class PracSkins : BasePlugin
                 TimerFlags.STOP_ON_MAPCHANGE);
         });
         RegisterListener<Listeners.OnEntitySpawned>(OnEntitySpawned);
+        // Agent models must be precached at map load or SetModel fails; the app lists every agent model.
+        RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
+        {
+            foreach (var model in _loadout.Precache.Concat(AgentModels()).Distinct())
+                manifest.AddResource(model);
+        });
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
         VirtualFunctions.GiveNamedItemFunc.Hook(OnGiveNamedItemPost, HookMode.Post);
@@ -121,11 +127,10 @@ public class PracSkins : BasePlugin
         var count = 0;
         foreach (var player in Utilities.GetPlayers().Where(IsTarget))
         {
-            ApplyToCurrentWeapons(player);
-            ApplyGloves(player);
+            RefreshPlayer(player);
             count++;
         }
-        command.ReplyToCommand($"[PracSkins] reloaded, applied to {count} player(s). Respawn or re-buy if a skin doesn't update.");
+        command.ReplyToCommand($"[PracSkins] reloaded, applied to {count} player(s).");
     }
 
     /// <summary>
@@ -159,13 +164,16 @@ public class PracSkins : BasePlugin
         {
             var pawn = p.PlayerPawn.Value;
             lines.Add($"  {p.PlayerName} steamid {p.SteamID} team {p.TeamNum} bot {p.IsBot} target {IsTarget(p)} alive {p.PawnIsAlive}" +
-                      (pawn is { IsValid: true } ? $" gloves def {pawn.EconGloves.ItemDefinitionIndex}" : ""));
+                      (pawn is { IsValid: true }
+                          ? $" gloves def {pawn.EconGloves.ItemDefinitionIndex} model {pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName}"
+                          : ""));
             var weapons = pawn?.WeaponServices?.MyWeapons;
             if (weapons == null) continue;
             foreach (var h in weapons)
                 if (h.Value is { IsValid: true } w)
                     lines.Add($"    {w.DesignerName} def {w.AttributeManager.Item.ItemDefinitionIndex} paint {w.FallbackPaintKit} " +
-                              $"wear {w.FallbackWear} quality {w.AttributeManager.Item.EntityQuality} itemid {w.AttributeManager.Item.ItemID}");
+                              $"wear {w.FallbackWear} quality {w.AttributeManager.Item.EntityQuality} itemid {w.AttributeManager.Item.ItemID} " +
+                              $"attrs {w.AttributeManager.Item.NetworkedDynamicAttributes.Attributes.Count}");
         }
         command.ReplyToCommand(string.Join('\n', lines));
     }
@@ -232,7 +240,12 @@ public class PracSkins : BasePlugin
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (IsTarget(player)) Server.NextFrame(() => ApplyGloves(player!));
+        if (IsTarget(player))
+            Server.NextFrame(() =>
+            {
+                ApplyAgent(player!);
+                ApplyGloves(player!);
+            });
         return HookResult.Continue;
     }
 
@@ -304,16 +317,117 @@ public class PracSkins : BasePlugin
         item.CustomName = paint.NameTag ?? "";
 
         Logger.LogDebug("{Player}: {Weapon} -> def {Def}, paint {Paint}", player.PlayerName, weapon.DesignerName, item.ItemDefinitionIndex, paint.PaintKit);
-        if (paint.PaintKit <= 0) return; // vanilla knife: model only
-
-        weapon.FallbackPaintKit = paint.PaintKit;
-        weapon.FallbackSeed = paint.Seed;
-        weapon.FallbackWear = paint.Wear;
-        SetTexture(item, paint.PaintKit, paint.Seed, paint.Wear);
         if (paint.StatTrak >= 0) SetStatTrak(item, paint.StatTrak);
 
-        // Legacy (CS:GO-era) finishes are mapped to the old model's body group.
-        weapon.AcceptInput("SetBodygroup", value: $"body,{(paint.LegacyModel ? 1 : 0)}");
+        if (paint.PaintKit > 0)
+        {
+            weapon.FallbackPaintKit = paint.PaintKit;
+            weapon.FallbackSeed = paint.Seed;
+            weapon.FallbackWear = paint.Wear;
+            SetTexture(item, paint.PaintKit, paint.Seed, paint.Wear);
+            // Legacy (CS:GO-era) finishes are mapped to the old model's body group.
+            weapon.AcceptInput("SetBodygroup", value: $"body,{(paint.LegacyModel ? 1 : 0)}");
+        }
+
+        if (!IsKnife(weapon))
+        {
+            ApplyStickers(item, paint);
+            ApplyKeychain(item, paint.Keychain);
+        }
+    }
+
+    /// <summary>Sticker attributes (cs2-WeaponPaints technique); ids are passed as float bit patterns.</summary>
+    private void ApplyStickers(CEconItemView item, Paint paint)
+    {
+        for (var slot = 0; slot < paint.Stickers.Count && slot < 5; slot++)
+        {
+            if (paint.Stickers[slot] is not { DefIndex: > 0 } s) continue;
+            SetDynAttr(item, $"sticker slot {slot} id", BitsAsFloat((uint)s.DefIndex));
+            if (s.X != 0 || s.Y != 0) SetDynAttr(item, $"sticker slot {slot} schema", 0);
+            SetDynAttr(item, $"sticker slot {slot} offset x", s.X);
+            SetDynAttr(item, $"sticker slot {slot} offset y", s.Y);
+            SetDynAttr(item, $"sticker slot {slot} wear", s.Wear);
+            SetDynAttr(item, $"sticker slot {slot} scale", s.Scale);
+            SetDynAttr(item, $"sticker slot {slot} rotation", s.Rotation);
+        }
+    }
+
+    private void ApplyKeychain(CEconItemView item, KeychainPaint? k)
+    {
+        if (k is not { DefIndex: > 0 }) return;
+        SetDynAttr(item, "keychain slot 0 id", BitsAsFloat((uint)k.DefIndex));
+        SetDynAttr(item, "keychain slot 0 offset x", k.X);
+        SetDynAttr(item, "keychain slot 0 offset y", k.Y);
+        SetDynAttr(item, "keychain slot 0 offset z", k.Z);
+        SetDynAttr(item, "keychain slot 0 seed", BitsAsFloat((uint)k.Seed));
+    }
+
+    private IEnumerable<string> AgentModels() =>
+        new[] { _loadout.Agents.T, _loadout.Agents.Ct }.Where(a => a is { DefIndex: > 0 }).Select(a => a!.Model);
+
+    private void ApplyAgent(CCSPlayerController player)
+    {
+        var agent = _loadout.Agents.For(player.TeamNum);
+        var pawn = player.PlayerPawn.Value;
+        if (agent is not { DefIndex: > 0 } || string.IsNullOrEmpty(agent.Model) || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
+        try
+        {
+            pawn.SetModel(agent.Model);
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning("ApplyAgent {Model}: {Error}", agent.Model, e.Message);
+        }
+    }
+
+    private static readonly string[] NotRefreshed = { "weapon_c4", "grenade", "flashbang", "decoy", "molotov", "weapon_healthshot", "weapon_taser" };
+
+    private static bool IsKnifeName(string name) => name.Contains("knife") || name.Contains("bayonet");
+
+    /// <summary>
+    /// Applies a changed loadout right away: re-gives the player's guns and knife (keeping ammo and the active weapon)
+    /// so the client drops the old skin, then re-applies agent and gloves.
+    /// </summary>
+    private void RefreshPlayer(CCSPlayerController player)
+    {
+        var pawn = player.PlayerPawn.Value;
+        var services = pawn?.WeaponServices;
+        if (pawn is not { IsValid: true } || services == null || !player.PawnIsAlive) return;
+
+        var active = services.ActiveWeapon.Value?.DesignerName;
+        var held = new List<(string Give, int Clip, int Reserve, bool Knife)>();
+        var remove = new List<CBasePlayerWeapon>();
+        foreach (var h in services.MyWeapons)
+        {
+            if (h.Value is not { IsValid: true } w || w.DesignerName is not { } name) continue;
+            if (NotRefreshed.Any(name.Contains)) continue;
+            var knife = IsKnife(w);
+            held.Add((knife ? (player.TeamNum == 2 ? "weapon_knife_t" : "weapon_knife") : name, w.Clip1, w.ReserveAmmo[0], knife));
+            remove.Add(w);
+        }
+
+        foreach (var w in remove)
+        {
+            if (pawn.WeaponServices!.ActiveWeapon.Value?.Index == w.Index) pawn.WeaponServices.ActiveWeapon.Raw = uint.MaxValue;
+            w.AddEntityIOEvent("Kill", w, null, "", 0.01f);
+        }
+
+        AddTimer(0.1f, () =>
+        {
+            if (!player.IsValid || !player.PawnIsAlive) return;
+            foreach (var (give, clip, reserve, knife) in held)
+            {
+                var w = player.GiveNamedItem<CBasePlayerWeapon>(give);
+                if (w is not { IsValid: true } || knife) continue;
+                w.Clip1 = clip;
+                Utilities.SetStateChanged(w, "CBasePlayerWeapon", "m_iClip1");
+                w.ReserveAmmo[0] = reserve;
+                Utilities.SetStateChanged(w, "CBasePlayerWeapon", "m_pReserveAmmo");
+            }
+            if (active != null) player.ExecuteClientCommand($"use {(IsKnifeName(active) ? "weapon_knife" : active)}");
+            ApplyAgent(player);
+            ApplyGloves(player);
+        }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
     private void ApplyGloves(CCSPlayerController player)
@@ -367,6 +481,12 @@ public class PracSkins : BasePlugin
         if (_setAttribute == null) return;
         _setAttribute.Invoke(item.NetworkedDynamicAttributes.Handle, name, value);
         _setAttribute.Invoke(item.AttributeList.Handle, name, value);
+    }
+
+    /// <summary>Stickers and keychains live only in the networked attribute list.</summary>
+    private void SetDynAttr(CEconItemView item, string name, float value)
+    {
+        _setAttribute?.Invoke(item.NetworkedDynamicAttributes.Handle, name, value);
     }
 
     private void SetTexture(CEconItemView item, int paintKit, int seed, float wear)
