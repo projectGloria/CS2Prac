@@ -17,7 +17,7 @@ namespace PracSkins;
 /// Technique follows the open-source cs2-WeaponPaints plugin (fallback paint kit + econ attributes,
 /// knife subclass change, glove econ item on the pawn).
 /// </summary>
-public class PracSkins : BasePlugin
+public partial class PracSkins : BasePlugin
 {
     public override string ModuleName => "PracSkins";
     public override string ModuleVersion => "0.2.0";
@@ -45,6 +45,7 @@ public class PracSkins : BasePlugin
     {
         InitAttributeFunction();
         ReloadLoadout();
+        InitMenu();
 
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
@@ -57,7 +58,8 @@ public class PracSkins : BasePlugin
         // Agent models must be precached at map load or SetModel fails; the app lists every agent model.
         RegisterListener<Listeners.OnServerPrecacheResources>(manifest =>
         {
-            foreach (var model in _loadout.Precache.Concat(AgentModels()).Distinct())
+            LoadCatalogIfChanged();
+            foreach (var model in _loadout.Precache.Concat(AgentModels()).Concat(_catalog.Agents.Select(a => a.Model)).Distinct())
                 manifest.AddResource(model);
         });
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
@@ -69,6 +71,8 @@ public class PracSkins : BasePlugin
     {
         // A stale hook delegate crashes the server on the next GiveNamedItem.
         VirtualFunctions.GiveNamedItemFunc.Unhook(OnGiveNamedItemPost, HookMode.Post);
+        foreach (var slot in _menus.Keys.ToList())
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p) CloseMenu(p);
     }
 
     // ---------------------------------------------------------------- setup
@@ -118,6 +122,7 @@ public class PracSkins : BasePlugin
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnReloadCommand(CCSPlayerController? caller, CommandInfo command)
     {
+        LoadCatalogIfChanged();
         if (!ReloadLoadout())
         {
             command.ReplyToCommand("[PracSkins] reload failed, see server log");

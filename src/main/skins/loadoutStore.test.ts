@@ -58,3 +58,19 @@ describe('toLoadoutFile', () => {
     expect(toLoadoutFile(p, 'not-an-id').owner).toBeNull()
   })
 })
+
+describe('fromLoadoutFile', () => {
+  it('round-trips a profile through loadout.json', async () => {
+    const { fromLoadoutFile } = await import('./loadoutStore')
+    const p = emptyProfile('id', 'Mine')
+    p.weapons['7'] = {
+      paintKit: 282, wear: 0.15, seed: 661, statTrak: 3, nameTag: 'hi', legacyModel: true,
+      stickers: [null, { defIndex: 5, wear: 0, scale: 1, rotation: 0, x: 0, y: 0 }, null, null, null], keychain: null
+    }
+    p.knife.ct = { defIndex: 507, className: 'weapon_knife_karambit', paintKit: 0, wear: 0, seed: 0, statTrak: null, nameTag: '', legacyModel: false }
+    p.agents.t = { defIndex: 4613, model: 'agents/models/a.vmdl' }
+    const back = fromLoadoutFile(toLoadoutFile(p, null), { ...emptyProfile('id', 'Mine') })
+    expect(toLoadoutFile(back, null)).toEqual(toLoadoutFile(p, null))
+    expect(back.name).toBe('Mine')
+  })
+})

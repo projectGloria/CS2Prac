@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PracSkins;
 
@@ -18,6 +19,7 @@ public class Paint
     /// <summary>Weapons only.</summary>
     public KeychainPaint? Keychain { get; set; }
 
+    [JsonIgnore]
     public bool HasExtras => Stickers.Any(s => s is { DefIndex: > 0 }) || Keychain is { DefIndex: > 0 };
 }
 
@@ -85,6 +87,21 @@ public class LoadoutFile
     public static readonly LoadoutFile Empty = new() { Schema = 2 };
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions WriteJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    /// <summary>Writes the file the app reads back (atomic: temp file + rename, so the app never sees half a file).</summary>
+    public void Save(string path)
+    {
+        Schema = 2;
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(this, WriteJson));
+        File.Move(tmp, path, overwrite: true);
+    }
 
     public static LoadoutFile Load(string path)
     {

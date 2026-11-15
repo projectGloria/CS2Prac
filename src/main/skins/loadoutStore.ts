@@ -163,3 +163,42 @@ export async function exportLoadout(csgoDir: string, store: LoadoutStore, precac
   await writeFile(join(dir, 'loadout.json'), JSON.stringify(toLoadoutFile(profile, store.owner, precache), null, 2))
   return true
 }
+
+// ---------- import (the in-game menu edits loadout.json) ----------
+
+/**
+ * Applies a loadout.json written by the plugin's in-game menu to a profile. Only what the file can hold is taken;
+ * the profile keeps its id and name.
+ */
+export function fromLoadoutFile(f: LoadoutFile, profile: Profile): Profile {
+  const sel = (w: PaintOut): SkinSel => ({
+    paintKit: w.paintKit,
+    wear: w.wear,
+    seed: w.seed,
+    statTrak: w.statTrak >= 0 ? w.statTrak : null,
+    nameTag: w.nameTag ?? '',
+    legacyModel: w.legacyModel
+  })
+  const weapons: Profile['weapons'] = {}
+  for (const [def, w] of Object.entries(f.weapons ?? {})) {
+    weapons[def] = { ...sel(w), stickers: w.stickers ?? undefined, keychain: w.keychain ?? null }
+  }
+  const knifeIn = (k: LoadoutFile['knife']['t']): KnifeSel | null => (k ? { ...sel(k), defIndex: k.defIndex, className: k.className } : null)
+  return {
+    ...profile,
+    weapons,
+    knife: { t: knifeIn(f.knife?.t ?? null), ct: knifeIn(f.knife?.ct ?? null) },
+    gloves: { t: f.gloves?.t ?? null, ct: f.gloves?.ct ?? null },
+    agents: { t: f.agents?.t ?? null, ct: f.agents?.ct ?? null }
+  }
+}
+
+/** Reads loadout.json and merges it into the active profile. Returns the new store, or null if nothing changed. */
+export async function importLoadoutFile(csgoDir: string, store: LoadoutStore): Promise<LoadoutStore | null> {
+  const f = JSON.parse(await readFile(join(pluginConfigDir(csgoDir), 'loadout.json'), 'utf8')) as LoadoutFile
+  if (f.schema !== 2) return null
+  const active = store.profiles.find((p) => p.id === store.activeId) ?? store.profiles[0]
+  const next = fromLoadoutFile(f, active)
+  if (JSON.stringify(toLoadoutFile(next, store.owner)) === JSON.stringify(toLoadoutFile(active, store.owner))) return null
+  return { ...store, profiles: store.profiles.map((p) => (p.id === active.id ? next : p)) }
+}

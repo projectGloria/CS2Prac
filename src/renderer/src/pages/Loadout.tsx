@@ -72,7 +72,16 @@ export default function Loadout() {
       setStore(s)
     })
     window.api.skins.listSteamAccounts().then(setAccounts)
-    return flush // save immediately if the user leaves the tab mid-debounce
+    // picks made with the in-game menu
+    const off = window.api.loadout.onChanged((s) => {
+      if (dirty.current) return // a local edit is about to be saved; it wins
+      latest.current = s
+      setStore(s)
+    })
+    return () => {
+      off()
+      flush() // save immediately if the user leaves the tab mid-debounce
+    }
   }, [])
 
   const index = useMemo(() => {

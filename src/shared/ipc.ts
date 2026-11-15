@@ -127,6 +127,8 @@ export interface Api {
     get(): Promise<LoadoutStore>
     /** Saves the store and writes loadout.json for the active profile. */
     save(store: LoadoutStore): Promise<LoadoutSaveResult>
+    /** the in-game menu changed the loadout; the store has been updated */
+    onChanged(cb: (store: LoadoutStore) => void): () => void
   }
 }
 
@@ -166,5 +168,6 @@ export const IPC = {
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',
-  loadoutSave: 'loadout:save'
+  loadoutSave: 'loadout:save',
+  loadoutChanged: 'loadout:changed'
 } as const

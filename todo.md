@@ -61,9 +61,9 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [ ] **User check in game:** stickers/charm look right (slot positions, scrape, the Position offsets), agent model and arms, instant refresh keeps ammo and active weapon.
 
 ## Phase 5: In-game menu (req 4: press K, pick skins live)
-- [ ] The app exports a compact `catalog.json` next to `loadout.json` for the plugin. It holds names and ids for weapons, knives, gloves, agents, stickers and keychains.
-- [ ] Build a center-screen HTML menu in PracSkins with no extra dependency. Controls: W/S move, A/D page, E select, R back. Read buttons in `OnTick` and freeze movement while the menu is open.
-- [ ] `css_menu` (also `!skins`) opens the menu with these sections:
+- [x] The app exports a compact `catalog.json` next to `loadout.json` for the plugin. It holds names and ids for weapons, knives, gloves, agents, stickers and keychains.
+- [x] Build a center-screen HTML menu in PracSkins with no extra dependency. Controls: W/S move, A/D page, E select, R back. Read buttons in `OnTick` and freeze movement while the menu is open.
+- [x] `css_menu` (also `!skins`) opens the menu with these sections:
   - Weapon skins, current weapon first
   - Knife
   - Gloves
@@ -71,9 +71,12 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   - Stickers and Keychain for the current weapon
 
   After picking a finish, choose a wear preset (FN/MW/FT/WW/BS) and StatTrak on or off.
-- [ ] Search for big lists: `!skin <text>`, `!sticker <text>` and `!knife <text>` open the menu filtered.
-- [ ] The plugin writes choices back to `loadout.json` (atomic write) and applies them at once. The app watches the file (`fs.watch`) and updates the active profile, so the menu and the app stay in sync.
-- [ ] The app shows the bind line to paste into your autoexec: `bind k css_menu`.
+- [x] Search for big lists: `!skin <text>`, `!sticker <text>` and `!knife <text>` open the menu filtered.
+- [x] The plugin writes choices back to `loadout.json` (atomic write) and applies them at once. The app watches the file (`fs.watch`) and updates the active profile, so the menu and the app stay in sync.
+- [x] The app shows the bind line to paste into your autoexec: `bind k css_menu`.
+- [x] Extra chat commands: `!agent`, `!charm`; `css_menu` toggles. Menu pages: finish (+ wear presets), knife model → finish, gloves type → finish, agent, sticker slots (scrape, remove), charm, StatTrak toggle.
+- [x] Verified server-side: plugin loads catalog.json (63 weapons, 63 agents, 11134 stickers, 78 charms); plugin-written loadout.json round-trips through the app's import unchanged (`css_prac_save`).
+- [ ] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
 
 ## Phase 6: Hardening and v1.0
 - [ ] Pin known-good versions of Metamod, CSS and MatchZy. "Check for plugin updates" becomes an explicit button, so a bad upstream release can't break a start.

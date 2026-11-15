@@ -87,6 +87,16 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   weapon), then re-applies agent and gloves.
 - `css_prac_status` shows each pawn's model and each weapon's dynamic attribute count (useful to see stickers landed).
 
+## In-game menu (Phase 5)
+- plugin/PracSkins/Menu.cs: generic center-HTML menu (PrintToCenterHtml, re-sent every second), input read from
+  `player.Buttons` in OnTick (W/S/A/D/E/R, hold-to-repeat), player frozen with MOVETYPE_NONE while open.
+- plugin/PracSkins/SkinMenu.cs: pages and commands `css_menu`/`css_skins` (toggle), `css_skin|knife|gloves|agent|sticker|charm <text>`,
+  `css_prac_save` (server only; writes loadout.json, for tests).
+- The app writes `catalog.json` (src/main/skins/pluginCatalog.ts ↔ plugin/PracSkins/Catalog.cs) at server start and
+  whenever the catalog loads. Menu picks are saved by the plugin to loadout.json (camelCase, atomic) and applied at once;
+  the app watches that folder (`watchLoadout` in index.ts) and imports into the active profile (`importLoadoutFile`),
+  then sends `loadout:changed` so the Loadout tab updates.
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs) and an `rcon_address …; rcon_password …` line.
   The RCON password is generated once and kept in settings.json (`rconPassword`).
@@ -109,4 +119,4 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–4 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–5 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.

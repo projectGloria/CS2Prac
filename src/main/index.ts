@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -24,7 +24,8 @@ import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
 import { cachedCatalog, getCatalog } from './skins/catalog'
-import { exportLoadout, loadStore, saveStore } from './skins/loadoutStore'
+import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore } from './skins/loadoutStore'
+import { exportPluginCatalog } from './skins/pluginCatalog'
 import { listSteamAccounts } from './steam/accounts'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
@@ -87,6 +88,44 @@ async function removeMirror(installDir: string, log: (line: string) => void) {
   if (!existsSync(join(serverDir, MIRROR_MARKER))) return
   log('[cs2prac] removing the linked server folder before downloading the dedicated server')
   await rm(serverDir, { recursive: true, force: true })
+}
+
+/** Writes catalog.json for the in-game menu (downloads the catalog if there is no cache yet). */
+async function exportMenuCatalog(csgoDir: string) {
+  try {
+    const c = (await cachedCatalog()) ?? (await getCatalog())
+    await exportPluginCatalog(csgoDir, c)
+  } catch (e) {
+    logError('catalog', e)
+    send(IPC.serverLog, '[cs2prac] could not prepare the item list for the in-game menu (no skin data yet)')
+  }
+}
+
+/**
+ * The in-game menu (PracSkins) rewrites loadout.json; fold those changes into the active profile so the app stays
+ * in sync. Our own exports produce no change, so they don't loop.
+ */
+let loadoutWatcher: FSWatcher | null = null
+function watchLoadout(csgoDir: string) {
+  loadoutWatcher?.close()
+  const dir = pluginConfigDir(csgoDir)
+  if (!existsSync(dir)) return
+  let pending: ReturnType<typeof setTimeout> | undefined
+  loadoutWatcher = watch(dir, (_event, name) => {
+    if (name !== 'loadout.json') return
+    clearTimeout(pending)
+    pending = setTimeout(async () => {
+      try {
+        const next = await importLoadoutFile(csgoDir, await loadStore(async () => null))
+        if (!next) return
+        await saveStore(next)
+        log('loadout', 'updated from the in-game menu')
+        send(IPC.loadoutChanged, next)
+      } catch (e) {
+        logError('loadout', e)
+      }
+    }, 300)
+  })
 }
 
 /** Every agent model, so the plugin can precache them and agents switch without a map change. */
@@ -215,7 +254,9 @@ function registerIpc() {
       if (r.linked || r.removed) send(IPC.serverLog, `[cs2prac] game files updated: ${r.linked} linked, ${r.removed} removed`)
     }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
+    await exportMenuCatalog(csgoDir)
     await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
+    watchLoadout(csgoDir)
     // Every Steam account that has logged in on this PC is a root admin on the server.
     const accounts = await listSteamAccounts()
     await ensureAdmins(csgoDir, accounts.map((a) => a.steamId))
@@ -238,7 +279,12 @@ function registerIpc() {
   ipcMain.handle(IPC.serverExec, (_e, cmd: string) => server.exec(cmd))
 
   // --- skins / loadout ---
-  ipcMain.handle(IPC.skinsCatalog, (_e, refresh: boolean) => getCatalog(refresh))
+  ipcMain.handle(IPC.skinsCatalog, async (_e, refresh: boolean) => {
+    const c = await getCatalog(refresh)
+    const { installDir } = await loadSettings()
+    if (installDir) exportPluginCatalog(layout(installDir).csgoDir, c).catch((e) => logError('catalog', e))
+    return c
+  })
   ipcMain.handle(IPC.skinsSteamAccounts, listSteamAccounts)
   const defaultOwner = async () => (await listSteamAccounts())[0]?.steamId ?? null
   ipcMain.handle(IPC.loadoutGet, () => loadStore(defaultOwner))

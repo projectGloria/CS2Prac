@@ -224,6 +224,17 @@ export default function Play({ status }: { status: ServerStatus }) {
           </div>
         )}
 
+        <div className="connect-box">
+          <h3>In-game skin menu</h3>
+          <p className="muted small">Paste once in the CS2 console (it is saved with your binds), then press K in game:</p>
+          <CopyLine text="bind k css_menu" />
+          <p className="muted small">
+            W/S move · A/D page · E select · R back. Chat search: <code>!skin</code>, <code>!knife</code>, <code>!gloves</code>,{' '}
+            <code>!agent</code>, <code>!sticker</code>, <code>!charm</code> followed by a name, e.g. <code>!knife karambit fade</code>.
+            Picks are applied immediately and saved to your active profile.
+          </p>
+        </div>
+
         {settings && (
           <>
             <h3>Options</h3>

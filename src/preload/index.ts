@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC, type Api, type ServerStatus, type SetupProgress, type UpdateStatus } from '@shared/ipc'
+import type { LoadoutStore } from '@shared/skins'
 
 function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
   const h = (_: unknown, v: T) => cb(v)
@@ -49,7 +50,8 @@ const api: Api = {
   },
   loadout: {
     get: () => ipcRenderer.invoke(IPC.loadoutGet),
-    save: (store) => ipcRenderer.invoke(IPC.loadoutSave, store)
+    save: (store) => ipcRenderer.invoke(IPC.loadoutSave, store),
+    onChanged: (cb) => subscribe<LoadoutStore>(IPC.loadoutChanged, cb)
   }
 }
 
