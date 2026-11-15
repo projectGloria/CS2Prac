@@ -27,7 +27,14 @@ npm run dev            # start the app
 npm test               # unit tests (vitest)
 npm run typecheck
 npm run build:plugin   # rebuild plugin/PracSkins -> resources/plugin/PracSkins/PracSkins.dll
+npm run dist           # Windows installer -> dist/CS2Prac-Setup-<version>.exe
 ```
+
+npm 11 runs package install scripts only when they are approved. Electron's (which downloads the Electron
+binary) is approved in `package.json` (`allowScripts`). If `npm run dev` fails with `Electron uninstall`, run
+`node node_modules/electron/install.js`.
+
+The installer is not code-signed, so Windows SmartScreen warns on first run (**More info → Run anyway**).
 
 The prebuilt `PracSkins.dll` is committed, so the app works without the .NET SDK.
 

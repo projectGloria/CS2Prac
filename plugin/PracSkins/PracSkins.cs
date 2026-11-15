@@ -121,6 +121,32 @@ public class PracSkins : BasePlugin
         command.ReplyToCommand($"[PracSkins] reloaded, applied to {count} player(s). Respawn or re-buy if a skin doesn't update.");
     }
 
+    [ConsoleCommand("css_prac_status", "Show what PracSkins sees for each player")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnStatusCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var lines = new List<string>
+        {
+            $"[PracSkins] owner {_loadout.Owner ?? "everyone"}, {_loadout.Weapons.Count} weapon skins, " +
+            $"knife T {_loadout.Knife.T?.DefIndex ?? 0}/CT {_loadout.Knife.Ct?.DefIndex ?? 0}, " +
+            $"gloves T {_loadout.Gloves.T?.DefIndex ?? 0}/CT {_loadout.Gloves.Ct?.DefIndex ?? 0}, " +
+            $"attribute function {(_setAttribute == null ? "MISSING" : "ok")}"
+        };
+        foreach (var p in Utilities.GetPlayers())
+        {
+            var pawn = p.PlayerPawn.Value;
+            lines.Add($"  {p.PlayerName} steamid {p.SteamID} team {p.TeamNum} bot {p.IsBot} target {IsTarget(p)} alive {p.PawnIsAlive}" +
+                      (pawn is { IsValid: true } ? $" gloves def {pawn.EconGloves.ItemDefinitionIndex}" : ""));
+            var weapons = pawn?.WeaponServices?.MyWeapons;
+            if (weapons == null) continue;
+            foreach (var h in weapons)
+                if (h.Value is { IsValid: true } w)
+                    lines.Add($"    {w.DesignerName} def {w.AttributeManager.Item.ItemDefinitionIndex} paint {w.FallbackPaintKit} " +
+                              $"wear {w.FallbackWear} quality {w.AttributeManager.Item.EntityQuality} itemid {w.AttributeManager.Item.ItemID}");
+        }
+        command.ReplyToCommand(string.Join('\n', lines));
+    }
+
     // ---------------------------------------------------------------- who gets skins
 
     private bool IsTarget(CCSPlayerController? player)
@@ -146,7 +172,7 @@ public class PracSkins : BasePlugin
         }
         catch (Exception e)
         {
-            Logger.LogDebug("GiveNamedItem hook: {Message}", e.Message);
+            Logger.LogWarning("GiveNamedItem hook: {Error}", e);
         }
         return HookResult.Continue;
     }
@@ -175,7 +201,7 @@ public class PracSkins : BasePlugin
             }
             catch (Exception e)
             {
-                Logger.LogDebug("OnEntitySpawned: {Message}", e.Message);
+                Logger.LogWarning("OnEntitySpawned: {Error}", e);
             }
         });
     }
@@ -254,6 +280,7 @@ public class PracSkins : BasePlugin
         item.AccountID = (uint)player.SteamID;
         item.CustomName = paint.NameTag ?? "";
 
+        Logger.LogDebug("{Player}: {Weapon} -> def {Def}, paint {Paint}", player.PlayerName, weapon.DesignerName, item.ItemDefinitionIndex, paint.PaintKit);
         if (paint.PaintKit <= 0) return; // vanilla knife: model only
 
         weapon.FallbackPaintKit = paint.PaintKit;
@@ -286,6 +313,7 @@ public class PracSkins : BasePlugin
                 NewItemId(item);
                 SetTexture(item, glove.PaintKit, glove.Seed, glove.Wear);
                 item.Initialized = true;
+                Logger.LogDebug("{Player}: gloves -> def {Def}, paint {Paint}", player.PlayerName, glove.DefIndex, glove.PaintKit);
 
                 player.ExecuteClientCommand("lastinv");
                 pawn.AcceptInput("SetBodygroup", value: "first_or_third_person,0");
@@ -296,7 +324,7 @@ public class PracSkins : BasePlugin
             }
             catch (Exception e)
             {
-                Logger.LogDebug("ApplyGloves: {Message}", e.Message);
+                Logger.LogWarning("ApplyGloves: {Error}", e);
             }
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
