@@ -119,6 +119,12 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   counter, no fall damage, markers visible, `.next`/`.prev` with two spots.
 - [ ] Maybe later: movement spots in the K menu; E on a green square to go there.
 
+### UI polish (asked for before v1.0)
+- [x] No extra window on server start: cs2.exe's own console window is hidden as soon as it appears
+  (server/hideConsole.ts). Verified on a test server: no visible window at 1.2 s and later, output still streams.
+- [x] Icons next to the tab names (Play, Loadout, Console, Setup) and Logs (lucide-react).
+- [ ] **User check:** start the server and see no window (at most a brief flash); the icons look right.
+
 ## Next
 - [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).

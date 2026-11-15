@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FolderOpen, Play as PlayIcon, Settings, Shirt, SquareTerminal, type LucideIcon } from 'lucide-react'
 import type { AppInfo, ServerStatus, SetupState, UpdateStatus } from '@shared/ipc'
 import Setup from './pages/Setup'
 import Play from './pages/Play'
@@ -6,6 +7,12 @@ import Console from './pages/Console'
 import Loadout from './pages/Loadout'
 
 type Tab = 'play' | 'loadout' | 'console' | 'setup'
+const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: 'play', label: 'Play', icon: PlayIcon },
+  { id: 'loadout', label: 'Loadout', icon: Shirt },
+  { id: 'console', label: 'Console', icon: SquareTerminal },
+  { id: 'setup', label: 'Setup', icon: Settings }
+]
 const MAX_LOG_LINES = 2000
 
 export default function App() {
@@ -42,14 +49,21 @@ export default function App() {
       <header className="topbar">
         <span className="brand">CS2Prac</span>
         <nav className="tabs">
-          {(['play', 'loadout', 'console', 'setup'] as Tab[]).map((t) => (
-            <button key={t} className={tab === t ? 'active' : ''} disabled={(t === 'play' || t === 'console') && !ready} onClick={() => setTab(t)}>
-              {t[0].toUpperCase() + t.slice(1)}
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={tab === id ? 'active' : ''}
+              disabled={(id === 'play' || id === 'console') && !ready}
+              onClick={() => setTab(id)}
+            >
+              <Icon size={16} aria-hidden />
+              {label}
             </button>
           ))}
         </nav>
         <span className="topbar-right">
           <button className="link small" title="Open the folder with CS2Prac's log files" onClick={() => window.api.app.openLogsFolder()}>
+            <FolderOpen size={14} aria-hidden />
             Logs
           </button>
           {info && <span className="muted small">v{info.version}</span>}

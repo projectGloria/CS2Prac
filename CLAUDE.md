@@ -39,7 +39,7 @@ src/main/            Electron main process (Node). Does all the real work.
   skins/loadoutStore.ts  profiles in userData; exports loadout.json for the plugin
 src/preload/         contextBridge typed API (window.api)
 src/shared/          ipc.ts (IPC contract + types), skins.ts (catalog/loadout types)
-src/renderer/        React UI: pages/Setup, Play, Loadout, Console
+src/renderer/        React UI: pages/Setup, Play, Loadout, Console (tab icons from lucide-react)
 plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Built to resources/plugin/
 ```
 
@@ -56,6 +56,9 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
 
 ## Gotchas learned the hard way
 - **Always read cs2.exe's stdout and stderr.** An unread pipe fills up and freezes the server. With piped stdio the server writes nothing to `console.log`. Filter out `CTextConsoleWin::GetLine` spam.
+- **cs2.exe opens its own console window** ("Counter-Strike 2", ConsoleWindowClass) even with windowsHide or a hidden
+  parent console: it allocates the console itself. server/hideConsole.ts starts a hidden PowerShell watcher before the
+  spawn (script via -EncodedCommand, pid on stdin) that hides the window with ShowWindow; stdout piping is unaffected.
 - **`-ip 127.0.0.1` is required.** Without it RCON TCP binds only to the LAN IP and connecting to 127.0.0.1 fails with ECONNREFUSED.
 - **CSS `FollowCS2ServerGuidelines` must be `false`**, or `m_iEntityQuality`, `m_OriginalOwnerXuidLow` and other fields are blocked and skins silently fail. CSS reads it only at server start.
 - **An empty or bots-only server hibernates.** Plugin timers and NextFrame don't run during hibernation, so use `sv_hibernate_when_empty 0` when testing with bots.
