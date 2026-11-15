@@ -1,3 +1,5 @@
+import type { Catalog, LoadoutStore, SteamAccount } from './skins'
+
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
 
 export interface PluginVersions {
@@ -63,6 +65,22 @@ export interface Api {
     onStatus(cb: (s: ServerStatus) => void): () => void
     onLog(cb: (line: string) => void): () => void
   }
+  skins: {
+    getCatalog(refresh?: boolean): Promise<Catalog>
+    listSteamAccounts(): Promise<SteamAccount[]>
+  }
+  loadout: {
+    get(): Promise<LoadoutStore>
+    /** Saves the store and writes loadout.json for the active profile. */
+    save(store: LoadoutStore): Promise<LoadoutSaveResult>
+  }
+}
+
+export interface LoadoutSaveResult {
+  /** loadout.json written to the server's plugin config folder */
+  exported: boolean
+  /** the running server was told to reload skins */
+  reloaded: boolean
 }
 
 export const IPC = {
@@ -81,5 +99,9 @@ export const IPC = {
   serverConnect: 'server:connect',
   serverExec: 'server:exec',
   serverStatus: 'server:status',
-  serverLog: 'server:log'
+  serverLog: 'server:log',
+  skinsCatalog: 'skins:catalog',
+  skinsSteamAccounts: 'skins:steamAccounts',
+  loadoutGet: 'loadout:get',
+  loadoutSave: 'loadout:save'
 } as const

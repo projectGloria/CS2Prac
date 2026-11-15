@@ -31,6 +31,14 @@ const api: Api = {
     exec: (cmd) => ipcRenderer.invoke(IPC.serverExec, cmd),
     onStatus: (cb) => subscribe<ServerStatus>(IPC.serverStatus, cb),
     onLog: (cb) => subscribe<string>(IPC.serverLog, cb)
+  },
+  skins: {
+    getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),
+    listSteamAccounts: () => ipcRenderer.invoke(IPC.skinsSteamAccounts)
+  },
+  loadout: {
+    get: () => ipcRenderer.invoke(IPC.loadoutGet),
+    save: (store) => ipcRenderer.invoke(IPC.loadoutSave, store)
   }
 }
 

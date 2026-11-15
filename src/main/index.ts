@@ -6,6 +6,13 @@ import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
+import { getCatalog } from './skins/catalog'
+import { exportLoadout, loadStore, saveStore } from './skins/loadoutStore'
+import { listSteamAccounts } from './steam/accounts'
+import type { LoadoutStore } from '@shared/skins'
+
+/** Plugin command that re-reads loadout.json (implemented by plugin/PracSkins). */
+const RELOAD_SKINS_CMD = 'css_prac_reload'
 
 let win: BrowserWindow | null = null
 const server = new ServerManager()
@@ -89,13 +96,34 @@ function registerIpc() {
   })
   ipcMain.handle(IPC.serverStart, async (_e, opts: StartOptions) => {
     const settings = await loadSettings()
-    await server.start(await requireInstallDir(), opts, settings.authKey || undefined)
+    const installDir = await requireInstallDir()
+    await exportLoadout(layout(installDir).csgoDir, await loadStore(async () => null))
+    await server.start(installDir, opts, settings.authKey || undefined)
     if (settings.autoConnect) await connectToServer()
   })
   ipcMain.handle(IPC.serverStop, () => server.stop())
   ipcMain.handle(IPC.serverChangeMap, (_e, map: MapChoice) => server.changeMap(map))
   ipcMain.handle(IPC.serverConnect, connectToServer)
   ipcMain.handle(IPC.serverExec, (_e, cmd: string) => server.exec(cmd))
+
+  // --- skins / loadout ---
+  ipcMain.handle(IPC.skinsCatalog, (_e, refresh: boolean) => getCatalog(refresh))
+  ipcMain.handle(IPC.skinsSteamAccounts, listSteamAccounts)
+  const defaultOwner = async () => (await listSteamAccounts())[0]?.steamId ?? null
+  ipcMain.handle(IPC.loadoutGet, () => loadStore(defaultOwner))
+  ipcMain.handle(IPC.loadoutSave, async (_e, store: LoadoutStore) => {
+    await saveStore(store)
+    const { installDir } = await loadSettings()
+    const exported = installDir ? await exportLoadout(layout(installDir).csgoDir, store) : false
+    let reloaded = false
+    if (exported && server.getStatus().state === 'running') {
+      reloaded = await server.exec(RELOAD_SKINS_CMD).then(
+        (out) => !/unknown command/i.test(out),
+        () => false
+      )
+    }
+    return { exported, reloaded }
+  })
 
   server.on('status', (s) => send(IPC.serverStatus, s))
   server.on('log', (l) => send(IPC.serverLog, l))

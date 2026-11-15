@@ -132,7 +132,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
   }
 
   async exec(command: string): Promise<string> {
-    if (!this.rcon?.connected) throw new Error('Server is not running')
+    if (this.status.state !== 'running' || !this.rcon?.connected) throw new Error('Server is not running')
     return this.rcon.exec(command)
   }
 

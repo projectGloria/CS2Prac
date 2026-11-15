@@ -3,8 +3,9 @@ import type { ServerStatus, SetupState } from '@shared/ipc'
 import Setup from './pages/Setup'
 import Play from './pages/Play'
 import Console from './pages/Console'
+import Loadout from './pages/Loadout'
 
-type Tab = 'play' | 'console' | 'setup'
+type Tab = 'play' | 'loadout' | 'console' | 'setup'
 const MAX_LOG_LINES = 2000
 
 export default function App() {
@@ -35,8 +36,8 @@ export default function App() {
       <header className="topbar">
         <span className="brand">CS2Prac</span>
         <nav className="tabs">
-          {(['play', 'console', 'setup'] as Tab[]).map((t) => (
-            <button key={t} className={tab === t ? 'active' : ''} disabled={t !== 'setup' && !ready} onClick={() => setTab(t)}>
+          {(['play', 'loadout', 'console', 'setup'] as Tab[]).map((t) => (
+            <button key={t} className={tab === t ? 'active' : ''} disabled={(t === 'play' || t === 'console') && !ready} onClick={() => setTab(t)}>
               {t[0].toUpperCase() + t.slice(1)}
             </button>
           ))}
@@ -45,6 +46,7 @@ export default function App() {
       </header>
       <main className="content">
         {tab === 'play' && <Play status={status} />}
+        {tab === 'loadout' && <Loadout />}
         {tab === 'console' && <Console status={status} log={serverLog} onClear={() => setServerLog([])} />}
         {tab === 'setup' && <Setup state={setup} onState={setSetup} serverStopped={status.state === 'stopped'} />}
       </main>
