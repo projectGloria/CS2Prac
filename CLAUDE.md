@@ -158,6 +158,8 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 
 ## Status
 See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed. The user is testing in game step by step: Phases 1–3 confirmed (plus
-spawn markers); the `.glow` fix (e787dae) awaits their check. Then Phase 4 (stickers/charms/agents), Phase 5 (K menu),
-Phase 6 notices, and the v1.0.0 release only when they ask. Live-test recipe for bots: set `matchzy_autostart_mode 0`
+spawn markers); the `.glow` fix (e787dae) and `pracGloria` in their Nihil.cfg await their check. Then Phase 4
+(stickers/charms/agents), Phase 5 (K menu; K isn't bound by default, the user adds `bind k css_menu` themselves; `!skins`
+works without it), Phase 6 notices, and the v1.0.0 release only when they ask. Known: every `css_cmd` echoes
+"[CS2Prac] ran: …", so pracGloria prints ~40 lines (make it quiet only if they ask). Live-test recipe for bots: set `matchzy_autostart_mode 0`
 in cfg/MatchZy/config_override.cfg for the test server, restore it afterwards, and use port 27115.

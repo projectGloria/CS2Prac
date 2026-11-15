@@ -96,8 +96,8 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 ### Own client cfg on the server (asked for during testing)
 - [x] The user's `pracNihil` (client cfg `Nihil.cfg`) only half worked: on a dedicated server the client refuses replicated cvars and the server rejects bot_kick/ent_fire/mp_warmup_end from players (6× ent_fire per DEL press got them kicked for "too many failed console commands").
 - [x] Fix, at the user's request, inside their own `Nihil.cfg` (no second cfg, no app-generated copy; an app-side "cfg bridge" was tried and reverted): a `pracGloria` section with `gloria_*` aliases that mirror pracNihil but send every server command as `css_cmd <command>`. pracNihil stays for offline practice.
-- [ ] **User check in game:** `exec Nihil`, connect, `pracGloria`; the bot/clear/ammo/impact/nade keys; no kick on spamming DEL. Bind K to `css_menu` (the user does this).
+- [ ] **User check in game:** `exec Nihil`, connect, `pracGloria`; the bot/clear/ammo/impact/nade keys; no kick on spamming DEL. Bind K to `css_menu` (the user does this). Each `css_cmd` echoes one "[CS2Prac] ran: …" console line; make it quiet if the user finds it noisy.
 
 ## Next
-- [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
+- [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).
