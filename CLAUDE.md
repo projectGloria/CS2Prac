@@ -143,15 +143,12 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - A server exit that wasn't requested sets `status.crashed`. `killStaleServers` (on app launch and before every start)
   kills only cs2.exe processes running from our server folder.
 
-## Own client cfgs (cfg bridge)
-- A client can't run server commands on a dedicated server: replicated cvars (sv_cheats, sv_infinite_ammo …) are
-  refused by the client itself, and bot_kick/ent_fire/mp_warmup_end are rejected by the engine before any plugin
-  hook sees them (too many rejections kick the player). So this can't be fixed server-side alone.
-- Every start, `writeCfgBridge` (src/main/setup/cfgBridge.ts) writes `<client cfg>/cs2prac/<name>.cfg` for each
-  non-Valve cfg: runs of server commands (prefixes in SERVER_PREFIXES) become helper aliases
-  `cs2prac_<stem>_<n>` → `css_cfgrun <stem>_<n>`; the commands go to the plugin's `cfgbridge.json`
-  (plugin/PracSkins/CfgBridge.cs, @css/root). Helper aliases keep everything one word, so no nested quotes are ever
-  added. The user runs `exec cs2prac/<name>` instead of `exec <name>`.
+## User cfgs with server commands
+- A client can't run server commands on our dedicated server: the client refuses replicated cvars (sv_cheats,
+  sv_infinite_ammo, mp_* …) and the engine rejects bot_kick/ent_fire/mp_warmup_end before any plugin hook sees them
+  (too many rejections kick the player). The working route is `css_cmd <command>` per command in the user's aliases.
+- The user's `Nihil.cfg` (client cfg folder) has a `pracGloria` section doing exactly that; `pracNihil` is their
+  offline version. They want one cfg: don't generate copies of it from the app (tried and reverted).
 
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
