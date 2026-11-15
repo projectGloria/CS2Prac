@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
-import { rm } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import {
   IPC,
@@ -22,6 +22,8 @@ import { SERVER_PORT, ServerManager } from './server/serverManager'
 import { getCatalog } from './skins/catalog'
 import { exportLoadout, loadStore, saveStore } from './skins/loadoutStore'
 import { listSteamAccounts } from './steam/accounts'
+import { log, logError, logsDir } from './logger'
+import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
 import type { LoadoutStore } from '@shared/skins'
 
 /** Plugin command that re-reads loadout.json (implemented by plugin/PracSkins). */
@@ -85,6 +87,16 @@ async function removeMirror(installDir: string, log: (line: string) => void) {
 const connectToServer = () => shell.openExternal(`steam://connect/127.0.0.1:${SERVER_PORT}`)
 
 function registerIpc() {
+  // --- app ---
+  ipcMain.handle(IPC.appInfo, () => ({ version: app.getVersion(), packaged: app.isPackaged, logsDir: logsDir() }))
+  ipcMain.handle(IPC.appOpenLogs, async () => {
+    await mkdir(logsDir(), { recursive: true })
+    await shell.openPath(logsDir())
+  })
+  ipcMain.handle(IPC.appCheckUpdates, () => checkForUpdates())
+  ipcMain.handle(IPC.appGetUpdateStatus, getUpdateStatus)
+  ipcMain.handle(IPC.appInstallUpdate, () => installUpdate())
+
   // --- setup ---
   ipcMain.handle(IPC.setupGetState, getState)
 
@@ -116,16 +128,22 @@ function registerIpc() {
     const installDir = await requireInstallDir()
     const { serverSource } = await loadSettings()
     installing = true
-    const report = (p: SetupProgress) => send(IPC.setupProgress, p)
-    const log = (line: string) => send(IPC.setupLog, line)
+    const report = (p: SetupProgress) => {
+      if (p.phase === 'done' || p.phase === 'error' || p.percent == null) log('setup', p.message)
+      send(IPC.setupProgress, p)
+    }
+    const setupLog = (line: string) => {
+      log('setup', line)
+      send(IPC.setupLog, line)
+    }
     try {
       if (serverSource === 'client') {
         const r = await mirrorClient(installDir, report)
-        log(`[cs2prac] game files: ${r.linked} linked, ${r.copied} copied, ${r.unchanged} unchanged, ${r.removed} removed`)
+        setupLog(`[cs2prac] game files: ${r.linked} linked, ${r.copied} copied, ${r.unchanged} unchanged, ${r.removed} removed`)
       } else {
-        await removeMirror(installDir, log)
+        await removeMirror(installDir, setupLog)
         await ensureSteamCmd(installDir, report)
-        await installOrUpdateServer(installDir, report, log)
+        await installOrUpdateServer(installDir, report, setupLog)
       }
       const v = await ensurePlugins(installDir, report)
       const skins = await installPracSkins(layout(installDir).csgoDir)
@@ -197,8 +215,14 @@ function registerIpc() {
     return { exported, reloaded }
   })
 
-  server.on('status', (s) => send(IPC.serverStatus, s))
-  server.on('log', (l) => send(IPC.serverLog, l))
+  server.on('status', (s) => {
+    log('server', `status ${s.state}`)
+    send(IPC.serverStatus, s)
+  })
+  server.on('log', (l) => {
+    log('cs2', l)
+    send(IPC.serverLog, l)
+  })
 }
 
 function createWindow() {
@@ -207,15 +231,22 @@ function createWindow() {
     height: 800,
     backgroundColor: '#111318',
     autoHideMenuBar: true,
+    // packaged builds take the icon from the exe; in dev it comes from build/
+    icon: app.isPackaged ? undefined : join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   })
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
+process.on('uncaughtException', (e) => logError('main', e))
+process.on('unhandledRejection', (e) => logError('main', e))
+
 app.whenReady().then(() => {
+  log('app', `CS2Prac ${app.getVersion()} starting${app.isPackaged ? '' : ' (dev)'}`)
   registerIpc()
   createWindow()
+  initUpdater((s) => send(IPC.appUpdateStatus, s))
 })
 
 // Don't leave a headless cs2.exe running after the app closes.

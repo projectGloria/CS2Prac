@@ -54,7 +54,28 @@ export type ServerStatus =
   | { state: 'stopped' }
   | { state: 'starting' | 'running' | 'stopping'; map: MapChoice }
 
+export type UpdateStatus =
+  | { state: 'idle' | 'disabled' | 'checking' | 'latest' }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'error'; message: string }
+
+export interface AppInfo {
+  version: string
+  packaged: boolean
+  logsDir: string
+}
+
 export interface Api {
+  app: {
+    info(): Promise<AppInfo>
+    openLogsFolder(): Promise<void>
+    checkForUpdates(): Promise<void>
+    getUpdateStatus(): Promise<UpdateStatus>
+    /** quits, stops the server and runs the downloaded installer */
+    installUpdate(): Promise<void>
+    onUpdateStatus(cb: (s: UpdateStatus) => void): () => void
+  }
   setup: {
     getState(): Promise<SetupState>
     chooseInstallDir(): Promise<SetupState>
@@ -99,6 +120,12 @@ export interface LoadoutSaveResult {
 }
 
 export const IPC = {
+  appInfo: 'app:info',
+  appOpenLogs: 'app:openLogs',
+  appCheckUpdates: 'app:checkUpdates',
+  appUpdateStatus: 'app:updateStatus',
+  appGetUpdateStatus: 'app:getUpdateStatus',
+  appInstallUpdate: 'app:installUpdate',
   setupGetState: 'setup:getState',
   setupChooseDir: 'setup:chooseDir',
   setupSuggestedDir: 'setup:suggestedDir',

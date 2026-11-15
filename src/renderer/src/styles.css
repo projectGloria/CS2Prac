@@ -108,3 +108,13 @@ button.link { background: none; border: none; padding: 0; color: var(--accent); 
 .choice input { margin-top: 3px; }
 .choice code { word-break: break-all; }
 .block { display: block; margin-top: 2px; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+button.link { background: none; border: none; color: var(--muted); padding: 0; cursor: pointer; text-decoration: underline; }
+button.link:hover { color: var(--text); }
+.banner { display: flex; align-items: center; gap: 12px; padding: 8px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 14px; }
+.quick-setup { margin: 16px 0; padding: 16px; border: 1px solid var(--accent); border-radius: 8px; }
+.quick-setup p { margin-top: 0; }
+button.big { font-size: 16px; padding: 10px 28px; }
+details.advanced { margin: 16px 0; }
+details.advanced > summary { cursor: pointer; color: var(--muted); }

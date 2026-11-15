@@ -1,6 +1,6 @@
 {
   "name": "cs2prac",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local CS2 practice server manager",
   "author": "projectGloria",
   "main": "out/main/index.js",
@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "build:plugin": "dotnet build plugin/PracSkins -c Release -o resources/plugin/PracSkins",
-    "dist": "npm run build && electron-builder --win"
+    "dist": "npm run build && electron-builder --win --publish never",
+    "release": "npm run build && electron-builder --win --publish always"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -29,6 +30,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "extract-zip": "^2.0.1"
   },
   "allowScripts": {
@@ -60,13 +62,26 @@
           ]
         }
       ],
-      "signAndEditExecutable": false
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "artifactName": "CS2Prac-Setup-${version}.exe"
-    }
+      "artifactName": "CS2Prac-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "CS2Prac"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "projectGloria",
+        "repo": "CS2Prac"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/projectGloria/CS2Prac.git"
   }
 }

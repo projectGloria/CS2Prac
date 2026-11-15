@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type Api, type ServerStatus, type SetupProgress } from '@shared/ipc'
+import { IPC, type Api, type ServerStatus, type SetupProgress, type UpdateStatus } from '@shared/ipc'
 
 function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
   const h = (_: unknown, v: T) => cb(v)
@@ -10,6 +10,14 @@ function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
 }
 
 const api: Api = {
+  app: {
+    info: () => ipcRenderer.invoke(IPC.appInfo),
+    openLogsFolder: () => ipcRenderer.invoke(IPC.appOpenLogs),
+    checkForUpdates: () => ipcRenderer.invoke(IPC.appCheckUpdates),
+    getUpdateStatus: () => ipcRenderer.invoke(IPC.appGetUpdateStatus),
+    installUpdate: () => ipcRenderer.invoke(IPC.appInstallUpdate),
+    onUpdateStatus: (cb) => subscribe<UpdateStatus>(IPC.appUpdateStatus, cb)
+  },
   setup: {
     getState: () => ipcRenderer.invoke(IPC.setupGetState),
     chooseInstallDir: () => ipcRenderer.invoke(IPC.setupChooseDir),

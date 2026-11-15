@@ -8,13 +8,13 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 ---
 
 ## Phase 1: Installer and release pipeline (req 0: easy setup)
-- [ ] Add an app icon (`build/icon.ico`), bump package.json to 0.2.0, and show the version in the app.
-- [ ] Release builds compile the plugin from source with the existing `npm run build:plugin`, so they never ship a stale DLL.
-- [ ] Add `.github/workflows/release.yml`. On a `v*` tag it runs on windows-latest: setup-node, setup-dotnet 10, `npm ci`, `npm test`, `build:plugin`, then `electron-builder --win --publish always`. The NSIS exe is attached to a GitHub Release.
-- [ ] Auto-update with `electron-updater` from GitHub Releases. Check on launch and offer "Restart to update".
-- [ ] Make the first-run wizard one click. It auto-detects CS2, suggests `<drive>\CS2Prac`, and a single **Set up** button runs everything. Reuse `findCs2Install` and `syncMirror`.
-- [ ] Settings and logs live in `%APPDATA%\CS2Prac` and survive reinstalls. Add a rotating `main.log` and an "Open logs folder" button.
-- [ ] Update the README. Installing means downloading the latest release. Building from source gets its own section.
+- [x] Add an app icon (`build/icon.png`), bump package.json to 0.2.0, and show the version in the app.
+- [x] Release builds compile the plugin from source with the existing `npm run build:plugin`, so they never ship a stale DLL.
+- [x] Add `.github/workflows/release.yml`. On a `v*` tag it runs on windows-latest: setup-node, setup-dotnet 10, `npm ci`, `npm test`, `build:plugin`, then `electron-builder --win --publish always`. The NSIS exe is attached to a GitHub Release.
+- [x] Auto-update with `electron-updater` from GitHub Releases. Check on launch and offer "Restart to update".
+- [x] Make the first-run wizard one click. It auto-detects CS2, suggests `<drive>\CS2Prac`, and a single **Set up** button runs everything. Reuse `findCs2Install` and `syncMirror`.
+- [x] Settings and logs live in `%APPDATA%\CS2Prac` and survive reinstalls. Add a rotating `main.log` and an "Open logs folder" button.
+- [x] Update the README. Installing means downloading the latest release. Building from source gets its own section.
 
 ## Phase 2: Manual connect, admin, any command (req 1, 2)
 - [ ] Remove `steam://connect` and the `autoConnect` setting (in `src/main/index.ts`, `src/main/paths.ts` and `Play.tsx`). When the server runs, show a copyable `connect 127.0.0.1:27015` and a LAN IP variant.

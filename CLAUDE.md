@@ -5,9 +5,9 @@ CS2Prac is a personal Windows desktop app (Electron + React + TypeScript) that r
 The app never touches the game client or its memory. Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
 
 ## Working rules
-- **Commit and push directly to `main`.** No branches, no PRs. Only commit when the user asks.
+- **Commit and push directly to `main`.** No branches, no PRs. When a todo.md step is done (typecheck + tests green), commit and push it right away without waiting for approval; the user tests in game afterwards. Never push a `v*` release tag unless asked.
 - Work **phase by phase from `todo.md`**. Tick boxes as items land and keep the file current, since it is the source of truth for what's left.
-- A phase is finished when the user has tested it in game. After that, commit and push.
+- The user tests each phase in game later and reports problems; fix them as they come in.
 - Keep `plugin/PracSkins/Loadout.cs` and `src/main/skins/loadoutStore.ts` (the loadout.json schema) in sync. Bump the schema number when the shape changes.
 
 ## Architecture
@@ -15,6 +15,8 @@ The app never touches the game client or its memory. Everything happens on a pri
 src/main/            Electron main process (Node). Does all the real work.
   index.ts           bootstrap + IPC handlers (setup, server start/stop, loadout, settings)
   paths.ts           settings.json in userData; layout(installDir) gives server/cs2.exe/csgo paths
+  logger.ts          <userData>/logs/main.log (rotates at 5 MB to main.old.log); setup, server output, errors
+  updater.ts         electron-updater against GitHub Releases (packaged builds only)
   steam/library.ts   finds the Steam CS2 install (registry SteamPath, libraryfolders.vdf, appmanifest_730.acf)
   steam/accounts.ts  steamPath + local SteamID64/persona from loginusers.vdf
   setup/mirror.ts    hard-link mirror of the client CS2 install into <installDir>/server
@@ -64,15 +66,17 @@ npm run dev            # run the app with hot reload
 npm test               # vitest unit tests
 npm run typecheck      # tsc for main + renderer
 npm run build:plugin   # dotnet build of PracSkins into resources/plugin/PracSkins (.NET 10 SDK)
-npm run dist           # build + NSIS installer into dist/
+npm run dist           # build + NSIS installer into dist/ (never publishes)
 ```
-Releases are planned for Phase 1: push a `v*` tag, and GitHub Actions builds and publishes the installer.
+**Release:** bump `version` in package.json, commit, `git tag vX.Y.Z && git push origin vX.Y.Z`. `.github/workflows/release.yml`
+(windows-latest) checks the tag matches, type-checks, tests, builds the plugin and runs `npm run release`, which publishes the
+installer + `latest.yml` to GitHub Releases. Installed apps pick it up through auto-update. Only tag when the user asks.
 
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
 - `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.
 - `css_prac_reload` re-reads loadout.json.
-- App data (settings, loadouts, catalog cache) lives in Electron `userData` (`%APPDATA%\CS2Prac` once packaged).
+- App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 (mirror, plugins, skins, installer) are done, and **Phase 1 is next**.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. **Phase 1** (installer, release pipeline, auto-update, one-click setup, logs) is implemented and committed (not yet tested in game by the user); Phase 2 is next.

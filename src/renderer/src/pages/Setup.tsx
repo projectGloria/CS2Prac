@@ -28,10 +28,12 @@ export default function Setup({ state, onState, serverStopped }: Props) {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight)
   }, [log])
 
-  async function install() {
+  async function install(quick = false) {
     setBusy(true)
     setLog([])
     try {
+      // One click: use the CS2 install's drive when no usable folder is chosen yet
+      if (quick && (!state.installDir || !state.sameDrive)) onState(await window.api.setup.useSuggestedDir())
       await window.api.setup.install()
     } catch {
       /* error is reported through the progress event */
@@ -49,6 +51,8 @@ export default function Setup({ state, onState, serverStopped }: Props) {
   const badDrive = linked && !!state.installDir && !state.sameDrive
   const canInstall = !busy && !!state.installDir && serverStopped && !badDrive && (!linked || !!state.clientDir)
   const setSource = async (s: ServerSource) => onState(await window.api.setup.setSource(s))
+  // First run with CS2 found: a single button does everything, the options stay folded away
+  const quick = !ready && linked && !!state.clientDir && (!state.installDir || badDrive)
   return (
     <section className="card">
       <h1>Server setup</h1>
@@ -56,6 +60,20 @@ export default function Setup({ state, onState, serverStopped }: Props) {
         CS2Prac runs a CS2 server on this PC and adds Metamod:Source, CounterStrikeSharp and its skin plugin to it.
       </p>
 
+      {quick && (
+        <div className="quick-setup">
+          <p>
+            CS2 found in <code>{state.clientDir}</code>. The server will be set up in <code>{drive}\CS2Prac</code> using your game
+            files. It needs almost no extra disk space, and your game is not modified.
+          </p>
+          <button className="primary big" disabled={busy || !serverStopped} onClick={() => install(true)}>
+            {busy ? 'Setting up…' : 'Set up'}
+          </button>
+        </div>
+      )}
+
+      <details className="advanced" open={!quick}>
+        <summary>{quick ? 'Other options' : 'Server files'}</summary>
       <div className="choices">
         <label className={`choice ${linked ? 'active' : ''} ${state.clientDir ? '' : 'disabled'}`}>
           <input
@@ -87,7 +105,7 @@ export default function Setup({ state, onState, serverStopped }: Props) {
         <code className="path">{state.installDir ?? 'No folder selected'}</code>
         {linked && state.clientDir && (!state.installDir || badDrive) && (
           <button disabled={busy} onClick={async () => onState(await window.api.setup.useSuggestedDir())}>
-            Use {drive}CS2Prac
+            Use {drive}\CS2Prac
           </button>
         )}
         <button disabled={busy} onClick={async () => onState(await window.api.setup.chooseInstallDir())}>
@@ -95,6 +113,7 @@ export default function Setup({ state, onState, serverStopped }: Props) {
         </button>
       </div>
       {badDrive && <p className="error-text small">This folder is not on drive {drive}, where CS2 is installed.</p>}
+      </details>
 
       <ul className="checklist">
         {!linked && <li className={state.steamcmdInstalled ? 'ok' : ''}>SteamCMD</li>}
@@ -106,7 +125,7 @@ export default function Setup({ state, onState, serverStopped }: Props) {
         <li className={state.pracSkinsInstalled ? 'ok' : ''}>PracSkins (skin plugin)</li>
       </ul>
 
-      <button className="primary" disabled={!canInstall} onClick={install}>
+      <button className="primary" disabled={!canInstall} onClick={() => install()}>
         {busy ? 'Working…' : ready ? 'Update / repair' : 'Install'}
       </button>
       {!serverStopped && <p className="muted small">Stop the server to update it.</p>}

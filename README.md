@@ -13,13 +13,33 @@ The server's game files come from one of two places:
  Skins are applied server-side only: the game client is never modified.
 The server runs as a LAN `-insecure` server, so it is only meant for practising on your own machine.
 
-## Requirements
+## Install
 
-- Windows 10/11, Node.js 20+
-- CS2 installed through Steam, or ~60 GB free disk space for the dedicated server
-- .NET 10 SDK, only if you change the plugin (`winget install Microsoft.DotNet.SDK.10`)
+1. Download `CS2Prac-Setup-<version>.exe` from the [latest release](https://github.com/projectGloria/CS2Prac/releases/latest) and run it.
+   It is not code-signed, so Windows SmartScreen warns the first time: **More info → Run anyway**.
+2. Open CS2Prac and click **Set up**. When CS2 is installed through Steam, everything else is automatic.
 
-## Development
+The app updates itself: new releases are downloaded in the background and a **Restart to update** banner appears.
+Settings, loadouts and logs are in `%APPDATA%\CS2Prac` and are kept across updates and reinstalls (the **Logs** link
+in the top bar opens the log folder).
+
+Requirements: Windows 10/11, and CS2 installed through Steam (or ~60 GB free for the separate dedicated server).
+
+## Releasing
+
+Bump `version` in `package.json`, commit, then push a matching tag:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+GitHub Actions (`.github/workflows/release.yml`) type-checks, runs the tests, builds the plugin from source and
+publishes the installer plus `latest.yml` (used by auto-update) as a GitHub Release.
+
+## Building from source
+
+Needs Node.js 24+ and, for the plugin, the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`).
 
 ```sh
 npm install
@@ -27,16 +47,14 @@ npm run dev            # start the app
 npm test               # unit tests (vitest)
 npm run typecheck
 npm run build:plugin   # rebuild plugin/PracSkins -> resources/plugin/PracSkins/PracSkins.dll
-npm run dist           # Windows installer -> dist/CS2Prac-Setup-<version>.exe
+npm run dist           # local Windows installer -> dist/CS2Prac-Setup-<version>.exe (not published)
 ```
 
 npm 11 runs package install scripts only when they are approved. Electron's (which downloads the Electron
 binary) is approved in `package.json` (`allowScripts`). If `npm run dev` fails with `Electron uninstall`, run
 `node node_modules/electron/install.js`.
 
-The installer is not code-signed, so Windows SmartScreen warns on first run (**More info → Run anyway**).
-
-The prebuilt `PracSkins.dll` is committed, so the app works without the .NET SDK.
+The prebuilt `PracSkins.dll` is committed, so `npm run dev` works without the .NET SDK; release builds compile it fresh.
 
 ## How it fits together
 
