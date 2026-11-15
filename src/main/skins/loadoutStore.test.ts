@@ -17,7 +17,7 @@ describe('toLoadoutFile', () => {
 
   it('exports weapon paints, clamps values and trims name tags', () => {
     expect(Object.keys(f.weapons)).toEqual(['7'])
-    expect(f.weapons['7']).toEqual({ paintKit: 282, wear: 0.15, seed: 661, statTrak: 1337, nameTag: 'x'.repeat(20) })
+    expect(f.weapons['7']).toEqual({ paintKit: 282, wear: 0.15, seed: 661, statTrak: 1337, nameTag: 'x'.repeat(20), legacyModel: false })
   })
 
   it('keeps vanilla knives, rejects non-knife classes, clamps seeds', () => {

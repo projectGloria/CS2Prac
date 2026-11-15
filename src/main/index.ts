@@ -4,6 +4,7 @@ import { IPC, type MapChoice, type Settings, type SetupProgress, type SetupState
 import { isInstalled, layout, loadSettings, saveSettings } from './paths'
 import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
+import { installedPluginDir, installPracSkins } from './setup/pracskins'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
 import { getCatalog } from './skins/catalog'
@@ -27,7 +28,7 @@ async function requireInstallDir(): Promise<string> {
 async function getState(): Promise<SetupState> {
   const { installDir } = await loadSettings()
   if (!installDir)
-    return { installDir, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pluginVersions: {} }
+    return { installDir, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pracSkinsInstalled: false, pluginVersions: {} }
   const l = layout(installDir)
   const pluginVersions = await readPluginVersions(l.csgoDir)
   return {
@@ -36,6 +37,7 @@ async function getState(): Promise<SetupState> {
     serverInstalled: isInstalled(l.cs2Exe),
     pluginsInstalled:
       isInstalled(join(l.csgoDir, 'addons', 'metamod')) && isInstalled(join(l.csgoDir, 'addons', 'counterstrikesharp')),
+    pracSkinsInstalled: isInstalled(join(installedPluginDir(l.csgoDir), 'PracSkins.dll')),
     pluginVersions
   }
 }
@@ -66,10 +68,13 @@ function registerIpc() {
       await ensureSteamCmd(installDir, report)
       await installOrUpdateServer(installDir, report, (line) => send(IPC.setupLog, line))
       const v = await ensurePlugins(installDir, report)
+      const skins = await installPracSkins(layout(installDir).csgoDir)
       report({
         phase: 'done',
         percent: 100,
-        message: `Ready: CS2 server, Metamod ${v.metamod}, CounterStrikeSharp ${v.counterstrikesharp}`
+        message:
+          `Ready: CS2 server, Metamod ${v.metamod}, CounterStrikeSharp ${v.counterstrikesharp}` +
+          (skins ? ', PracSkins' : ' (PracSkins plugin not built – skins disabled)')
       })
     } catch (e) {
       report({ phase: 'error', percent: null, message: (e as Error).message })
@@ -97,7 +102,9 @@ function registerIpc() {
   ipcMain.handle(IPC.serverStart, async (_e, opts: StartOptions) => {
     const settings = await loadSettings()
     const installDir = await requireInstallDir()
-    await exportLoadout(layout(installDir).csgoDir, await loadStore(async () => null))
+    const { csgoDir } = layout(installDir)
+    if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
+    await exportLoadout(csgoDir, await loadStore(async () => null))
     await server.start(installDir, opts, settings.authKey || undefined)
     if (settings.autoConnect) await connectToServer()
   })

@@ -26,7 +26,7 @@ const base: ApiBaseWeapon[] = [
 ]
 
 const skins: ApiSkin[] = [
-  skin({ weapon: { id: 'weapon_ak47', weapon_id: 7, name: 'AK-47' }, pattern: { name: 'Redline' }, paint_index: '282', min_float: 0.1, max_float: 0.7 }),
+  skin({ weapon: { id: 'weapon_ak47', weapon_id: 7, name: 'AK-47' }, pattern: { name: 'Redline' }, paint_index: '282', min_float: 0.1, max_float: 0.7, legacy_model: true }),
   // HUD-alias weapon id + Doppler phase
   skin({ weapon: { id: 'sfui_wpnhud_knifekaram', weapon_id: 507, name: 'Karambit' }, category: { name: 'Knives' }, pattern: { name: 'Doppler' }, phase: 'Phase 2', paint_index: '419' }),
   // vanilla knife entry: no paint index
@@ -53,6 +53,6 @@ describe('buildCatalog', () => {
   it('converts skins, skipping vanilla entries and naming phases', () => {
     expect(c.skins).toHaveLength(3)
     expect(c.skins.find((s) => s.paintKit === 419)?.name).toBe('Doppler (Phase 2)')
-    expect(c.skins.find((s) => s.paintKit === 282)).toMatchObject({ defIndex: 7, minFloat: 0.1, maxFloat: 0.7 })
+    expect(c.skins.find((s) => s.paintKit === 282)).toMatchObject({ defIndex: 7, minFloat: 0.1, maxFloat: 0.7, legacyModel: true })
   })
 })

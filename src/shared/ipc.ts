@@ -12,6 +12,8 @@ export interface SetupState {
   steamcmdInstalled: boolean
   serverInstalled: boolean
   pluginsInstalled: boolean
+  /** our skin plugin, copied into the server */
+  pracSkinsInstalled: boolean
   pluginVersions: PluginVersions
 }
 

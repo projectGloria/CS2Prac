@@ -446,7 +446,8 @@ function WeaponPanel(props: {
           wear: sel ? clamp(sel.wear, s.minFloat, s.maxFloat) : defaultWear(s),
           seed: sel?.seed ?? 0,
           statTrak: sel?.statTrak ?? null,
-          nameTag: sel?.nameTag ?? ''
+          nameTag: sel?.nameTag ?? '',
+          legacyModel: s.legacyModel
         })
     }))
   ]
@@ -507,7 +508,7 @@ function KnifePanel(props: {
           name: 'Vanilla',
           image: model.image,
           selected: sel?.paintKit === 0,
-          onClick: () => onChange({ ...sel!, paintKit: 0 })
+          onClick: () => onChange({ ...sel!, paintKit: 0, legacyModel: false })
         },
         ...finishes.map((s) => ({
           key: s.id,
@@ -515,7 +516,8 @@ function KnifePanel(props: {
           image: s.image,
           color: s.rarityColor,
           selected: sel?.paintKit === s.paintKit,
-          onClick: () => onChange({ ...sel!, paintKit: s.paintKit, wear: clamp(sel!.wear, s.minFloat, s.maxFloat) })
+          onClick: () =>
+            onChange({ ...sel!, paintKit: s.paintKit, wear: clamp(sel!.wear, s.minFloat, s.maxFloat), legacyModel: s.legacyModel })
         }))
       ]
     : []

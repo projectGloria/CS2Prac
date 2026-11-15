@@ -24,9 +24,14 @@ export interface CatalogSkin {
   rarityColor: string
   image: string
   stattrak: boolean
+  /** uses the old CS:GO model, which needs a different body group in-game */
+  legacyModel: boolean
 }
 
+export const CATALOG_VERSION = 2
+
 export interface Catalog {
+  version: number
   fetchedAt: number
   weapons: CatalogWeapon[]
   skins: CatalogSkin[]
@@ -41,6 +46,7 @@ export interface SkinSel {
   /** kill count, or null for no StatTrak */
   statTrak: number | null
   nameTag: string
+  legacyModel?: boolean
 }
 
 export interface KnifeSel extends SkinSel {

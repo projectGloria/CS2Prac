@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Must match the framework of the CounterStrikeSharp build the app installs (1.0.380 → net10.0). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PracSkins</AssemblyName>
+    <RootNamespace>PracSkins</RootNamespace>
+    <!-- CounterStrikeSharp loads plugins from plugins/<Name>/<Name>.dll; no deps.json or pdb needed. -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>none</DebugType>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Provided by the server at runtime; compile against it only. -->
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.380">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

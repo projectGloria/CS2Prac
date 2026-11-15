@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Catalog, CatalogSkin, CatalogWeapon, WeaponKind } from '@shared/skins'
+import { CATALOG_VERSION, type Catalog, type CatalogSkin, type CatalogWeapon, type WeaponKind } from '@shared/skins'
 
 const API = 'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/'
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -18,6 +18,7 @@ export interface ApiSkin {
   max_float: number | null
   rarity?: { color: string } | null
   stattrak: boolean
+  legacy_model?: boolean
   paint_index: string | null
   image: string
 }
@@ -52,7 +53,8 @@ export function buildCatalog(skinsRaw: ApiSkin[], baseRaw: ApiBaseWeapon[], fetc
       maxFloat: s.max_float ?? 1,
       rarityColor: s.rarity?.color ?? '#b0c3d9',
       image: s.image,
-      stattrak: s.stattrak
+      stattrak: s.stattrak,
+      legacyModel: !!s.legacy_model
     })
   }
   const skinned = new Set(skins.map((s) => s.defIndex))
@@ -87,14 +89,15 @@ export function buildCatalog(skinsRaw: ApiSkin[], baseRaw: ApiBaseWeapon[], fetc
     (a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
   )
   skins.sort((a, b) => a.name.localeCompare(b.name))
-  return { fetchedAt, weapons: sortedWeapons, skins }
+  return { version: CATALOG_VERSION, fetchedAt, weapons: sortedWeapons, skins }
 }
 
 const cacheFile = () => join(app.getPath('userData'), 'catalog-cache.json')
 
 async function readCache(): Promise<Catalog | null> {
   try {
-    return JSON.parse(await readFile(cacheFile(), 'utf8'))
+    const c = JSON.parse(await readFile(cacheFile(), 'utf8')) as Catalog
+    return c.version === CATALOG_VERSION ? c : null
   } catch {
     return null
   }

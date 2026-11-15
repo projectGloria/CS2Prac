@@ -1,0 +1,49 @@
+# CS2Prac
+
+A Windows desktop app that runs a local CS2 practice server with any map and any weapon, knife or glove skin.
+
+It installs a CS2 dedicated server (SteamCMD), Metamod:Source and CounterStrikeSharp, and its own small
+skin plugin (**PracSkins**). Skins are applied server-side only: the game client is never modified.
+The server runs as a LAN `-insecure` server, so it is only meant for practising on your own machine.
+
+## Requirements
+
+- Windows 10/11, Node.js 20+
+- ~60 GB free disk space for the CS2 dedicated server
+- .NET 10 SDK, only if you change the plugin (`winget install Microsoft.DotNet.SDK.10`)
+
+## Development
+
+```sh
+npm install
+npm run dev            # start the app
+npm test               # unit tests (vitest)
+npm run typecheck
+npm run build:plugin   # rebuild plugin/PracSkins -> resources/plugin/PracSkins/PracSkins.dll
+```
+
+The prebuilt `PracSkins.dll` is committed, so the app works without the .NET SDK.
+
+## How it fits together
+
+| Part | Where |
+| --- | --- |
+| Electron main process: setup, server control, RCON, skin catalog | `src/main` |
+| React UI: Play, Loadout, Console, Setup | `src/renderer` |
+| Types shared between them | `src/shared` |
+| PracSkins CounterStrikeSharp plugin (C#) | `plugin/PracSkins` |
+
+The app writes the active loadout to
+`<server>/game/csgo/addons/counterstrikesharp/configs/plugins/PracSkins/loadout.json`, and
+PracSkins applies it when weapons are given or picked up and when a player spawns (gloves).
+Saving in the app sends `css_prac_reload` to a running server.
+
+## When CS2 updates
+
+1. Use **Setup → Update / repair**. It updates the server and Metamod/CounterStrikeSharp, and re-patches `gameinfo.gi`.
+2. If skins stop showing, the memory signature PracSkins uses may have changed. Put the new one in
+   `configs/plugins/PracSkins/signatures.json` (`{ "windows": "…", "linux": "…" }`). The
+   cs2-WeaponPaints gamedata (`CAttributeList_SetOrAddAttributeValueByName`) is a good source.
+
+Skin data comes from [ByMykel/CSGO-API](https://github.com/ByMykel/CSGO-API). The skin technique follows
+[cs2-WeaponPaints](https://github.com/Nereziel/cs2-WeaponPaints).

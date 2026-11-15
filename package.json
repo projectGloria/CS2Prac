@@ -9,7 +9,8 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:plugin": "dotnet build plugin/PracSkins -c Release -o resources/plugin/PracSkins"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

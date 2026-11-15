@@ -56,6 +56,7 @@ interface PaintOut {
   /** -1 means no StatTrak */
   statTrak: number
   nameTag: string
+  legacyModel: boolean
 }
 interface GloveOut {
   defIndex: number
@@ -73,7 +74,8 @@ function paint(s: SkinSel): PaintOut {
     wear: clamp(s.wear, 0, 1),
     seed: int(s.seed, 0, MAX_SEED),
     statTrak: s.statTrak == null ? -1 : int(s.statTrak, 0, 999_999),
-    nameTag: (s.nameTag ?? '').slice(0, MAX_NAMETAG)
+    nameTag: (s.nameTag ?? '').slice(0, MAX_NAMETAG),
+    legacyModel: !!s.legacyModel
   }
 }
 

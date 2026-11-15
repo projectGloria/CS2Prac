@@ -66,6 +66,7 @@ export default function Setup({ state, onState, serverStopped }: Props) {
           Metamod + CounterStrikeSharp
           {v.metamod && <span className="muted small"> (MM {v.metamod}, CSS {v.counterstrikesharp})</span>}
         </li>
+        <li className={state.pracSkinsInstalled ? 'ok' : ''}>PracSkins (skin plugin)</li>
       </ul>
 
       <button className="primary" disabled={busy || !state.installDir || !serverStopped} onClick={install}>
