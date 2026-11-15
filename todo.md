@@ -3,7 +3,7 @@
 We work through this one phase at a time. Each phase ends the same way: test it in game, tick the boxes, then commit and push to `main`.
 The goal is a stable, solid personal tool: install it, start a server, connect by hand, be admin, use MatchZy and use every skin.
 
-Done: M1â€“M5. That covers the hard-link server mirror, Metamod and CounterStrikeSharp, PracSkins (weapon, knife and glove skins), profiles, and an NSIS installer built locally.
+Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrikeSharp, PracSkins (weapon, knife and glove skins), profiles, and an NSIS installer built locally.
 
 ---
 
@@ -20,7 +20,7 @@ Done: M1â€“M5. That covers the hard-link server mirror, Metamod and Counter
 - [x] Remove `steam://connect` and the `autoConnect` setting (in `src/main/index.ts`, `src/main/paths.ts` and `Play.tsx`). When the server runs, show a copyable `connect 127.0.0.1:27015` and a LAN IP variant.
 - [x] Keep one RCON password in settings instead of a random one per start. Show a copyable `rcon_password <pw>` line, so client-side `rcon <cmd>` works. **Verify** that CS2 client rcon works. If it doesn't, the plugin command below is the main route.
 - [x] Admin: on every start, write CSS `configs/admins.json` with your SteamID64 (from `accounts.ts`, which reads loginusers.vdf) and `@css/root`. Keep any other entries in the file.
-- [x] Add a PracSkins command `css_cmd <commandâ€¦>` (also `!cmd`; not `css_rcon`, which MatchZy uses), limited to `@css/root`. It runs `Server.ExecuteCommand`, so any server command or `exec <cfg>` works from chat or the console.
+- [x] Add a PracSkins command `css_cmd <command…>` (also `!cmd`; not `css_rcon`, which MatchZy uses), limited to `@css/root`. It runs `Server.ExecuteCommand`, so any server command or `exec <cfg>` works from chat or the console.
 - [x] Cfgs: the mirror already copies the client `game/csgo/cfg/`. Add an app-managed server cfg folder (`%APPDATA%\CS2Prac\cfg`) that is synced into the server `cfg/` on start. An optional `autoexec_server.cfg` runs after the map loads.
 - [x] Set default server cvars on start: `sv_cheats 1`, `sv_lan 1`, `sv_hibernate_when_empty 0`.
 - [x] **User check in game:** `!cmd` and console `css_cmd` work (exec of a client cfg, sv_gravity). CS2 client `rcon` never reaches the server, so the rcon line was removed from the Play page. `play` in a cfg crashed the server; fixed by swallowing sound commands.
@@ -31,9 +31,17 @@ Done: M1â€“M5. That covers the hard-link server mirror, Metamod and Counter
 - [x] Write `cfg/MatchZy/config_override.cfg` with `matchzy_autostart_mode` from the UI: Practice is 2 (default), Match is 1, Off is 0. Put our practice defaults in `prac_override.cfg`. Never edit MatchZy's own cfgs, because its updates replace them.
 - [x] On the Play page, add a Mode selector (Practice / Match / Plain) and show the MatchZy version in the status.
 - [x] (Server-side verified: both load; knife skin applies to bots with MatchZy loaded and survives `mp_restartgame`. MatchZy kicks `bot_add` bots in practice mode, so `.bot` bots need an in-game check.) Check that PracSkins and MatchZy work together. Skins must survive `.prac`, `.bot`, `.rethrow` and round restarts, and MatchZy bots must not get your skins.
-- [x] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade`â€¦).
+- [x] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade` …).
 - [x] Replaced `extract-zip` (it hung forever on MatchZy's zip) with Windows' built-in `tar.exe` (`src/main/setup/unzip.ts`).
-- [ ] **User check in game:** practice mode on join, `.bot`, `.rethrow`, `.savenade`, and that your skins survive `.prac` / `.bot`.
+- [x] **User check in game:** practice mode on join, `.bot`, `.cbot`, `.nobots`, nade trajectories, `.rethrow`, `.clear` work; skins survive `.exitprac` / `.prac`; bots don't get your skins.
+
+### Practice extras (asked for during testing, Leetify-style; `plugin/PracSkins/Practice.cs`)
+- [x] Spawn markers: a square in team colour, a facing arrow and a number per competitive spawn (numbers match `.spawn n`). On automatically in practice (`css_prac_spawns 1` in prac_override.cfg), `.spawns` toggles them. Look at one and press E to stand on it.
+- [x] Squares lie on the floor (ground trace; spawn entities sit up to ~60 units above it on Dust2). **User-confirmed** that markers show and E teleports.
+- [x] `.glow`: bots outlined through walls (red T, blue CT), re-added on respawn.
+  - Fixed: the first version dropped the client with NETWORK_DISCONNECT_OVERFLOW (SetModel before spawn → engine assert + minidump stall).
+  - Fixed: the second version showed nothing (glow props at 0,0,0, glow never switched on). Server-side verified the props now sit on and follow the bots.
+- [ ] **User check in game:** the floor squares look right everywhere (T spawn slope), `.glow` outline visible through walls and back after a bot respawns, E still opens doors / defuses when not aiming at a square.
 
 ## Phase 4: Full item catalog (req 5: all skins, agents, stickers, keychains)
 - [x] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.
@@ -87,5 +95,5 @@ Done: M1â€“M5. That covers the hard-link server mirror, Metamod and Counter
 - [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
 
 ## Next
-- [ ] User tests Phases 1â€“6 in game and reports issues.
+- [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).

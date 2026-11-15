@@ -107,8 +107,9 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   then sends `loadout:changed` so the Loadout tab updates.
 
 ## Admin and commands (Phase 2)
-- No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs) and an `rcon_address …; rcon_password …` line.
-  The RCON password is generated once and kept in settings.json (`rconPassword`).
+- No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
+  CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only
+  used by the app itself.
 - PracSkins `css_cmd <command>` / `!cmd <command>` (needs `@css/root`) runs any server command, e.g. `!cmd exec mycfg`.
   Not named `css_rcon` because MatchZy has `.rcon`.
 - PracSkins runs `execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg` 2 s after every map start.
@@ -149,4 +150,7 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed (not yet tested in game by the user). Next: the user's in-game test results, then the v1.0.0 release when they ask.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed. The user is testing in game step by step: Phases 1–3 confirmed (plus
+spawn markers); the `.glow` fix (e787dae) awaits their check. Then Phase 4 (stickers/charms/agents), Phase 5 (K menu),
+Phase 6 notices, and the v1.0.0 release only when they ask. Live-test recipe for bots: set `matchzy_autostart_mode 0`
+in cfg/MatchZy/config_override.cfg for the test server, restore it afterwards, and use port 27115.
