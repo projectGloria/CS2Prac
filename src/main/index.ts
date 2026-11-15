@@ -1,9 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
+import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   IPC,
+  type ConnectInfo,
   type MapChoice,
   type ServerSource,
   type Settings,
@@ -11,7 +13,8 @@ import {
   type SetupState,
   type StartOptions
 } from '@shared/ipc'
-import { isInstalled, layout, loadSettings, saveSettings } from './paths'
+import { isInstalled, layout, loadSettings, saveSettings, userCfgDir } from './paths'
+import { ensureAdmins, syncServerCfgs } from './setup/serverConfig'
 import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
@@ -84,7 +87,22 @@ async function removeMirror(installDir: string, log: (line: string) => void) {
   await rm(serverDir, { recursive: true, force: true })
 }
 
-const connectToServer = () => shell.openExternal(`steam://connect/127.0.0.1:${SERVER_PORT}`)
+/** IPv4 LAN addresses, for connecting from another PC on the network. */
+function lanAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((a) => a && a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.'))
+    .map((a) => a!.address)
+}
+
+async function connectInfo(): Promise<ConnectInfo> {
+  const { rconPassword } = await loadSettings()
+  return {
+    connect: ['127.0.0.1', ...lanAddresses()].map((ip) => `connect ${ip}:${SERVER_PORT}`),
+    rcon: `rcon_address 127.0.0.1:${SERVER_PORT}; rcon_password ${rconPassword}`,
+    cfgDir: userCfgDir()
+  }
+}
 
 function registerIpc() {
   // --- app ---
@@ -165,7 +183,7 @@ function registerIpc() {
   // --- settings ---
   ipcMain.handle(IPC.settingsGet, loadSettings)
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: Partial<Settings>) => {
-    const { installDir: _dir, serverSource: _source, ...rest } = patch
+    const { installDir: _dir, serverSource: _source, rconPassword: _pw, ...rest } = patch
     const next = { ...(await loadSettings()), ...rest }
     await saveSettings(next)
     return next
@@ -188,12 +206,22 @@ function registerIpc() {
     }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
     await exportLoadout(csgoDir, await loadStore(async () => null))
-    await server.start(installDir, opts, settings.authKey || undefined)
-    if (settings.autoConnect) await connectToServer()
+    // Every Steam account that has logged in on this PC is a root admin on the server.
+    const accounts = await listSteamAccounts()
+    await ensureAdmins(csgoDir, accounts.map((a) => a.steamId))
+    if (accounts.length) send(IPC.serverLog, `[cs2prac] admins: ${accounts.map((a) => a.personaName).join(', ')}`)
+    else send(IPC.serverLog, '[cs2prac] no Steam account found in loginusers.vdf – nobody is admin')
+    const cfgs = await syncServerCfgs(userCfgDir(), csgoDir)
+    send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
+    await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined })
   })
   ipcMain.handle(IPC.serverStop, () => server.stop())
   ipcMain.handle(IPC.serverChangeMap, (_e, map: MapChoice) => server.changeMap(map))
-  ipcMain.handle(IPC.serverConnect, connectToServer)
+  ipcMain.handle(IPC.serverConnectInfo, connectInfo)
+  ipcMain.handle(IPC.serverOpenCfg, async () => {
+    await mkdir(userCfgDir(), { recursive: true })
+    await shell.openPath(userCfgDir())
+  })
   ipcMain.handle(IPC.serverExec, (_e, cmd: string) => server.exec(cmd))
 
   // --- skins / loadout ---

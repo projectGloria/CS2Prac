@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
@@ -19,7 +20,7 @@ namespace PracSkins;
 public class PracSkins : BasePlugin
 {
     public override string ModuleName => "PracSkins";
-    public override string ModuleVersion => "0.1.0";
+    public override string ModuleVersion => "0.2.0";
     public override string ModuleAuthor => "CS2Prac";
     public override string ModuleDescription => "Applies CS2Prac loadout skins";
 
@@ -45,7 +46,13 @@ public class PracSkins : BasePlugin
         InitAttributeFunction();
         ReloadLoadout();
 
-        RegisterListener<Listeners.OnMapStart>(_ => _nextItemId = FirstCustomItemId);
+        RegisterListener<Listeners.OnMapStart>(_ =>
+        {
+            _nextItemId = FirstCustomItemId;
+            // After the game mode's own cfgs have run: the app's defaults, then the user's server cfg.
+            AddTimer(2.0f, () => Server.ExecuteCommand("execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg"),
+                TimerFlags.STOP_ON_MAPCHANGE);
+        });
         RegisterListener<Listeners.OnEntitySpawned>(OnEntitySpawned);
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
@@ -119,6 +126,22 @@ public class PracSkins : BasePlugin
             count++;
         }
         command.ReplyToCommand($"[PracSkins] reloaded, applied to {count} player(s). Respawn or re-buy if a skin doesn't update.");
+    }
+
+    /// <summary>
+    /// Runs any server command for a root admin (every Steam account on the PC, set up by the app):
+    /// <c>!cmd sv_cheats 1</c> in chat or <c>css_cmd exec mycfg</c> in the console.
+    /// </summary>
+    [ConsoleCommand("css_cmd", "Run a server console command")]
+    [RequiresPermissions("@css/root")]
+    [CommandHelper(minArgs: 1, usage: "<command…>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    public void OnCmdCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var line = command.ArgString.Trim();
+        if (line.Length >= 2 && line[0] == '"' && line[^1] == '"') line = line[1..^1];
+        Logger.LogInformation("{Player} ran: {Command}", caller?.PlayerName ?? "console", line);
+        Server.ExecuteCommand(line);
+        command.ReplyToCommand($"[CS2Prac] ran: {line}");
     }
 
     [ConsoleCommand("css_prac_status", "Show what PracSkins sees for each player")]

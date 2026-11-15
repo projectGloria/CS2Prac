@@ -25,6 +25,8 @@ src/main/            Electron main process (Node). Does all the real work.
   setup/gameinfo.ts  patches gameinfo.gi with `Game csgo/addons/metamod` (re-applied every start)
   setup/cssConfig.ts sets CSS core.json FollowCS2ServerGuidelines=false (required for skins)
   setup/pracskins.ts copies the prebuilt PracSkins plugin and ensures the CSS config
+  setup/serverConfig.ts  every start: CSS admins.json (all local Steam accounts = @css/root, entries prefixed cs2prac_),
+                     copies %APPDATA%/CS2Prac/cfg into server cfg/, writes cs2prac_defaults.cfg (sv_cheats 1 ...)
   server/serverManager.ts  spawns cs2.exe, pipes its output to the UI, waits for RCON, stop/kill
   server/launchArgs.ts     builds the cs2.exe arguments
   server/rcon.ts     minimal Source RCON client
@@ -72,6 +74,13 @@ npm run dist           # build + NSIS installer into dist/ (never publishes)
 (windows-latest) checks the tag matches, type-checks, tests, builds the plugin and runs `npm run release`, which publishes the
 installer + `latest.yml` to GitHub Releases. Installed apps pick it up through auto-update. Only tag when the user asks.
 
+## Admin and commands (Phase 2)
+- No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs) and an `rcon_address …; rcon_password …` line.
+  The RCON password is generated once and kept in settings.json (`rconPassword`).
+- PracSkins `css_cmd <command>` / `!cmd <command>` (needs `@css/root`) runs any server command, e.g. `!cmd exec mycfg`.
+  Not named `css_rcon` because MatchZy has `.rcon`.
+- PracSkins runs `execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg` 2 s after every map start.
+
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
 - `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.
@@ -79,4 +88,4 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. **Phase 1** (installer, release pipeline, auto-update, one-click setup, logs) is implemented and committed (not yet tested in game by the user); Phase 2 is next.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–2 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.

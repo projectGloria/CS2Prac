@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { createServer } from 'node:net'
 import { dirname } from 'node:path'
@@ -46,7 +45,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
     this.emit('status', s)
   }
 
-  async start(installDir: string, opts: StartOptions, authKey?: string): Promise<void> {
+  async start(installDir: string, opts: StartOptions, secrets: { rconPassword: string; authKey?: string }): Promise<void> {
     if (this.status.state !== 'stopped') throw new Error(`Server is ${this.status.state}`)
     const { cs2Exe, csgoDir } = layout(installDir)
 
@@ -55,8 +54,8 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
       await ensureGameinfoPatched(csgoDir) // CS2 updates revert this file
       if (!(await portFree(SERVER_PORT))) throw new Error(`Port ${SERVER_PORT} is in use. Is another server running?`)
 
-      const password = randomBytes(12).toString('hex')
-      const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey })
+      const password = secrets.rconPassword
+      const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey: secrets.authKey })
       this.emit('log', `> cs2.exe ${args.map((a) => (a === password ? '<rcon password>' : a)).join(' ')}`)
       // Output must be read continuously: if the pipe fills up, cs2.exe blocks and the server freezes.
       const child = spawn(cs2Exe, args, { cwd: dirname(cs2Exe), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })

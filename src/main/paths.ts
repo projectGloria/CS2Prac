@@ -1,20 +1,33 @@
 import { app } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import type { Settings } from '@shared/ipc'
 
-const DEFAULT_SETTINGS: Settings = { installDir: null, serverSource: 'client', autoConnect: true }
+const DEFAULT_SETTINGS: Omit<Settings, 'rconPassword'> = { installDir: null, serverSource: 'client' }
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 
 export async function loadSettings(): Promise<Settings> {
+  let stored: Partial<Settings> & { autoConnect?: unknown } = {}
   try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(await readFile(settingsFile(), 'utf8')) }
+    stored = JSON.parse(await readFile(settingsFile(), 'utf8'))
   } catch {
-    return { ...DEFAULT_SETTINGS }
+    /* first run */
   }
+  delete stored.autoConnect // removed setting
+  const s: Settings = { ...DEFAULT_SETTINGS, rconPassword: '', ...stored }
+  if (!/^[a-z0-9]{8,}$/i.test(s.rconPassword)) {
+    // Created once and kept: the user types it into the game console
+    s.rconPassword = randomBytes(8).toString('hex')
+    await saveSettings(s)
+  }
+  return s
 }
+
+/** The app's own cfg folder; its files are copied into the server's cfg/ before every start. */
+export const userCfgDir = () => join(app.getPath('userData'), 'cfg')
 
 export async function saveSettings(s: Settings): Promise<void> {
   await mkdir(app.getPath('userData'), { recursive: true })

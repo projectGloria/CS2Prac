@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { GameMode, MapChoice, ServerStatus, Settings } from '@shared/ipc'
+import type { ConnectInfo, GameMode, MapChoice, ServerStatus, Settings } from '@shared/ipc'
 
 const MODES: { id: GameMode; label: string }[] = [
   { id: 'competitive', label: 'Competitive' },
@@ -7,6 +7,24 @@ const MODES: { id: GameMode; label: string }[] = [
   { id: 'wingman', label: 'Wingman' },
   { id: 'deathmatch', label: 'Deathmatch' }
 ]
+
+/** A console line with a copy button. */
+function CopyLine({ text, hidden }: { text: string; hidden?: string }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <div className="copy-line">
+      <code>{hidden ? text.replace(hidden, '•'.repeat(8)) : text}</code>
+      <button className="small-btn" onClick={copy}>
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
+  )
+}
 
 const mapLabel = (m: MapChoice) => (m.kind === 'official' ? m.name : `Workshop ${m.id}`)
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
@@ -19,10 +37,12 @@ export default function Play({ status }: { status: ServerStatus }) {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [info, setInfo] = useState<ConnectInfo | null>(null)
 
   useEffect(() => {
     window.api.server.listMaps().then(setMaps)
     window.api.settings.get().then(setSettings)
+    window.api.server.connectInfo().then(setInfo)
   }, [])
 
   const running = status.state === 'running'
@@ -108,9 +128,6 @@ export default function Play({ status }: { status: ServerStatus }) {
           {status.state === 'starting' && <button disabled>Starting… (see Console)</button>}
           {running && (
             <>
-              <button className="primary" onClick={() => run(() => window.api.server.connect())}>
-                Connect
-              </button>
               <button disabled={busy} onClick={() => run(() => window.api.server.changeMap(selected))}>
                 Change map to {mapLabel(selected)}
               </button>
@@ -124,17 +141,36 @@ export default function Play({ status }: { status: ServerStatus }) {
         </div>
         {error && <p className="error-text">{error}</p>}
 
+        {running && info && (
+          <div className="connect-box">
+            <h3>Join from CS2</h3>
+            <p className="muted small">Open the CS2 console (~) and paste:</p>
+            <CopyLine text={info.connect[0]} />
+            {info.connect.length > 1 && (
+              <details>
+                <summary className="muted small">From another PC on your network</summary>
+                {info.connect.slice(1).map((c) => (
+                  <CopyLine key={c} text={c} />
+                ))}
+              </details>
+            )}
+            <p className="muted small">
+              You are admin. Run any server command in chat with <code>!cmd &lt;command&gt;</code> or in the console with{' '}
+              <code>css_cmd &lt;command&gt;</code>, e.g. <code>!cmd exec mycfg</code>. Optionally, to use <code>rcon &lt;command&gt;</code>
+              from the console, paste this once:
+            </p>
+            <CopyLine text={info.rcon} hidden={settings?.rconPassword} />
+          </div>
+        )}
+
         {settings && (
           <>
             <h3>Options</h3>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={settings.autoConnect}
-                onChange={(e) => updateSettings({ autoConnect: e.target.checked })}
-              />
-              Join automatically when the server is ready
-            </label>
+            <p className="muted small">
+              Your cfg files: everything in the server cfg folder is copied to the server before each start.{' '}
+              <code>cs2prac_server.cfg</code> runs after every map load.
+            </p>
+            <button onClick={() => window.api.server.openCfgFolder()}>Open server cfg folder</button>
             <label className="field">
               Steam Web API key (optional, for workshop maps)
               <input

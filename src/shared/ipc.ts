@@ -38,7 +38,18 @@ export interface Settings {
   serverSource: ServerSource
   /** Steam Web API key; some workshop maps need it on a dedicated server. */
   authKey?: string
-  autoConnect: boolean
+  /** fixed RCON password, so `rcon` from the game console keeps working across restarts */
+  rconPassword: string
+}
+
+/** Lines to paste into the CS2 console. */
+export interface ConnectInfo {
+  /** `connect 127.0.0.1:27015`, then one per LAN address */
+  connect: string[]
+  /** `rcon_address …; rcon_password …` */
+  rcon: string
+  /** the app's cfg folder that is copied to the server before each start */
+  cfgDir: string
 }
 
 export type GameMode = 'casual' | 'competitive' | 'wingman' | 'deathmatch'
@@ -88,7 +99,7 @@ export interface Api {
   }
   settings: {
     get(): Promise<Settings>
-    update(patch: Partial<Omit<Settings, 'installDir' | 'serverSource'>>): Promise<Settings>
+    update(patch: Partial<Omit<Settings, 'installDir' | 'serverSource' | 'rconPassword'>>): Promise<Settings>
   }
   server: {
     getStatus(): Promise<ServerStatus>
@@ -96,7 +107,8 @@ export interface Api {
     start(opts: StartOptions): Promise<void>
     stop(): Promise<void>
     changeMap(map: MapChoice): Promise<void>
-    connect(): Promise<void>
+    connectInfo(): Promise<ConnectInfo>
+    openCfgFolder(): Promise<void>
     exec(command: string): Promise<string>
     onStatus(cb: (s: ServerStatus) => void): () => void
     onLog(cb: (line: string) => void): () => void
@@ -140,7 +152,8 @@ export const IPC = {
   serverStart: 'server:start',
   serverStop: 'server:stop',
   serverChangeMap: 'server:changeMap',
-  serverConnect: 'server:connect',
+  serverConnectInfo: 'server:connectInfo',
+  serverOpenCfg: 'server:openCfg',
   serverExec: 'server:exec',
   serverStatus: 'server:status',
   serverLog: 'server:log',

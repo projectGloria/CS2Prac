@@ -25,6 +25,9 @@ export function buildLaunchArgs(opts: StartOptions & { port: number; rconPasswor
     '127.0.0.1',
     '-port', String(opts.port),
     '+sv_lan', '1',
+    '+sv_cheats', '1',
+    // an empty server would otherwise hibernate, which stops plugin timers
+    '+sv_hibernate_when_empty', '0',
     '+rcon_password', opts.rconPassword,
     '+game_type', String(gm.type),
     '+game_mode', String(gm.mode)

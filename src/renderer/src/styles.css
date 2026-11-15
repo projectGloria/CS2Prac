@@ -118,3 +118,8 @@ button.link:hover { color: var(--text); }
 button.big { font-size: 16px; padding: 10px 28px; }
 details.advanced { margin: 16px 0; }
 details.advanced > summary { cursor: pointer; color: var(--muted); }
+.copy-line { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.copy-line code { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; font-size: 13px; overflow-x: auto; white-space: nowrap; user-select: all; }
+button.small-btn { padding: 4px 10px; font-size: 12px; }
+.connect-box { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border); }
+.connect-box h3 { margin: 8px 0 4px; }
