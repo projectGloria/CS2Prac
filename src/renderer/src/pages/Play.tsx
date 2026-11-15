@@ -244,11 +244,10 @@ export default function Play({ status }: { status: ServerStatus }) {
               </details>
             )}
             <p className="muted small">
-              You are admin. Run any server command in chat with <code>!cmd &lt;command&gt;</code> or in the console with{' '}
-              <code>css_cmd &lt;command&gt;</code>, e.g. <code>!cmd exec mycfg</code>. Optionally, to use <code>rcon &lt;command&gt;</code>
-              from the console, paste this once:
+              You are admin. Run any server command in the console with <code>css_cmd &lt;command&gt;</code> or in chat with{' '}
+              <code>!cmd &lt;command&gt;</code>, e.g. <code>css_cmd exec mycfg</code>. What the server prints shows up in the Console
+              tab here. (CS2's own <code>rcon</code> command doesn't reach the server, so it isn't used.)
             </p>
-            <CopyLine text={info.rcon} hidden={settings?.rconPassword} />
           </div>
         )}
 

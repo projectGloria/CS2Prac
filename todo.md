@@ -1,9 +1,9 @@
-# CS2Prac roadmap
+﻿# CS2Prac roadmap
 
 We work through this one phase at a time. Each phase ends the same way: test it in game, tick the boxes, then commit and push to `main`.
 The goal is a stable, solid personal tool: install it, start a server, connect by hand, be admin, use MatchZy and use every skin.
 
-Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrikeSharp, PracSkins (weapon, knife and glove skins), profiles, and an NSIS installer built locally.
+Done: M1â€“M5. That covers the hard-link server mirror, Metamod and CounterStrikeSharp, PracSkins (weapon, knife and glove skins), profiles, and an NSIS installer built locally.
 
 ---
 
@@ -20,10 +20,10 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Remove `steam://connect` and the `autoConnect` setting (in `src/main/index.ts`, `src/main/paths.ts` and `Play.tsx`). When the server runs, show a copyable `connect 127.0.0.1:27015` and a LAN IP variant.
 - [x] Keep one RCON password in settings instead of a random one per start. Show a copyable `rcon_password <pw>` line, so client-side `rcon <cmd>` works. **Verify** that CS2 client rcon works. If it doesn't, the plugin command below is the main route.
 - [x] Admin: on every start, write CSS `configs/admins.json` with your SteamID64 (from `accounts.ts`, which reads loginusers.vdf) and `@css/root`. Keep any other entries in the file.
-- [x] Add a PracSkins command `css_cmd <command…>` (also `!cmd`; not `css_rcon`, which MatchZy uses), limited to `@css/root`. It runs `Server.ExecuteCommand`, so any server command or `exec <cfg>` works from chat or the console.
+- [x] Add a PracSkins command `css_cmd <commandâ€¦>` (also `!cmd`; not `css_rcon`, which MatchZy uses), limited to `@css/root`. It runs `Server.ExecuteCommand`, so any server command or `exec <cfg>` works from chat or the console.
 - [x] Cfgs: the mirror already copies the client `game/csgo/cfg/`. Add an app-managed server cfg folder (`%APPDATA%\CS2Prac\cfg`) that is synced into the server `cfg/` on start. An optional `autoexec_server.cfg` runs after the map loads.
 - [x] Set default server cvars on start: `sv_cheats 1`, `sv_lan 1`, `sv_hibernate_when_empty 0`.
-- [ ] **User check in game:** do client-side `rcon` (after pasting the `rcon_address/rcon_password` line from the Play page) and `!cmd` both work? (Verified server-side: `css_cmd`, admins.json, cfg exec after map load.)
+- [x] **User check in game:** `!cmd` and console `css_cmd` work (exec of a client cfg, sv_gravity). CS2 client `rcon` never reaches the server, so the rcon line was removed from the Play page. `play` in a cfg crashed the server; fixed by swallowing sound commands.
 
 ## Phase 3: MatchZy (req 3)
 - [x] Add `src/main/setup/matchzy.ts`. It installs the pinned `MatchZy-<ver>.zip` (plugin only; latest is 0.9.3) from GitHub Releases into `game/csgo/`, using the same `installZip` and versions-file pattern as `setup/plugins.ts`. MatchZy needs CSS v369 or newer.
@@ -31,7 +31,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Write `cfg/MatchZy/config_override.cfg` with `matchzy_autostart_mode` from the UI: Practice is 2 (default), Match is 1, Off is 0. Put our practice defaults in `prac_override.cfg`. Never edit MatchZy's own cfgs, because its updates replace them.
 - [x] On the Play page, add a Mode selector (Practice / Match / Plain) and show the MatchZy version in the status.
 - [x] (Server-side verified: both load; knife skin applies to bots with MatchZy loaded and survives `mp_restartgame`. MatchZy kicks `bot_add` bots in practice mode, so `.bot` bots need an in-game check.) Check that PracSkins and MatchZy work together. Skins must survive `.prac`, `.bot`, `.rethrow` and round restarts, and MatchZy bots must not get your skins.
-- [x] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade`…).
+- [x] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade`â€¦).
 - [x] Replaced `extract-zip` (it hung forever on MatchZy's zip) with Windows' built-in `tar.exe` (`src/main/setup/unzip.ts`).
 - [ ] **User check in game:** practice mode on join, `.bot`, `.rethrow`, `.savenade`, and that your skins survive `.prac` / `.bot`.
 
@@ -46,7 +46,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   - keychains: id, name, image
 
   Then bump `CATALOG_VERSION`.
-- [x] Loadout schema 2 (`loadoutStore.ts` ↔ `plugin/PracSkins/Loadout.cs`):
+- [x] Loadout schema 2 (`loadoutStore.ts` â†” `plugin/PracSkins/Loadout.cs`):
   - each weapon: `stickers[5]` `{id, wear, scale, rotation, x, y}` and `keychain {id, x, y, z, seed}`
   - `agent {t, ct}`
   - migrate schema 1 files
@@ -74,7 +74,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Search for big lists: `!skin <text>`, `!sticker <text>` and `!knife <text>` open the menu filtered.
 - [x] The plugin writes choices back to `loadout.json` (atomic write) and applies them at once. The app watches the file (`fs.watch`) and updates the active profile, so the menu and the app stay in sync.
 - [x] The app shows the bind line to paste into your autoexec: `bind k css_menu`.
-- [x] Extra chat commands: `!agent`, `!charm`; `css_menu` toggles. Menu pages: finish (+ wear presets), knife model → finish, gloves type → finish, agent, sticker slots (scrape, remove), charm, StatTrak toggle.
+- [x] Extra chat commands: `!agent`, `!charm`; `css_menu` toggles. Menu pages: finish (+ wear presets), knife model â†’ finish, gloves type â†’ finish, agent, sticker slots (scrape, remove), charm, StatTrak toggle.
 - [x] Verified server-side: plugin loads catalog.json (63 weapons, 63 agents, 11134 stickers, 78 charms); plugin-written loadout.json round-trips through the app's import unchanged (`css_prac_save`).
 - [ ] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
 
@@ -87,5 +87,5 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
 
 ## Next
-- [ ] User tests Phases 1–6 in game and reports issues.
+- [ ] User tests Phases 1â€“6 in game and reports issues.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).
