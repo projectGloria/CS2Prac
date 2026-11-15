@@ -41,11 +41,18 @@ public partial class PracSkins : BasePlugin
     private string ConfigDir => Path.Combine(Server.GameDirectory, "csgo", "addons", "counterstrikesharp", "configs", "plugins", "PracSkins");
     private string LoadoutPath => Path.Combine(ConfigDir, "loadout.json");
 
+    private static readonly string[] SoundCommands = ["play", "playvol", "play_distance", "playflush", "stopsound", "snd_playsounds"];
+
     public override void Load(bool hotReload)
     {
         InitAttributeFunction();
         ReloadLoadout();
         InitMenu();
+
+        // A dedicated server has no sound system: `play <sound>` (common in client cfgs and aliases run with
+        // !cmd exec) crashes it with an access violation. Swallow the sound commands server-side.
+        foreach (var sound in SoundCommands)
+            AddCommandListener(sound, (_, _) => HookResult.Stop);
 
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
