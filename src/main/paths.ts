@@ -2,18 +2,17 @@ import { app } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { Settings } from '@shared/ipc'
 
-export interface Settings {
-  installDir: string | null
-}
+const DEFAULT_SETTINGS: Settings = { installDir: null, autoConnect: true }
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 
 export async function loadSettings(): Promise<Settings> {
   try {
-    return { installDir: null, ...JSON.parse(await readFile(settingsFile(), 'utf8')) }
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(await readFile(settingsFile(), 'utf8')) }
   } catch {
-    return { installDir: null }
+    return { ...DEFAULT_SETTINGS }
   }
 }
 

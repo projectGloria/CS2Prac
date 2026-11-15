@@ -4,11 +4,12 @@ import type { SetupProgress, SetupState } from '@shared/ipc'
 interface Props {
   state: SetupState
   onState: (s: SetupState) => void
+  serverStopped: boolean
 }
 
 const MAX_LOG_LINES = 500
 
-export default function Setup({ state, onState }: Props) {
+export default function Setup({ state, onState, serverStopped }: Props) {
   const [progress, setProgress] = useState<SetupProgress | null>(null)
   const [log, setLog] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -41,12 +42,14 @@ export default function Setup({ state, onState }: Props) {
   }
 
   const pct = progress?.percent
+  const ready = state.serverInstalled && state.pluginsInstalled
+  const v = state.pluginVersions
   return (
     <section className="card">
       <h1>Server setup</h1>
       <p className="muted">
-        CS2Prac installs a CS2 dedicated server on this PC with SteamCMD. The download is about 60&nbsp;GB, so pick a
-        drive with enough space.
+        CS2Prac installs a CS2 dedicated server on this PC with SteamCMD, then adds Metamod:Source and
+        CounterStrikeSharp. The download is about 60&nbsp;GB, so pick a drive with enough space.
       </p>
 
       <div className="row">
@@ -59,11 +62,22 @@ export default function Setup({ state, onState }: Props) {
       <ul className="checklist">
         <li className={state.steamcmdInstalled ? 'ok' : ''}>SteamCMD</li>
         <li className={state.serverInstalled ? 'ok' : ''}>CS2 dedicated server</li>
+        <li className={state.pluginsInstalled ? 'ok' : ''}>
+          Metamod + CounterStrikeSharp
+          {v.metamod && <span className="muted small"> (MM {v.metamod}, CSS {v.counterstrikesharp})</span>}
+        </li>
       </ul>
 
-      <button className="primary" disabled={busy || !state.installDir} onClick={install}>
-        {busy ? 'Installing…' : state.serverInstalled ? 'Update / verify server' : 'Install server'}
+      <button className="primary" disabled={busy || !state.installDir || !serverStopped} onClick={install}>
+        {busy ? 'Working…' : ready ? 'Update / repair' : 'Install'}
       </button>
+      {!serverStopped && <p className="muted small">Stop the server to update it.</p>}
+      {ready && (
+        <p className="muted small">
+          Run “Update / repair” after a CS2 update. Each CS2 update can break the plugins until new Metamod and
+          CounterStrikeSharp builds come out.
+        </p>
+      )}
 
       {progress && (
         <div className={`progress ${progress.phase === 'error' ? 'error' : ''}`}>

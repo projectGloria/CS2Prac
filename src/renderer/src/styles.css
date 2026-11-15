@@ -37,3 +37,31 @@ button.primary { background: var(--accent); color: #111; border-color: var(--acc
 .fill.indeterminate { opacity: 0.4; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.9; } }
 .log { margin-top: 16px; max-height: 260px; overflow: auto; background: #0b0c0f; border: 1px solid var(--border); border-radius: 4px; padding: 10px; font-size: 12px; color: var(--muted); }
+
+/* --- milestone 2: tabs, play, console --- */
+.tabs { display: flex; gap: 4px; }
+.tabs button { background: transparent; border-color: transparent; }
+.tabs button.active { border-color: var(--border); background: var(--panel); color: var(--accent); }
+.status-pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); text-transform: capitalize; }
+.status-pill.running { color: var(--ok); border-color: var(--ok); }
+.status-pill.starting, .status-pill.stopping { color: var(--accent); border-color: var(--accent); }
+.small { font-size: 12px; }
+h2 { margin: 0 0 14px; font-size: 16px; }
+h3 { margin: 20px 0 10px; font-size: 14px; }
+input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font: inherit; }
+.row input { flex: 1; }
+.play { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.card.wide, .card.side { max-width: none; }
+.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.map-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 12px; text-align: left; }
+.map-tile .map-name { text-transform: capitalize; font-weight: 600; }
+.map-tile.selected { border-color: var(--accent); background: #2b2416; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 12px; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+button.danger { border-color: var(--err); color: var(--err); }
+.error-text { color: var(--err); font-size: 13px; }
+.console { display: flex; flex-direction: column; height: 100%; gap: 8px; }
+.console-head { display: flex; justify-content: space-between; align-items: center; }
+.log.tall { flex: 1; max-height: none; margin: 0; white-space: pre-wrap; word-break: break-all; }
+@media (max-width: 900px) { .play { grid-template-columns: 1fr; } }
