@@ -50,6 +50,8 @@ export const PRAC_OVERRIDE = `// Written by CS2Prac before every start; changes 
 // Put your own practice settings in cs2prac_server.cfg (app: Play > Open server cfg folder) or run them with !cmd.
 sv_cheats 1
 sv_hibernate_when_empty 0
+// PracSkins spawn markers (squares + numbers; look at one and press E). .spawns in chat toggles them.
+css_prac_spawns 1
 `
 
 /**

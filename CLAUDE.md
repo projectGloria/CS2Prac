@@ -63,6 +63,9 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
 - npm 11 blocks install scripts. `package.json` has an `allowScripts` entry for Electron. If the Electron binary is missing, run `node node_modules/electron/install.js`.
 - Node's type-stripping can't import `rcon.ts` because it uses parameter properties. For live experiments, write a temporary `*.test.ts` and run it with vitest, then delete it.
 - Don't write TS or C# source through shell heredocs. They turned `\n` and `\r?\n` into real newlines. Use the Write and Edit tools.
+- **Live tests: never use port 27015.** The user's server may be running there; wrong-password RCON attempts get
+  127.0.0.1 rcon-banned on it ("Banning 127.0.0.1 for rcon hacking attempts"), which breaks the app until a restart.
+  Start test servers on another port (e.g. 27115) and send all commands over one authenticated RCON connection.
 - **`play <sound>` crashes the dedicated server** (access violation 0xC0000005; no sound system). Client cfgs run with
   `!cmd exec` often contain it. PracSkins swallows the sound commands with AddCommandListener (`SoundCommands`).
 - Signatures (`CAttributeList_SetOrAddAttributeValueByName`) can break after CS2 updates. `css_prac_status` reports whether the function was resolved.
@@ -113,6 +116,14 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   naming new PracSkins commands (`strings MatchZy.dll | grep css_`).
 - In practice mode MatchZy kicks bots added with `bot_add` ("erroneous spawning"); use `.bot` in game. For bot-based
   live tests use MatchZy mode `off`.
+
+## Practice extras (plugin/PracSkins/Practice.cs)
+- Spawn markers: per competitive spawn (MatchZy's GetSpawns filter, so numbers match `.spawn n`) 4 `beam` entities as a
+  square, a facing arrow and a `point_worldtext` number. E while looking at one teleports onto it. Toggled with `.spawns`
+  (say listener) / `css_spawns`; `css_prac_spawns 1` in prac_override.cfg turns them on when practice starts. Redrawn
+  on every round start (restarts remove them).
+- Bot glow: `.glow` / `css_glow`; a relay prop_dynamic follows the pawn and a glow prop_dynamic follows the relay
+  (Glow.GlowType 3, GlowTeam -1). Re-added on bot spawn. Server-side test switches: `css_prac_spawns`, `css_prac_glow`.
 
 ## Hardening (Phase 6)
 - Plugin versions: `PINNED` in setup/plugins.ts (Metamod, CSS) and `MATCHZY_VERSION` in setup/matchzy.ts. Setup and

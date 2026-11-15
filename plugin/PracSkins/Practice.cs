@@ -1,0 +1,343 @@
+using System.Drawing;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
+using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
+
+namespace PracSkins;
+
+/// <summary>A competitive spawn point, numbered like MatchZy's .spawn n.</summary>
+public record SpawnSpot(CsTeam Team, int Number, Vector Origin, QAngle Angles);
+
+/// <summary>
+/// Practice extras: spawn markers (a square on the ground and a number per competitive spawn; look at one and press E
+/// to stand exactly on it) and bot glow (bots outlined through walls). Toggled with .spawns / .glow in chat
+/// (or css_spawns / css_glow); prac_override.cfg turns the markers on whenever MatchZy practice mode starts.
+/// </summary>
+public partial class PracSkins
+{
+    private const float MarkerHalf = 16f; // player hull is 32 units wide
+    private static readonly Color CtColor = Color.FromArgb(255, 80, 160, 255);
+    private static readonly Color TColor = Color.FromArgb(255, 240, 160, 50);
+
+    private bool _spawnsOn;
+    private List<SpawnSpot> _spawns = new();
+    private readonly List<CEntityInstance> _markerEntities = new();
+    private readonly Dictionary<int, ulong> _practiceButtons = new();
+
+    private bool _glowOn;
+    private readonly Dictionary<uint, (CBaseModelEntity Relay, CBaseModelEntity Glow)> _glows = new();
+
+    private void InitPractice()
+    {
+        RegisterListener<Listeners.OnTick>(OnPracticeTick);
+        RegisterListener<Listeners.OnMapStart>(_ =>
+        {
+            _markerEntities.Clear(); // removed with the map
+            _glows.Clear();
+            _spawns.Clear();
+        });
+        // A round restart (mp_restartgame, .prac) removes our entities; draw them again.
+        RegisterEventHandler<EventRoundStart>((_, _) =>
+        {
+            AddTimer(0.2f, () =>
+            {
+                if (_spawnsOn) DrawSpawnMarkers();
+                if (_glowOn) GlowAllBots();
+            });
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerSpawn>((e, _) =>
+        {
+            var player = e.Userid;
+            if (_glowOn && player is { IsValid: true, IsBot: true })
+                AddTimer(0.2f, () =>
+                {
+                    if (player.IsValid) GlowBot(player);
+                });
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerDeath>((e, _) =>
+        {
+            if (e.Userid?.PlayerPawn.Value is { IsValid: true } pawn) RemoveGlow(pawn.Index);
+            return HookResult.Continue;
+        });
+
+        // ".spawns" and ".glow" in chat, next to MatchZy's dot commands. CSS's own chat triggers are ! and /.
+        foreach (var say in new[] { "say", "say_team" })
+            AddCommandListener(say, (player, info) =>
+            {
+                if (player is not { IsValid: true }) return HookResult.Continue;
+                var text = info.GetArg(1).Trim().ToLowerInvariant();
+                if (text == ".spawns") ToggleSpawns(player);
+                else if (text == ".glow") ToggleGlow(player);
+                return HookResult.Continue;
+            });
+    }
+
+    private void UnloadPractice()
+    {
+        ClearSpawnMarkers();
+        foreach (var index in _glows.Keys.ToList()) RemoveGlow(index);
+    }
+
+    [ConsoleCommand("css_spawns", "Show or hide the spawn markers (look at one and press E to stand on it)")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnSpawnsCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player != null) ToggleSpawns(player);
+    }
+
+    [ConsoleCommand("css_glow", "Outline bots through walls (toggle)")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnGlowCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player != null) ToggleGlow(player);
+    }
+
+    [ConsoleCommand("css_prac_spawns", "Spawn markers on (1) or off (0); used by prac_override.cfg")]
+    [CommandHelper(minArgs: 1, usage: "<0|1>", whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnPracSpawnsCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        SetSpawns(info.GetArg(1) != "0");
+        Logger.LogInformation("spawn markers {State}: {Spawns} spawns, {Entities} entities", _spawnsOn ? "on" : "off",
+            _spawns.Count, _markerEntities.Count);
+    }
+
+    [ConsoleCommand("css_prac_glow", "Bot glow on (1) or off (0), from the server console")]
+    [CommandHelper(minArgs: 1, usage: "<0|1>", whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnPracGlowCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        _glowOn = info.GetArg(1) != "0";
+        if (_glowOn) GlowAllBots();
+        else foreach (var index in _glows.Keys.ToList()) RemoveGlow(index);
+        Logger.LogInformation("bot glow {State}: {Count} bots glowing", _glowOn ? "on" : "off", _glows.Count);
+    }
+
+    private void ToggleSpawns(CCSPlayerController player)
+    {
+        SetSpawns(!_spawnsOn);
+        player.PrintToChat(_spawnsOn
+            ? $" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Spawns shown: look at one and press E to stand on it. .spawns hides them."
+            : $" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Spawns hidden.");
+    }
+
+    private void SetSpawns(bool on)
+    {
+        _spawnsOn = on;
+        if (on) DrawSpawnMarkers();
+        else ClearSpawnMarkers();
+    }
+
+    private void ToggleGlow(CCSPlayerController player)
+    {
+        _glowOn = !_glowOn;
+        if (_glowOn) GlowAllBots();
+        else foreach (var index in _glows.Keys.ToList()) RemoveGlow(index);
+        player.PrintToChat($" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Bot glow {(_glowOn ? "on" : "off")}.");
+    }
+
+    // ---- spawns ----
+
+    /// <summary>Competitive spawns, collected the way MatchZy does so the numbers match .spawn n.</summary>
+    private static List<SpawnSpot> CollectSpawns()
+    {
+        var ct = Utilities.FindAllEntitiesByDesignerName<SpawnPoint>("info_player_counterterrorist").ToList();
+        var t = Utilities.FindAllEntitiesByDesignerName<SpawnPoint>("info_player_terrorist").ToList();
+        var minPriority = 1;
+        foreach (var s in ct)
+            if (s.IsValid && s.Enabled && s.Priority < minPriority) minPriority = s.Priority;
+
+        var spots = new List<SpawnSpot>();
+        void Add(List<SpawnPoint> list, CsTeam team)
+        {
+            var n = 0;
+            foreach (var s in list)
+            {
+                if (!s.IsValid || !s.Enabled || s.Priority != minPriority) continue;
+                var node = s.CBodyComponent?.SceneNode;
+                if (node == null) continue;
+                n++;
+                spots.Add(new SpawnSpot(team, n,
+                    new Vector(node.AbsOrigin.X, node.AbsOrigin.Y, node.AbsOrigin.Z),
+                    new QAngle(node.AbsRotation.X, node.AbsRotation.Y, node.AbsRotation.Z)));
+            }
+        }
+        Add(ct, CsTeam.CounterTerrorist);
+        Add(t, CsTeam.Terrorist);
+        return spots;
+    }
+
+    private void DrawSpawnMarkers()
+    {
+        ClearSpawnMarkers();
+        _spawns = CollectSpawns();
+        foreach (var spot in _spawns)
+        {
+            var color = spot.Team == CsTeam.CounterTerrorist ? CtColor : TColor;
+            var o = spot.Origin;
+            var z = o.Z + 2;
+            var corners = new[]
+            {
+                new Vector(o.X - MarkerHalf, o.Y - MarkerHalf, z), new Vector(o.X + MarkerHalf, o.Y - MarkerHalf, z),
+                new Vector(o.X + MarkerHalf, o.Y + MarkerHalf, z), new Vector(o.X - MarkerHalf, o.Y + MarkerHalf, z)
+            };
+            for (var i = 0; i < 4; i++) AddBeam(corners[i], corners[(i + 1) % 4], color);
+            // a short arrow showing which way the spawn faces
+            var yaw = spot.Angles.Y * MathF.PI / 180f;
+            AddBeam(new Vector(o.X, o.Y, z), new Vector(o.X + MathF.Cos(yaw) * MarkerHalf, o.Y + MathF.Sin(yaw) * MarkerHalf, z), color);
+            AddLabel(spot, color);
+        }
+    }
+
+    private void AddBeam(Vector start, Vector end, Color color)
+    {
+        var beam = Utilities.CreateEntityByName<CBeam>("beam");
+        if (beam == null) return;
+        beam.Render = color;
+        beam.Width = 1.5f;
+        beam.Teleport(start, new QAngle(0, 0, 0), new Vector(0, 0, 0));
+        beam.EndPos.X = end.X;
+        beam.EndPos.Y = end.Y;
+        beam.EndPos.Z = end.Z;
+        beam.DispatchSpawn();
+        _markerEntities.Add(beam);
+    }
+
+    private void AddLabel(SpawnSpot spot, Color color)
+    {
+        var text = Utilities.CreateEntityByName<CPointWorldText>("point_worldtext");
+        if (text == null) return;
+        text.MessageText = spot.Number.ToString();
+        text.Enabled = true;
+        text.Fullbright = true;
+        text.FontSize = 60;
+        text.WorldUnitsPerPx = 0.25f;
+        text.Color = color;
+        text.JustifyHorizontal = PointWorldTextJustifyHorizontal_t.POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
+        text.JustifyVertical = PointWorldTextJustifyVertical_t.POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
+        text.ReorientMode = PointWorldTextReorientMode_t.POINT_WORLD_TEXT_REORIENT_AROUND_UP; // turns to face you
+        text.DispatchSpawn();
+        text.Teleport(new Vector(spot.Origin.X, spot.Origin.Y, spot.Origin.Z + 40), new QAngle(0, 0, 90), new Vector(0, 0, 0));
+        _markerEntities.Add(text);
+    }
+
+    private void ClearSpawnMarkers()
+    {
+        foreach (var e in _markerEntities)
+            if (e.IsValid) e.Remove();
+        _markerEntities.Clear();
+    }
+
+    private void OnPracticeTick()
+    {
+        if (!_spawnsOn || _spawns.Count == 0) return;
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (player is not { IsValid: true, IsBot: false }) continue;
+            var buttons = (ulong)player.Buttons;
+            var last = _practiceButtons.GetValueOrDefault(player.Slot);
+            _practiceButtons[player.Slot] = buttons;
+            if ((buttons & ~last & BtnUse) == 0 || MenuOpen(player)) continue;
+            if (AimedSpawn(player) is { } spot) TeleportToSpawn(player, spot);
+        }
+    }
+
+    /// <summary>The spawn marker closest to the crosshair, if the player is looking at one.</summary>
+    private SpawnSpot? AimedSpawn(CCSPlayerController player)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (pawn is not { IsValid: true, LifeState: (byte)LifeState_t.LIFE_ALIVE } || pawn.AbsOrigin == null) return null;
+        var eye = new Vector(pawn.AbsOrigin.X, pawn.AbsOrigin.Y, pawn.AbsOrigin.Z + pawn.ViewOffset.Z);
+        var pitch = pawn.EyeAngles.X * MathF.PI / 180f;
+        var yaw = pawn.EyeAngles.Y * MathF.PI / 180f;
+        var fx = MathF.Cos(pitch) * MathF.Cos(yaw);
+        var fy = MathF.Cos(pitch) * MathF.Sin(yaw);
+        var fz = -MathF.Sin(pitch);
+
+        SpawnSpot? best = null;
+        var bestAngle = float.MaxValue;
+        foreach (var spot in _spawns)
+        {
+            var dx = spot.Origin.X - eye.X;
+            var dy = spot.Origin.Y - eye.Y;
+            var dz = spot.Origin.Z + 2 - eye.Z;
+            var dist = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 1 || dist > 3000) continue;
+            var cos = Math.Clamp((dx * fx + dy * fy + dz * fz) / dist, -1f, 1f);
+            var angle = MathF.Acos(cos);
+            // the square covers more of the view when it is close
+            var allowed = MathF.Max(MathF.Atan(MarkerHalf * 1.5f / dist), 3f * MathF.PI / 180f);
+            if (angle <= allowed && angle < bestAngle)
+            {
+                best = spot;
+                bestAngle = angle;
+            }
+        }
+        return best;
+    }
+
+    private static void TeleportToSpawn(CCSPlayerController player, SpawnSpot spot)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (pawn is not { IsValid: true }) return;
+        pawn.Teleport(spot.Origin, spot.Angles, new Vector(0, 0, 0));
+        var team = spot.Team == CsTeam.CounterTerrorist ? "CT" : "T";
+        player.PrintToCenter($"{team} spawn {spot.Number}");
+    }
+
+    // ---- bot glow ----
+
+    private void GlowAllBots()
+    {
+        foreach (var player in Utilities.GetPlayers())
+            if (player is { IsValid: true, IsBot: true, PawnIsAlive: true }) GlowBot(player);
+    }
+
+    /// <summary>
+    /// Outlines a bot through walls: an invisible copy of its model follows the pawn and carries the glow
+    /// (relay → glow prop, the usual CS2 approach since pawns can't glow themselves).
+    /// </summary>
+    private void GlowBot(CCSPlayerController bot)
+    {
+        var pawn = bot.PlayerPawn.Value;
+        if (pawn is not { IsValid: true, LifeState: (byte)LifeState_t.LIFE_ALIVE }) return;
+        RemoveGlow(pawn.Index);
+        var model = pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName;
+        if (string.IsNullOrEmpty(model)) return;
+
+        var relay = Utilities.CreateEntityByName<CBaseModelEntity>("prop_dynamic");
+        var glow = Utilities.CreateEntityByName<CBaseModelEntity>("prop_dynamic");
+        if (relay == null || glow == null) return;
+
+        relay.SetModel(model);
+        relay.Spawnflags = 256u;
+        relay.RenderMode = RenderMode_t.kRenderNone;
+        relay.DispatchSpawn();
+
+        glow.SetModel(model);
+        glow.Spawnflags = 256u;
+        glow.Render = Color.FromArgb(1, 255, 255, 255);
+        glow.DispatchSpawn();
+
+        glow.Glow.GlowColorOverride = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
+        glow.Glow.GlowRange = 5000;
+        glow.Glow.GlowRangeMin = 0;
+        glow.Glow.GlowTeam = -1;
+        glow.Glow.GlowType = 3;
+
+        relay.AcceptInput("FollowEntity", pawn, relay, "!activator");
+        glow.AcceptInput("FollowEntity", relay, glow, "!activator");
+        _glows[pawn.Index] = (relay, glow);
+    }
+
+    private void RemoveGlow(uint pawnIndex)
+    {
+        if (!_glows.Remove(pawnIndex, out var g)) return;
+        if (g.Glow.IsValid) g.Glow.Remove();
+        if (g.Relay.IsValid) g.Relay.Remove();
+    }
+}
