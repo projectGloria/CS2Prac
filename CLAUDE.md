@@ -68,6 +68,10 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
   Start test servers on another port (e.g. 27115) and send all commands over one authenticated RCON connection.
 - **`play <sound>` crashes the dedicated server** (access violation 0xC0000005; no sound system). Client cfgs run with
   `!cmd exec` often contain it. PracSkins swallows the sound commands with AddCommandListener (`SoundCommands`).
+- **Never `SetModel` on an entity before `DispatchSpawn`.** It trips an engine assert (EF_IN_STAGING_LIST); the
+  minidump write stalls the server ~1 s and connected clients drop with NETWORK_DISCONNECT_OVERFLOW (no crash without a
+  client, so test servers miss it). Pass the model as a spawn keyvalue: `DispatchSpawn(new CEntityKeyValues { "model" })`.
+  Grep the server log for `Assertion Failed` after adding entity code.
 - Signatures (`CAttributeList_SetOrAddAttributeValueByName`) can break after CS2 updates. `css_prac_status` reports whether the function was resolved.
 
 ## Commands
@@ -118,6 +122,8 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   live tests use MatchZy mode `off`.
 
 ## Practice extras (plugin/PracSkins/Practice.cs)
+- Spawn markers sit on the floor: `GroundUnder` traces down (CSS `Trace.TraceEndShape`); spawn entities are up to ~60
+  units above it on some maps. Teleport still uses the spawn origin.
 - Spawn markers: per competitive spawn (MatchZy's GetSpawns filter, so numbers match `.spawn n`) 4 `beam` entities as a
   square, a facing arrow and a `point_worldtext` number. E while looking at one teleports onto it. Toggled with `.spawns`
   (say listener) / `css_spawns`; `css_prac_spawns 1` in prac_override.cfg turns them on when practice starts. Redrawn

@@ -9,8 +9,9 @@ using Vector = CounterStrikeSharp.API.Modules.Utils.Vector;
 
 namespace PracSkins;
 
-/// <summary>A competitive spawn point, numbered like MatchZy's .spawn n.</summary>
-public record SpawnSpot(CsTeam Team, int Number, Vector Origin, QAngle Angles);
+/// <summary>A competitive spawn point, numbered like MatchZy's .spawn n. Ground is the floor height under it (spawn
+/// entities often sit a little above the floor, which made the squares float).</summary>
+public record SpawnSpot(CsTeam Team, int Number, Vector Origin, QAngle Angles, float Ground);
 
 /// <summary>
 /// Practice extras: spawn markers (a square on the ground and a number per competitive spawn; look at one and press E
@@ -103,8 +104,9 @@ public partial class PracSkins
     public void OnPracSpawnsCommand(CCSPlayerController? player, CommandInfo info)
     {
         SetSpawns(info.GetArg(1) != "0");
-        Logger.LogInformation("spawn markers {State}: {Spawns} spawns, {Entities} entities", _spawnsOn ? "on" : "off",
-            _spawns.Count, _markerEntities.Count);
+        Logger.LogInformation("spawn markers {State}: {Spawns} spawns, {Entities} entities, lowered by up to {Lift:F1} units",
+            _spawnsOn ? "on" : "off", _spawns.Count, _markerEntities.Count,
+            _spawns.Count == 0 ? 0 : _spawns.Max(s => s.Origin.Z - s.Ground));
     }
 
     [ConsoleCommand("css_prac_glow", "Bot glow on (1) or off (0), from the server console")]
@@ -161,14 +163,30 @@ public partial class PracSkins
                 var node = s.CBodyComponent?.SceneNode;
                 if (node == null) continue;
                 n++;
-                spots.Add(new SpawnSpot(team, n,
-                    new Vector(node.AbsOrigin.X, node.AbsOrigin.Y, node.AbsOrigin.Z),
-                    new QAngle(node.AbsRotation.X, node.AbsRotation.Y, node.AbsRotation.Z)));
+                var origin = new Vector(node.AbsOrigin.X, node.AbsOrigin.Y, node.AbsOrigin.Z);
+                spots.Add(new SpawnSpot(team, n, origin,
+                    new QAngle(node.AbsRotation.X, node.AbsRotation.Y, node.AbsRotation.Z), GroundUnder(origin)));
             }
         }
         Add(ct, CsTeam.CounterTerrorist);
         Add(t, CsTeam.Terrorist);
         return spots;
+    }
+
+    /// <summary>Floor height under a point: a world trace from just above it down to 256 units below.</summary>
+    private static float GroundUnder(Vector p)
+    {
+        try
+        {
+            var options = new TraceOptions { InteractsWith = Masks.PlayerSolidBrushOnly };
+            var hit = Trace.TraceEndShape(new Vector(p.X, p.Y, p.Z + 8), new Vector(p.X, p.Y, p.Z - 256), null!, options);
+            if (hit.DidHit() && !hit.IsAllSolid) return hit.EndPos.Z;
+        }
+        catch
+        {
+            // trace natives can break after a CS2 update; fall back to the spawn's own height
+        }
+        return p.Z;
     }
 
     private void DrawSpawnMarkers()
@@ -179,7 +197,7 @@ public partial class PracSkins
         {
             var color = spot.Team == CsTeam.CounterTerrorist ? CtColor : TColor;
             var o = spot.Origin;
-            var z = o.Z + 2;
+            var z = spot.Ground + 1; // just above the floor so it doesn't z-fight
             var corners = new[]
             {
                 new Vector(o.X - MarkerHalf, o.Y - MarkerHalf, z), new Vector(o.X + MarkerHalf, o.Y - MarkerHalf, z),
@@ -221,7 +239,7 @@ public partial class PracSkins
         text.JustifyVertical = PointWorldTextJustifyVertical_t.POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
         text.ReorientMode = PointWorldTextReorientMode_t.POINT_WORLD_TEXT_REORIENT_AROUND_UP; // turns to face you
         text.DispatchSpawn();
-        text.Teleport(new Vector(spot.Origin.X, spot.Origin.Y, spot.Origin.Z + 40), new QAngle(0, 0, 90), new Vector(0, 0, 0));
+        text.Teleport(new Vector(spot.Origin.X, spot.Origin.Y, spot.Ground + 40), new QAngle(0, 0, 90), new Vector(0, 0, 0));
         _markerEntities.Add(text);
     }
 
@@ -264,7 +282,7 @@ public partial class PracSkins
         {
             var dx = spot.Origin.X - eye.X;
             var dy = spot.Origin.Y - eye.Y;
-            var dz = spot.Origin.Z + 2 - eye.Z;
+            var dz = spot.Ground + 1 - eye.Z;
             var dist = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
             if (dist < 1 || dist > 3000) continue;
             var cos = Math.Clamp((dx * fx + dy * fy + dz * fz) / dist, -1f, 1f);
@@ -313,15 +331,23 @@ public partial class PracSkins
         var glow = Utilities.CreateEntityByName<CBaseModelEntity>("prop_dynamic");
         if (relay == null || glow == null) return;
 
-        relay.SetModel(model);
+        // The model goes in as a spawn keyvalue: SetModel on an entity that hasn't spawned yet trips an engine assert
+        // (EF_IN_STAGING_LIST) whose minidump write stalls the server ~1 s, and the client gets dropped with
+        // NETWORK_DISCONNECT_OVERFLOW.
+        CEntityKeyValues ModelKv()
+        {
+            var kv = new CEntityKeyValues();
+            kv.SetString("model", model);
+            return kv;
+        }
+
         relay.Spawnflags = 256u;
         relay.RenderMode = RenderMode_t.kRenderNone;
-        relay.DispatchSpawn();
+        relay.DispatchSpawn(ModelKv());
 
-        glow.SetModel(model);
         glow.Spawnflags = 256u;
         glow.Render = Color.FromArgb(1, 255, 255, 255);
-        glow.DispatchSpawn();
+        glow.DispatchSpawn(ModelKv());
 
         glow.Glow.GlowColorOverride = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
         glow.Glow.GlowRange = 5000;
