@@ -1,0 +1,78 @@
+# CS2Prac: guidance for Claude Code
+
+## What this is
+CS2Prac is a personal Windows desktop app (Electron + React + TypeScript) that runs a **local CS2 practice server**. The user picks any map, starts the server, connects from their own CS2 client, and is admin there. Skins (weapons, knives, gloves, and later agents, stickers and keychains) are applied **server-side** by our CounterStrikeSharp plugin `PracSkins`. MatchZy provides the practice features.
+The app never touches the game client or its memory. Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
+
+## Working rules
+- **Commit and push directly to `main`.** No branches, no PRs. Only commit when the user asks.
+- Work **phase by phase from `todo.md`**. Tick boxes as items land and keep the file current, since it is the source of truth for what's left.
+- A phase is finished when the user has tested it in game. After that, commit and push.
+- Keep `plugin/PracSkins/Loadout.cs` and `src/main/skins/loadoutStore.ts` (the loadout.json schema) in sync. Bump the schema number when the shape changes.
+
+## Architecture
+```
+src/main/            Electron main process (Node). Does all the real work.
+  index.ts           bootstrap + IPC handlers (setup, server start/stop, loadout, settings)
+  paths.ts           settings.json in userData; layout(installDir) gives server/cs2.exe/csgo paths
+  steam/library.ts   finds the Steam CS2 install (registry SteamPath, libraryfolders.vdf, appmanifest_730.acf)
+  steam/accounts.ts  steamPath + local SteamID64/persona from loginusers.vdf
+  setup/mirror.ts    hard-link mirror of the client CS2 install into <installDir>/server
+  setup/steamcmd.ts  alternative: full dedicated server via SteamCMD (~60 GB)
+  setup/plugins.ts   downloads Metamod 2.x + CounterStrikeSharp (with-runtime) into game/csgo
+  setup/gameinfo.ts  patches gameinfo.gi with `Game csgo/addons/metamod` (re-applied every start)
+  setup/cssConfig.ts sets CSS core.json FollowCS2ServerGuidelines=false (required for skins)
+  setup/pracskins.ts copies the prebuilt PracSkins plugin and ensures the CSS config
+  server/serverManager.ts  spawns cs2.exe, pipes its output to the UI, waits for RCON, stop/kill
+  server/launchArgs.ts     builds the cs2.exe arguments
+  server/rcon.ts     minimal Source RCON client
+  server/maps.ts     official map list + workshop handling
+  skins/catalog.ts   builds the skin catalog from ByMykel/CSGO-API (cached 7 days)
+  skins/loadoutStore.ts  profiles in userData; exports loadout.json for the plugin
+src/preload/         contextBridge typed API (window.api)
+src/shared/          ipc.ts (IPC contract + types), skins.ts (catalog/loadout types)
+src/renderer/        React UI: pages/Setup, Play, Loadout, Console
+plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Built to resources/plugin/
+```
+
+## How it runs
+1. **Server files.** The default source is `client`. `syncMirror` hard-links every file of the user's Steam CS2 install into `<installDir>/server`, which needs the **same NTFS drive**. Some files are handled differently:
+   - `gameinfo.gi` and `cfg/` are copied, not linked. The server modifies them and the client must stay untouched.
+   - `game/csgo/addons`, `console.log` and `*.mdmp` are skipped.
+   - The mirror re-syncs before every start. It takes ~10 s the first time and under 1 s after.
+   - `cs2prac-mirror.json` records the links so stale ones can be removed.
+   - Before a SteamCMD install the mirror is deleted, so SteamCMD never writes through hard links into the game.
+2. **Plugins.** Metamod and CSS go into `game/csgo/addons`, the versions are recorded in `addons/cs2prac-versions.json`, and PracSkins is copied from `resources/plugin`.
+3. **Start.** `cs2.exe -dedicated -insecure -usercon -ip 127.0.0.1 -port 27015 +sv_lan 1 +rcon_password <pw> +map …`. Stdout and stderr are piped and streamed to the Console page. The server counts as ready once RCON connects.
+4. **Skins.** The Loadout page saves a profile. The app writes `addons/counterstrikesharp/configs/plugins/PracSkins/loadout.json` and sends `css_prac_reload` over RCON. The plugin applies skins on GiveNamedItem, spawn and entity creation, using WeaponPaints' technique: fallback paint kit, `SetOrAddAttributeValueByName`, knife subclass and glove attributes.
+
+## Gotchas learned the hard way
+- **Always read cs2.exe's stdout and stderr.** An unread pipe fills up and freezes the server. With piped stdio the server writes nothing to `console.log`. Filter out `CTextConsoleWin::GetLine` spam.
+- **`-ip 127.0.0.1` is required.** Without it RCON TCP binds only to the LAN IP and connecting to 127.0.0.1 fails with ECONNREFUSED.
+- **CSS `FollowCS2ServerGuidelines` must be `false`**, or `m_iEntityQuality`, `m_OriginalOwnerXuidLow` and other fields are blocked and skins silently fail. CSS reads it only at server start.
+- **An empty or bots-only server hibernates.** Plugin timers and NextFrame don't run during hibernation, so use `sv_hibernate_when_empty 0` when testing with bots.
+- The `Could not PreloadLibrary … Access violation` lines in the server log are harmless.
+- npm 11 blocks install scripts. `package.json` has an `allowScripts` entry for Electron. If the Electron binary is missing, run `node node_modules/electron/install.js`.
+- Node's type-stripping can't import `rcon.ts` because it uses parameter properties. For live experiments, write a temporary `*.test.ts` and run it with vitest, then delete it.
+- Don't write TS or C# source through shell heredocs. They turned `\n` and `\r?\n` into real newlines. Use the Write and Edit tools.
+- Signatures (`CAttributeList_SetOrAddAttributeValueByName`) can break after CS2 updates. `css_prac_status` reports whether the function was resolved.
+
+## Commands
+```
+npm install            # first time (then: node node_modules/electron/install.js if Electron is missing)
+npm run dev            # run the app with hot reload
+npm test               # vitest unit tests
+npm run typecheck      # tsc for main + renderer
+npm run build:plugin   # dotnet build of PracSkins into resources/plugin/PracSkins (.NET 10 SDK)
+npm run dist           # build + NSIS installer into dist/
+```
+Releases are planned for Phase 1: push a `v*` tag, and GitHub Actions builds and publishes the installer.
+
+## Debugging in game or in the server console
+- `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
+- `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.
+- `css_prac_reload` re-reads loadout.json.
+- App data (settings, loadouts, catalog cache) lives in Electron `userData` (`%APPDATA%\CS2Prac` once packaged).
+
+## Status
+See `todo.md` for the phased roadmap and the current phase. M1–M5 (mirror, plugins, skins, installer) are done, and **Phase 1 is next**.
