@@ -123,7 +123,9 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] No extra window on server start, not even a flash: cs2.exe runs on an invisible desktop
   (server/hiddenLaunch.ts). Verified on a test server: no window, RCON connects, output streams, quit works.
 - [x] Icons next to the tab names (Play, Loadout, Console, Setup) and Logs (lucide-react).
-- [ ] **User check:** start the server and see no window at all; the icons look right.
+- [x] Frameless window: our own title bar (icon, tabs, status, logs, version, minimize/maximize/close; drag to move,
+  double-click to maximize). Thin overlay scrollbars that only show on hover instead of the classic Windows ones.
+- [ ] **User check:** start the server and see no window at all; the icons look right; the title bar and scrollbars feel right.
 
 ## Next
 - [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.

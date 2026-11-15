@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Play as PlayIcon, Settings, Shirt, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Copy, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
 import type { AppInfo, ServerStatus, SetupState, UpdateStatus } from '@shared/ipc'
+import appIcon from '../../../build/icon.png'
 import Setup from './pages/Setup'
 import Play from './pages/Play'
 import Console from './pages/Console'
@@ -22,6 +23,7 @@ export default function App() {
   const [serverLog, setServerLog] = useState<string[]>([])
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
+  const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
     window.api.setup.getState().then((s) => {
@@ -31,6 +33,8 @@ export default function App() {
     window.api.server.getStatus().then(setStatus)
     window.api.app.info().then(setInfo)
     window.api.app.getUpdateStatus().then(setUpdate)
+    window.api.window.isMaximized().then(setMaximized)
+    const offM = window.api.window.onMaximized(setMaximized)
     const offU = window.api.app.onUpdateStatus(setUpdate)
     const offS = window.api.server.onStatus(setStatus)
     const offL = window.api.server.onLog((l) => setServerLog((log) => [...log.slice(-MAX_LOG_LINES + 1), l]))
@@ -38,6 +42,7 @@ export default function App() {
       offS()
       offL()
       offU()
+      offM()
     }
   }, [])
 
@@ -46,8 +51,11 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <span className="brand">CS2Prac</span>
+      <header className="titlebar" onDoubleClick={(e) => e.target === e.currentTarget && window.api.window.toggleMaximize()}>
+        <span className="brand">
+          <img src={appIcon} alt="" />
+          CS2Prac
+        </span>
         <nav className="tabs">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -56,18 +64,28 @@ export default function App() {
               disabled={(id === 'play' || id === 'console') && !ready}
               onClick={() => setTab(id)}
             >
-              <Icon size={16} aria-hidden />
+              <Icon size={15} aria-hidden />
               {label}
             </button>
           ))}
         </nav>
-        <span className="topbar-right">
-          <button className="link small" title="Open the folder with CS2Prac's log files" onClick={() => window.api.app.openLogsFolder()}>
-            <FolderOpen size={14} aria-hidden />
-            Logs
-          </button>
-          {info && <span className="muted small">v{info.version}</span>}
+        <span className="titlebar-right">
           <span className={`status-pill ${status.state}`}>{ready ? status.state : 'setup required'}</span>
+          <button className="icon-btn" title="Open the folder with CS2Prac's log files" onClick={() => window.api.app.openLogsFolder()}>
+            <FolderOpen size={15} aria-hidden />
+          </button>
+          {info && <span className="muted small version">v{info.version}</span>}
+        </span>
+        <span className="win-controls">
+          <button title="Minimize" onClick={() => window.api.window.minimize()}>
+            <Minus size={16} aria-hidden />
+          </button>
+          <button title={maximized ? 'Restore' : 'Maximize'} onClick={() => window.api.window.toggleMaximize()}>
+            {maximized ? <Copy size={13} aria-hidden /> : <Square size={13} aria-hidden />}
+          </button>
+          <button className="close" title="Close" onClick={() => window.api.window.close()}>
+            <X size={17} aria-hidden />
+          </button>
         </span>
       </header>
       {update.state === 'ready' && (

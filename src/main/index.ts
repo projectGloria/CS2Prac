@@ -182,6 +182,11 @@ function registerIpc() {
   ipcMain.handle(IPC.appCheckUpdates, () => checkForUpdates())
   ipcMain.handle(IPC.appGetUpdateStatus, getUpdateStatus)
   ipcMain.handle(IPC.appInstallUpdate, () => installUpdate())
+  // --- window (frameless, the renderer draws the title bar) ---
+  ipcMain.handle(IPC.winMinimize, () => win?.minimize())
+  ipcMain.handle(IPC.winToggleMaximize, () => (win?.isMaximized() ? win.unmaximize() : win?.maximize()))
+  ipcMain.handle(IPC.winClose, () => win?.close())
+  ipcMain.handle(IPC.winIsMaximized, () => win?.isMaximized() ?? false)
 
   // --- setup ---
   ipcMain.handle(IPC.setupGetState, getState)
@@ -347,12 +352,17 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    backgroundColor: '#111318',
+    minWidth: 900,
+    minHeight: 600,
+    backgroundColor: '#0e1014',
+    frame: false,
     autoHideMenuBar: true,
     // packaged builds take the icon from the exe; in dev it comes from build/
     icon: app.isPackaged ? undefined : join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   })
+  win.on('maximize', () => send(IPC.winMaximized, true))
+  win.on('unmaximize', () => send(IPC.winMaximized, false))
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }

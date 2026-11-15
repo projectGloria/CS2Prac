@@ -113,6 +113,14 @@ export interface Api {
     installUpdate(): Promise<void>
     onUpdateStatus(cb: (s: UpdateStatus) => void): () => void
   }
+  /** frameless window: our own title bar drives these */
+  window: {
+    minimize(): Promise<void>
+    toggleMaximize(): Promise<void>
+    close(): Promise<void>
+    isMaximized(): Promise<boolean>
+    onMaximized(cb: (maximized: boolean) => void): () => void
+  }
   setup: {
     getState(): Promise<SetupState>
     chooseInstallDir(): Promise<SetupState>
@@ -169,6 +177,11 @@ export const IPC = {
   appUpdateStatus: 'app:updateStatus',
   appGetUpdateStatus: 'app:getUpdateStatus',
   appInstallUpdate: 'app:installUpdate',
+  winMinimize: 'win:minimize',
+  winToggleMaximize: 'win:toggleMaximize',
+  winClose: 'win:close',
+  winIsMaximized: 'win:isMaximized',
+  winMaximized: 'win:maximized',
   setupGetState: 'setup:getState',
   setupChooseDir: 'setup:chooseDir',
   setupSuggestedDir: 'setup:suggestedDir',

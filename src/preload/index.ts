@@ -19,6 +19,13 @@ const api: Api = {
     installUpdate: () => ipcRenderer.invoke(IPC.appInstallUpdate),
     onUpdateStatus: (cb) => subscribe<UpdateStatus>(IPC.appUpdateStatus, cb)
   },
+  window: {
+    minimize: () => ipcRenderer.invoke(IPC.winMinimize),
+    toggleMaximize: () => ipcRenderer.invoke(IPC.winToggleMaximize),
+    close: () => ipcRenderer.invoke(IPC.winClose),
+    isMaximized: () => ipcRenderer.invoke(IPC.winIsMaximized),
+    onMaximized: (cb) => subscribe<boolean>(IPC.winMaximized, cb)
+  },
   setup: {
     getState: () => ipcRenderer.invoke(IPC.setupGetState),
     chooseInstallDir: () => ipcRenderer.invoke(IPC.setupChooseDir),
