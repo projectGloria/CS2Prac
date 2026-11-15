@@ -106,6 +106,19 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   messages show `[Nihil Prac Server]`. Verified live on a test server.
 - [ ] **User check in game:** MatchZy and CS2Prac chat messages show `[Nihil Prac Server]`; a fresh Setup works offline.
 
+### Movement mode (asked for before v1.0; `plugin/PracSkins/Movement.cs`)
+- [x] `.movement` (or `!movement`) toggles it per player. Spots are recorded in game: `.movement save <name>` at the jump
+  start (position + view direction), `.movement fail` on the floor you'd fall onto (default: 64 units below the start),
+  `.movement delete <name>`, `.movement list`, `.movement <name>`. Saved per map in
+  `configs/plugins/PracSkins/movement/<map>.json`; green squares + names mark them while anyone is in the mode.
+- [x] Landing below the fail height teleports back to the start (a miss); landing over 80 units from the start and above
+  it counts as made. Center banner "Made it!" / "Missed" with made/attempts per spot. `.next`/`.prev`/`.reset` (only
+  while on). No fall damage (sv_falldamage_scale 0 while anyone is in the mode, restored after).
+- [x] Verified on a test server: plugin loads, spot file is read, markers spawn, no engine asserts. Needs a player for the rest.
+- [ ] **User check in game:** record Mirage window → short, fall into mid (auto back + "Missed"), make it ("Made it!"),
+  counter, no fall damage, markers visible, `.next`/`.prev` with two spots.
+- [ ] Maybe later: movement spots in the K menu; E on a green square to go there.
+
 ## Next
 - [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).

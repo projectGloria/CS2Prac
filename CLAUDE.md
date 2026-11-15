@@ -155,6 +155,15 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   `css_prac_chat_prefix` (cs2prac_defaults.cfg; PracSkins' `Tag`/`ChatTag`). MatchZy's own server-console log lines
   keep `[MatchZy]`; only chat changes. Verified live on 27115.
 
+## Movement mode (plugin/PracSkins/Movement.cs)
+- `.movement` (say listener, like `.spawns`) / `css_movement <sub>`; `.next`/`.prev`/`.reset` only react while the
+  player is in the mode (MatchZy has no such commands, but keep them gated). Spots: `configs/plugins/PracSkins/movement/<map>.json`
+  (camelCase MoveSpot: name, x, y, z, pitch, yaw, failZ), recorded by the player in game, not by the app.
+- Per tick per player: on the ground below failZ → back to the start (a miss if they had left the ground); on the
+  ground >80 units from the start and above failZ after leaving the ground → made. Back within 80 units re-arms.
+  Banner via PrintToCenterHtml (skipped while the K menu is open). Fall damage: `sv_falldamage_scale 0` while anyone
+  is in the mode. Server test: `css_prac_movement [markers]` lists the map's spots.
+
 ## User cfgs with server commands
 - A client can't run server commands on our dedicated server: the client refuses replicated cvars (sv_cheats,
   sv_infinite_ammo, mp_* …) and the engine rejects bot_kick/ent_fire/mp_warmup_end before any plugin hook sees them

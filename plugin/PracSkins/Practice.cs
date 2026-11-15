@@ -211,7 +211,7 @@ public partial class PracSkins
         }
     }
 
-    private void AddBeam(Vector start, Vector end, Color color)
+    private void AddBeam(Vector start, Vector end, Color color, List<CEntityInstance>? into = null)
     {
         var beam = Utilities.CreateEntityByName<CBeam>("beam");
         if (beam == null) return;
@@ -222,7 +222,7 @@ public partial class PracSkins
         beam.EndPos.Y = end.Y;
         beam.EndPos.Z = end.Z;
         beam.DispatchSpawn();
-        _markerEntities.Add(beam);
+        (into ?? _markerEntities).Add(beam);
     }
 
     private void AddLabel(SpawnSpot spot, Color color)
