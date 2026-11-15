@@ -8,7 +8,7 @@ import { layout } from '../paths'
 import { ensureGameinfoPatched } from '../setup/gameinfo'
 import { buildLaunchArgs, changeMapCommand } from './launchArgs'
 import { Rcon } from './rcon'
-import { startConsoleHider } from './hideConsole'
+import { spawnHidden } from './hiddenLaunch'
 
 export const SERVER_PORT = 27015
 const READY_TIMEOUT_MS = { official: 120_000, workshop: 600_000 } // workshop maps download first
@@ -54,8 +54,6 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
 
     this.stopRequested = false
     this.setStatus({ state: 'starting', map: opts.map })
-    // started first: it needs a moment to get ready, and should be when cs2 opens its console window
-    const hider = startConsoleHider()
     try {
       await ensureGameinfoPatched(csgoDir) // CS2 updates revert this file
       if (!(await portFree(SERVER_PORT))) throw new Error(`Port ${SERVER_PORT} is in use. Is another server running?`)
@@ -64,13 +62,11 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
       const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey: secrets.authKey })
       this.emit('log', `> cs2.exe ${args.map((a) => (a === password ? '<rcon password>' : a)).join(' ')}`)
       // Output must be read continuously: if the pipe fills up, cs2.exe blocks and the server freezes.
-      const child = spawn(cs2Exe, args, { cwd: dirname(cs2Exe), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      // On an invisible desktop, so cs2's own console window never shows (see hiddenLaunch.ts).
+      const child = spawnHidden(cs2Exe, args, dirname(cs2Exe))
       this.child = child
-      if (child.pid) hider.watch(child.pid)
-      else hider.stop()
-      child.on('exit', () => hider.stop())
-      this.pipeLines(child.stdout)
-      this.pipeLines(child.stderr)
+      this.pipeLines(child.stdout!)
+      this.pipeLines(child.stderr!)
       child.on('exit', (code) => this.onExit(code))
       child.on('error', (e) => this.emit('log', `[cs2prac] failed to launch: ${e.message}`))
 
@@ -78,7 +74,6 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
       this.setStatus({ state: 'running', map: opts.map })
     } catch (e) {
       this.emit('log', `[cs2prac] ${(e as Error).message}`)
-      if (!this.child) hider.stop()
       await this.stop()
       throw e
     }

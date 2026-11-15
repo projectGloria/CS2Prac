@@ -57,8 +57,10 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
 ## Gotchas learned the hard way
 - **Always read cs2.exe's stdout and stderr.** An unread pipe fills up and freezes the server. With piped stdio the server writes nothing to `console.log`. Filter out `CTextConsoleWin::GetLine` spam.
 - **cs2.exe opens its own console window** ("Counter-Strike 2", ConsoleWindowClass) even with windowsHide or a hidden
-  parent console: it allocates the console itself. server/hideConsole.ts starts a hidden PowerShell watcher before the
-  spawn (script via -EncodedCommand, pid on stdin) that hides the window with ShowWindow; stdout piping is unaffected.
+  parent console: it allocates the console itself, and hiding it afterwards flashes. server/hiddenLaunch.ts starts cs2
+  on an invisible desktop ("CS2PracHidden"): a hidden PowerShell (script via -EncodedCommand, exe/cmdline/cwd via env
+  vars it removes) calls CreateProcess with lpDesktop and our pipes as std handles, waits and exits with cs2's code.
+  The Node child is that launcher; `taskkill /T` on it also kills cs2. Verified: no window, RCON and output work.
 - **`-ip 127.0.0.1` is required.** Without it RCON TCP binds only to the LAN IP and connecting to 127.0.0.1 fails with ECONNREFUSED.
 - **CSS `FollowCS2ServerGuidelines` must be `false`**, or `m_iEntityQuality`, `m_OriginalOwnerXuidLow` and other fields are blocked and skins silently fail. CSS reads it only at server start.
 - **An empty or bots-only server hibernates.** Plugin timers and NextFrame don't run during hibernation, so use `sv_hibernate_when_empty 0` when testing with bots.
