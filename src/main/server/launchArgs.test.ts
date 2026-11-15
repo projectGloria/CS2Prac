@@ -6,7 +6,7 @@ const base = { port: 27015, rconPassword: 'pw' }
 describe('buildLaunchArgs', () => {
   it('builds an official-map competitive launch', () => {
     const a = buildLaunchArgs({ ...base, mode: 'competitive', map: { kind: 'official', name: 'de_mirage' } })
-    expect(a).toEqual(expect.arrayContaining(['-dedicated', '-insecure', '+sv_lan', '1']))
+    expect(a).toEqual(expect.arrayContaining(['-dedicated', '-insecure', '-usercon', '+sv_lan', '1']))
     expect(a.slice(a.indexOf('+game_type'), a.indexOf('+game_type') + 4)).toEqual(['+game_type', '0', '+game_mode', '1'])
     expect(a.slice(-2)).toEqual(['+map', 'de_mirage'])
   })

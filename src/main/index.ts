@@ -1,10 +1,22 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { join } from 'node:path'
-import { IPC, type MapChoice, type Settings, type SetupProgress, type SetupState, type StartOptions } from '@shared/ipc'
+import { existsSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import {
+  IPC,
+  type MapChoice,
+  type ServerSource,
+  type Settings,
+  type SetupProgress,
+  type SetupState,
+  type StartOptions
+} from '@shared/ipc'
 import { isInstalled, layout, loadSettings, saveSettings } from './paths'
 import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
+import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
+import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
 import { getCatalog } from './skins/catalog'
@@ -26,13 +38,20 @@ async function requireInstallDir(): Promise<string> {
 }
 
 async function getState(): Promise<SetupState> {
-  const { installDir } = await loadSettings()
+  const { installDir, serverSource } = await loadSettings()
+  const client = await findCs2Install()
+  const base = {
+    installDir,
+    serverSource,
+    clientDir: client?.dir ?? null,
+    sameDrive: !!(installDir && client && sameDrive(installDir, client.dir))
+  }
   if (!installDir)
-    return { installDir, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pracSkinsInstalled: false, pluginVersions: {} }
+    return { ...base, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pracSkinsInstalled: false, pluginVersions: {} }
   const l = layout(installDir)
   const pluginVersions = await readPluginVersions(l.csgoDir)
   return {
-    installDir,
+    ...base,
     steamcmdInstalled: isInstalled(l.steamcmdExe),
     serverInstalled: isInstalled(l.cs2Exe),
     pluginsInstalled:
@@ -40,6 +59,27 @@ async function getState(): Promise<SetupState> {
     pracSkinsInstalled: isInstalled(join(installedPluginDir(l.csgoDir), 'PracSkins.dll')),
     pluginVersions
   }
+}
+
+/** Hard-links the player's CS2 install into <installDir>/server. Incremental, so it is cheap to re-run. */
+async function mirrorClient(installDir: string, report?: (p: SetupProgress) => void) {
+  const client = await findCs2Install()
+  if (!client) throw new Error('CS2 is not installed through Steam on this PC. Use "Download the dedicated server" instead.')
+  return syncMirror(client.dir, layout(installDir).serverDir, client.buildId, (done, total) =>
+    report?.({ phase: 'server', percent: total ? (done / total) * 100 : null, message: `Linking CS2 game files (${done}/${total})` })
+  )
+}
+
+/**
+ * SteamCMD must never write into a mirror: its files are hard links to the game install, and an
+ * in-place update would change the player's game. The mirror holds only links and our addons,
+ * so removing it is safe.
+ */
+async function removeMirror(installDir: string, log: (line: string) => void) {
+  const { serverDir } = layout(installDir)
+  if (!existsSync(join(serverDir, MIRROR_MARKER))) return
+  log('[cs2prac] removing the linked server folder before downloading the dedicated server')
+  await rm(serverDir, { recursive: true, force: true })
 }
 
 const connectToServer = () => shell.openExternal(`steam://connect/127.0.0.1:${SERVER_PORT}`)
@@ -57,16 +97,36 @@ function registerIpc() {
     return getState()
   })
 
+  ipcMain.handle(IPC.setupSuggestedDir, async () => {
+    const client = await findCs2Install()
+    if (client) await saveSettings({ ...(await loadSettings()), installDir: join(resolve(client.dir).slice(0, 3), 'CS2Prac') })
+    return getState()
+  })
+
+  ipcMain.handle(IPC.setupSetSource, async (_e, source: ServerSource) => {
+    if (source !== 'client' && source !== 'steamcmd') throw new Error('Unknown server source')
+    await saveSettings({ ...(await loadSettings()), serverSource: source })
+    return getState()
+  })
+
   let installing = false
   ipcMain.handle(IPC.setupInstall, async () => {
     if (installing) throw new Error('An install is already running')
     if (server.getStatus().state !== 'stopped') throw new Error('Stop the server before updating it')
     const installDir = await requireInstallDir()
+    const { serverSource } = await loadSettings()
     installing = true
     const report = (p: SetupProgress) => send(IPC.setupProgress, p)
+    const log = (line: string) => send(IPC.setupLog, line)
     try {
-      await ensureSteamCmd(installDir, report)
-      await installOrUpdateServer(installDir, report, (line) => send(IPC.setupLog, line))
+      if (serverSource === 'client') {
+        const r = await mirrorClient(installDir, report)
+        log(`[cs2prac] game files: ${r.linked} linked, ${r.copied} copied, ${r.unchanged} unchanged, ${r.removed} removed`)
+      } else {
+        await removeMirror(installDir, log)
+        await ensureSteamCmd(installDir, report)
+        await installOrUpdateServer(installDir, report, log)
+      }
       const v = await ensurePlugins(installDir, report)
       const skins = await installPracSkins(layout(installDir).csgoDir)
       report({
@@ -87,7 +147,7 @@ function registerIpc() {
   // --- settings ---
   ipcMain.handle(IPC.settingsGet, loadSettings)
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: Partial<Settings>) => {
-    const { installDir: _ignored, ...rest } = patch
+    const { installDir: _dir, serverSource: _source, ...rest } = patch
     const next = { ...(await loadSettings()), ...rest }
     await saveSettings(next)
     return next
@@ -103,6 +163,11 @@ function registerIpc() {
     const settings = await loadSettings()
     const installDir = await requireInstallDir()
     const { csgoDir } = layout(installDir)
+    if (settings.serverSource === 'client') {
+      // follows CS2 updates: Steam replaces game files, so the links are refreshed before every start
+      const r = await mirrorClient(installDir)
+      if (r.linked || r.removed) send(IPC.serverLog, `[cs2prac] game files updated: ${r.linked} linked, ${r.removed} removed`)
+    }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
     await exportLoadout(csgoDir, await loadStore(async () => null))
     await server.start(installDir, opts, settings.authKey || undefined)

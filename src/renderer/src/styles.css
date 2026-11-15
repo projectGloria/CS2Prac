@@ -99,3 +99,12 @@ button.link { background: none; border: none; padding: 0; color: var(--accent); 
 .row.tight { margin: 0; gap: 6px; }
 .small-num { width: 90px; margin-left: auto; }
 @media (max-width: 1000px) { .panel-split { grid-template-columns: 1fr; } .panel-side { position: static; } }
+
+/* setup: server source */
+.choices { display: grid; gap: 8px; margin: 16px 0; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.choice.active { border-color: var(--accent); }
+.choice.disabled { opacity: 0.6; cursor: default; }
+.choice input { margin-top: 3px; }
+.choice code { word-break: break-all; }
+.block { display: block; margin-top: 2px; }

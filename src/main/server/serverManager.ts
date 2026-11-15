@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { EventEmitter } from 'node:events'
-import { open, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
+import type { Readable } from 'node:stream'
 import type { ServerStatus, StartOptions } from '@shared/ipc'
 import { layout } from '../paths'
 import { ensureGameinfoPatched } from '../setup/gameinfo'
@@ -22,6 +22,9 @@ function portFree(port: number): Promise<boolean> {
   })
 }
 
+/** Printed many times a second when cs2.exe has no console window to read input from. */
+const NOISE = /CTextConsoleWin::GetLine/
+
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export interface ServerManagerEvents {
@@ -32,7 +35,6 @@ export interface ServerManagerEvents {
 export class ServerManager extends EventEmitter<ServerManagerEvents> {
   private child: ChildProcess | null = null
   private rcon: Rcon | null = null
-  private tailTimer: NodeJS.Timeout | null = null
   private status: ServerStatus = { state: 'stopped' }
 
   getStatus() {
@@ -55,13 +57,12 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
 
       const password = randomBytes(12).toString('hex')
       const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey })
-      const logFile = join(csgoDir, 'console.log')
-      await writeFile(logFile, '') // -condebug appends; start each session clean
-      this.startTail(logFile)
-
       this.emit('log', `> cs2.exe ${args.map((a) => (a === password ? '<rcon password>' : a)).join(' ')}`)
-      const child = spawn(cs2Exe, args, { cwd: dirname(cs2Exe), windowsHide: true })
+      // Output must be read continuously: if the pipe fills up, cs2.exe blocks and the server freezes.
+      const child = spawn(cs2Exe, args, { cwd: dirname(cs2Exe), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
       this.child = child
+      this.pipeLines(child.stdout)
+      this.pipeLines(child.stderr)
       child.on('exit', (code) => this.onExit(code))
       child.on('error', (e) => this.emit('log', `[cs2prac] failed to launch: ${e.message}`))
 
@@ -90,35 +91,14 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
     throw new Error('Server did not become ready in time')
   }
 
-  /** Tails csgo/console.log (written because of -condebug); stdout isn't reliable for Windows CS2. */
-  private startTail(file: string) {
-    let offset = 0
+  private pipeLines(stream: Readable) {
     let partial = ''
-    let reading = false
-    this.tailTimer = setInterval(async () => {
-      if (reading) return
-      reading = true
-      try {
-        const { size } = await stat(file)
-        if (size < offset) offset = 0 // truncated
-        if (size === offset) return
-        const fh = await open(file, 'r')
-        try {
-          const buf = Buffer.alloc(size - offset)
-          await fh.read(buf, 0, buf.length, offset)
-          offset = size
-          const lines = (partial + buf.toString('utf8')).split(/\r?\n/)
-          partial = lines.pop() ?? ''
-          for (const l of lines) if (l.trim()) this.emit('log', l)
-        } finally {
-          await fh.close()
-        }
-      } catch {
-        /* file not created yet */
-      } finally {
-        reading = false
-      }
-    }, 500)
+    stream.setEncoding('utf8')
+    stream.on('data', (chunk: string) => {
+      const lines = (partial + chunk).split(/\r?\n/)
+      partial = lines.pop() ?? ''
+      for (const l of lines) if (l.trim() && !NOISE.test(l)) this.emit('log', l)
+    })
   }
 
   private onExit(code: number | null) {
@@ -126,8 +106,6 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
     this.child = null
     this.rcon?.close()
     this.rcon = null
-    if (this.tailTimer) clearInterval(this.tailTimer)
-    this.tailTimer = null
     this.setStatus({ state: 'stopped' })
   }
 

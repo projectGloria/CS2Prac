@@ -13,6 +13,8 @@ const api: Api = {
   setup: {
     getState: () => ipcRenderer.invoke(IPC.setupGetState),
     chooseInstallDir: () => ipcRenderer.invoke(IPC.setupChooseDir),
+    useSuggestedDir: () => ipcRenderer.invoke(IPC.setupSuggestedDir),
+    setSource: (source) => ipcRenderer.invoke(IPC.setupSetSource, source),
     install: () => ipcRenderer.invoke(IPC.setupInstall),
     onProgress: (cb) => subscribe<SetupProgress>(IPC.setupProgress, cb),
     onLog: (cb) => subscribe<string>(IPC.setupLog, cb)

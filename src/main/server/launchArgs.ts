@@ -19,7 +19,10 @@ export function buildLaunchArgs(opts: StartOptions & { port: number; rconPasswor
     '-dedicated',
     '-insecure', // required: plugin-modified servers must not run VAC-secured
     '-usercon', // enables RCON on Windows
-    '-condebug', // mirror console output to csgo/console.log, which the app tails
+    // Without this, RCON (TCP) listens only on the LAN address, not 127.0.0.1. The game port (UDP) still
+    // listens on all addresses, and RCON stays unreachable from the network.
+    '-ip',
+    '127.0.0.1',
     '-port', String(opts.port),
     '+sv_lan', '1',
     '+rcon_password', opts.rconPassword,

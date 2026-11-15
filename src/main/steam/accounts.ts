@@ -40,7 +40,7 @@ export function accountsFromLoginUsers(text: string): SteamAccount[] {
     .sort((a, b) => Number(b.mostRecent) - Number(a.mostRecent))
 }
 
-async function steamPath(): Promise<string> {
+export async function steamPath(): Promise<string> {
   try {
     const { stdout } = await promisify(execFile)('reg', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], {
       windowsHide: true

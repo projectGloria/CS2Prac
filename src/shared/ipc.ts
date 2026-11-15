@@ -7,8 +7,16 @@ export interface PluginVersions {
   counterstrikesharp?: string
 }
 
+/** Where the server's game files come from. */
+export type ServerSource = 'client' | 'steamcmd'
+
 export interface SetupState {
   installDir: string | null
+  serverSource: ServerSource
+  /** the player's CS2 game install, if found */
+  clientDir: string | null
+  /** installDir is on the same drive as clientDir (required for 'client') */
+  sameDrive: boolean
   steamcmdInstalled: boolean
   serverInstalled: boolean
   pluginsInstalled: boolean
@@ -26,6 +34,8 @@ export interface SetupProgress {
 
 export interface Settings {
   installDir: string | null
+  /** 'client': hard-link the player's CS2 install (no extra space); 'steamcmd': download the dedicated server */
+  serverSource: ServerSource
   /** Steam Web API key; some workshop maps need it on a dedicated server. */
   authKey?: string
   autoConnect: boolean
@@ -48,13 +58,16 @@ export interface Api {
   setup: {
     getState(): Promise<SetupState>
     chooseInstallDir(): Promise<SetupState>
+    /** <drive of the CS2 install>\CS2Prac */
+    useSuggestedDir(): Promise<SetupState>
+    setSource(source: ServerSource): Promise<SetupState>
     install(): Promise<void>
     onProgress(cb: (p: SetupProgress) => void): () => void
     onLog(cb: (line: string) => void): () => void
   }
   settings: {
     get(): Promise<Settings>
-    update(patch: Partial<Omit<Settings, 'installDir'>>): Promise<Settings>
+    update(patch: Partial<Omit<Settings, 'installDir' | 'serverSource'>>): Promise<Settings>
   }
   server: {
     getStatus(): Promise<ServerStatus>
@@ -88,6 +101,8 @@ export interface LoadoutSaveResult {
 export const IPC = {
   setupGetState: 'setup:getState',
   setupChooseDir: 'setup:chooseDir',
+  setupSuggestedDir: 'setup:suggestedDir',
+  setupSetSource: 'setup:setSource',
   setupInstall: 'setup:install',
   setupProgress: 'setup:progress',
   setupLog: 'setup:log',

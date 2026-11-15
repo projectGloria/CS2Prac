@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SetupProgress, SetupState } from '@shared/ipc'
+import type { ServerSource, SetupProgress, SetupState } from '@shared/ipc'
 
 interface Props {
   state: SetupState
@@ -44,24 +44,61 @@ export default function Setup({ state, onState, serverStopped }: Props) {
   const pct = progress?.percent
   const ready = state.serverInstalled && state.pluginsInstalled
   const v = state.pluginVersions
+  const linked = state.serverSource === 'client'
+  const drive = state.clientDir?.slice(0, 2)
+  const badDrive = linked && !!state.installDir && !state.sameDrive
+  const canInstall = !busy && !!state.installDir && serverStopped && !badDrive && (!linked || !!state.clientDir)
+  const setSource = async (s: ServerSource) => onState(await window.api.setup.setSource(s))
   return (
     <section className="card">
       <h1>Server setup</h1>
       <p className="muted">
-        CS2Prac installs a CS2 dedicated server on this PC with SteamCMD, then adds Metamod:Source and
-        CounterStrikeSharp. The download is about 60&nbsp;GB, so pick a drive with enough space.
+        CS2Prac runs a CS2 server on this PC and adds Metamod:Source, CounterStrikeSharp and its skin plugin to it.
       </p>
+
+      <div className="choices">
+        <label className={`choice ${linked ? 'active' : ''} ${state.clientDir ? '' : 'disabled'}`}>
+          <input
+            type="radio"
+            name="source"
+            checked={linked}
+            disabled={busy || !state.clientDir}
+            onChange={() => setSource('client')}
+          />
+          <span>
+            <b>Use my CS2 installation</b> <span className="muted small">(no extra disk space)</span>
+            <span className="muted small block">
+              {state.clientDir
+                ? <>Links the game files from <code>{state.clientDir}</code>. Your game is not modified. The server folder must be on drive {drive}.</>
+                : 'CS2 was not found in your Steam libraries.'}
+            </span>
+          </span>
+        </label>
+        <label className={`choice ${linked ? '' : 'active'}`}>
+          <input type="radio" name="source" checked={!linked} disabled={busy} onChange={() => setSource('steamcmd')} />
+          <span>
+            <b>Download the dedicated server</b> <span className="muted small">(about 60&nbsp;GB, SteamCMD)</span>
+            <span className="muted small block">A separate copy of CS2 that any drive can hold.</span>
+          </span>
+        </label>
+      </div>
 
       <div className="row">
         <code className="path">{state.installDir ?? 'No folder selected'}</code>
+        {linked && state.clientDir && (!state.installDir || badDrive) && (
+          <button disabled={busy} onClick={async () => onState(await window.api.setup.useSuggestedDir())}>
+            Use {drive}CS2Prac
+          </button>
+        )}
         <button disabled={busy} onClick={async () => onState(await window.api.setup.chooseInstallDir())}>
           Choose folder…
         </button>
       </div>
+      {badDrive && <p className="error-text small">This folder is not on drive {drive}, where CS2 is installed.</p>}
 
       <ul className="checklist">
-        <li className={state.steamcmdInstalled ? 'ok' : ''}>SteamCMD</li>
-        <li className={state.serverInstalled ? 'ok' : ''}>CS2 dedicated server</li>
+        {!linked && <li className={state.steamcmdInstalled ? 'ok' : ''}>SteamCMD</li>}
+        <li className={state.serverInstalled ? 'ok' : ''}>{linked ? 'Server folder linked to your CS2 install' : 'CS2 dedicated server'}</li>
         <li className={state.pluginsInstalled ? 'ok' : ''}>
           Metamod + CounterStrikeSharp
           {v.metamod && <span className="muted small"> (MM {v.metamod}, CSS {v.counterstrikesharp})</span>}
@@ -69,13 +106,13 @@ export default function Setup({ state, onState, serverStopped }: Props) {
         <li className={state.pracSkinsInstalled ? 'ok' : ''}>PracSkins (skin plugin)</li>
       </ul>
 
-      <button className="primary" disabled={busy || !state.installDir || !serverStopped} onClick={install}>
+      <button className="primary" disabled={!canInstall} onClick={install}>
         {busy ? 'Working…' : ready ? 'Update / repair' : 'Install'}
       </button>
       {!serverStopped && <p className="muted small">Stop the server to update it.</p>}
       {ready && (
         <p className="muted small">
-          Run “Update / repair” after a CS2 update. Each CS2 update can break the plugins until new Metamod and
+          {linked ? 'Game files are re-linked automatically before each start. ' : 'Run “Update / repair” after a CS2 update. '} Each CS2 update can break the plugins until new Metamod and
           CounterStrikeSharp builds come out.
         </p>
       )}
