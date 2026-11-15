@@ -6,6 +6,7 @@ import type { PluginVersions, SetupProgress } from '@shared/ipc'
 import { layout } from '../paths'
 import { downloadFile } from './steamcmd'
 import { ensureGameinfoPatched } from './gameinfo'
+import { bundledZip } from './bundle'
 
 const MMS_BASE = 'https://mms.alliedmods.net/mmsdrop/2.0/'
 const CSS_RELEASE_API = 'https://api.github.com/repos/roflmuffin/CounterStrikeSharp/releases/latest'
@@ -60,7 +61,19 @@ async function latestCounterStrikeSharp(): Promise<{ version: string; url: strin
   return { version: rel.tag_name, url: asset.browser_download_url }
 }
 
-export async function installZip(url: string, csgoDir: string, label: string, report: (p: SetupProgress) => void) {
+/** Extracts a tool into game/csgo: from the zip bundled with the app when given, otherwise downloaded from url. */
+export async function installZip(
+  url: string,
+  csgoDir: string,
+  label: string,
+  report: (p: SetupProgress) => void,
+  bundled: string | null = null
+) {
+  if (bundled) {
+    report({ phase: 'plugins', percent: null, message: `Installing ${label}…` })
+    await extractZip(bundled, csgoDir)
+    return
+  }
   const tmp = join(csgoDir, `.cs2prac-${label}.zip`)
   try {
     await downloadFile(url, tmp, (pct) =>
@@ -92,13 +105,13 @@ export async function ensurePlugins(
 
   const metamodPresent = existsSync(join(csgoDir, 'addons', 'metamod'))
   if (needsInstall(metamodPresent, installed.metamod, mms.version, mode)) {
-    await installZip(mms.url, csgoDir, 'Metamod', report)
+    await installZip(mms.url, csgoDir, 'Metamod', report, bundledZip('metamod', mms.version))
     installed.metamod = mms.version
   }
   const cssPresent = existsSync(join(csgoDir, 'addons', 'counterstrikesharp'))
   if (needsInstall(cssPresent, installed.counterstrikesharp, css.version, mode)) {
     // Note: extracting over an existing install keeps user configs; files are overwritten in place.
-    await installZip(css.url, csgoDir, 'CounterStrikeSharp', report)
+    await installZip(css.url, csgoDir, 'CounterStrikeSharp', report, bundledZip('counterstrikesharp', css.version))
     installed.counterstrikesharp = css.version
   }
 

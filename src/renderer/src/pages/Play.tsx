@@ -266,6 +266,18 @@ export default function Play({ status }: { status: ServerStatus }) {
         {settings && (
           <>
             <h3>Options</h3>
+            <label className="field">
+              Server name (chat prefix)
+              <input
+                key={settings.serverName}
+                defaultValue={settings.serverName}
+                maxLength={32}
+                onBlur={(e) => e.target.value !== settings.serverName && updateSettings({ serverName: e.target.value })}
+              />
+              <span className="muted small">
+                Chat messages show as [{settings.serverName}]. Applies at the next server start.
+              </span>
+            </label>
             <p className="muted small">
               Your cfg files: everything in the server cfg folder is copied to the server before each start.{' '}
               <code>cs2prac_server.cfg</code> runs after every map load.

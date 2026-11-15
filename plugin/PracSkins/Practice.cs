@@ -123,8 +123,8 @@ public partial class PracSkins
     {
         SetSpawns(!_spawnsOn);
         player.PrintToChat(_spawnsOn
-            ? $" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Spawns shown: look at one and press E to stand on it. .spawns hides them."
-            : $" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Spawns hidden.");
+            ? $"{ChatTag} Spawns shown: look at one and press E to stand on it. .spawns hides them."
+            : $"{ChatTag} Spawns hidden.");
     }
 
     private void SetSpawns(bool on)
@@ -139,7 +139,7 @@ public partial class PracSkins
         _glowOn = !_glowOn;
         if (_glowOn) GlowAllBots();
         else foreach (var index in _glows.Keys.ToList()) RemoveGlow(index);
-        player.PrintToChat($" {ChatColors.Green}[CS2Prac]{ChatColors.Default} Bot glow {(_glowOn ? "on" : "off")}.");
+        player.PrintToChat($"{ChatTag} Bot glow {(_glowOn ? "on" : "off")}.");
     }
 
     // ---- spawns ----

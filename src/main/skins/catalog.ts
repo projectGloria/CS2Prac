@@ -1,6 +1,8 @@
 import { app } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { gunzipSync } from 'node:zlib'
+import { bundledCatalogFile } from '../setup/bundle'
 import {
   CATALOG_VERSION,
   type Catalog,
@@ -232,6 +234,27 @@ export async function getCatalog(refresh = false): Promise<Catalog> {
   } catch (e) {
     const stale = memo ?? (await readCache())
     if (stale) return stale // offline: use the old data rather than failing
+    const bundled = await bundledCatalog()
+    if (bundled) return (memo = bundled)
     throw e
+  }
+}
+
+/**
+ * The skin data snapshot shipped with the app, for a first start without internet. It counts as an hour from
+ * expiring, so the app tries to download fresh data again soon.
+ */
+async function bundledCatalog(): Promise<Catalog | null> {
+  const files = ['skins.json', 'base_weapons.json', 'agents.json', 'stickers.json', 'keychains.json'].map(bundledCatalogFile)
+  if (files.some((f) => !f)) return null
+  try {
+    const [skins, base, agents, stickers, keychains] = await Promise.all(
+      files.map(async (f) => JSON.parse(gunzipSync(await readFile(f!)).toString('utf8')))
+    )
+    const c = buildCatalog(skins, base, Date.now() - CACHE_TTL_MS + 60 * 60 * 1000, { agents, stickers, keychains })
+    await writeFile(cacheFile(), JSON.stringify(c))
+    return c
+  } catch {
+    return null
   }
 }

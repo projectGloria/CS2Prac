@@ -48,6 +48,16 @@ export interface Settings {
   /** fixed RCON password, so `rcon` from the game console keeps working across restarts */
   rconPassword: string
   matchzyMode: MatchZyMode
+  /** Shown as the server name and as the chat prefix of MatchZy and PracSkins messages, e.g. [Nihil Prac Server]. */
+  serverName: string
+}
+
+export const DEFAULT_SERVER_NAME = 'Nihil Prac Server'
+
+/** A server name that is safe inside a quoted cfg value: no quotes, semicolons, color braces or line breaks. */
+export function cleanServerName(name: unknown): string {
+  const s = typeof name === 'string' ? name.replace(/["';{}\[\]\\\r\n\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, 32) : ''
+  return s || DEFAULT_SERVER_NAME
 }
 
 /** Lines to paste into the CS2 console. */

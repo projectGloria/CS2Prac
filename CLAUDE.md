@@ -143,6 +143,18 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - A server exit that wasn't requested sets `status.crashed`. `killStaleServers` (on app launch and before every start)
   kills only cs2.exe processes running from our server folder.
 
+## Bundle and server name
+- The installer ships the pinned tools: `npm run build:bundle` (scripts/bundle.mjs, also run by `dist`/`release`) downloads
+  Metamod, CSS (with runtime) and MatchZy zips at the versions in `PINNED`/`MATCHZY_VERSION` (read from the source), a
+  gzipped ByMykel skin data snapshot and the license texts into `resources/bundle/` (git-ignored, ~85 MB), shipped as
+  `<resources>/bundle`. `setup/bundle.ts`: `bundledZip(tool, version)` is used by `installZip` when the version matches;
+  other versions ("Update plugins to latest") download. The catalog falls back to the snapshot when the download fails
+  and nothing is cached. After bumping a pinned version, `build:bundle` fetches the new zip automatically.
+- Settings `serverName` (default "Nihil Prac Server", `cleanServerName` strips cfg-breaking characters) is written as
+  `matchzy_chat_prefix "[{Green}<name>{Default}]"` + `matchzy_hostname_format` (config_override.cfg) and `hostname` +
+  `css_prac_chat_prefix` (cs2prac_defaults.cfg; PracSkins' `Tag`/`ChatTag`). MatchZy's own server-console log lines
+  keep `[MatchZy]`; only chat changes. Verified live on 27115.
+
 ## User cfgs with server commands
 - A client can't run server commands on our dedicated server: the client refuses replicated cvars (sv_cheats,
   sv_infinite_ammo, mp_* …) and the engine rejects bot_kick/ent_fire/mp_warmup_end before any plugin hook sees them

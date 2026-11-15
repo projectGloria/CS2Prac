@@ -52,10 +52,12 @@ export const DEFAULTS_CFG = 'cs2prac_defaults.cfg'
 /** The user's own per-map-load cfg; created once as a template in the app's cfg folder. */
 export const USER_SERVER_CFG = 'cs2prac_server.cfg'
 
-export const DEFAULTS_CFG_TEXT = `// Written by CS2Prac before every server start. Do not edit: put your own settings in ${USER_SERVER_CFG}.
+export const defaultsCfgText = (serverName = 'CS2Prac') => `// Written by CS2Prac before every server start. Do not edit: put your own settings in ${USER_SERVER_CFG}.
 sv_cheats 1
 sv_lan 1
 sv_hibernate_when_empty 0
+hostname "${serverName}"
+css_prac_chat_prefix "${serverName}"
 `
 
 export const USER_CFG_TEMPLATE = `// CS2Prac runs this on the server after every map load (after ${DEFAULTS_CFG}).
@@ -70,14 +72,14 @@ export const USER_CFG_TEMPLATE = `// CS2Prac runs this on the server after every
  * Copies every file from the app's cfg folder (%APPDATA%\CS2Prac\cfg) into the server's cfg folder,
  * creating the folder and the cs2prac_server.cfg template the first time. Also writes cs2prac_defaults.cfg.
  */
-export async function syncServerCfgs(userCfgDir: string, csgoDir: string): Promise<number> {
+export async function syncServerCfgs(userCfgDir: string, csgoDir: string, serverName?: string): Promise<number> {
   await mkdir(userCfgDir, { recursive: true })
   const template = join(userCfgDir, USER_SERVER_CFG)
   if (!existsSync(template)) await writeFile(template, USER_CFG_TEMPLATE)
 
   const dest = join(csgoDir, 'cfg')
   await mkdir(dest, { recursive: true })
-  await writeFile(join(dest, DEFAULTS_CFG), DEFAULTS_CFG_TEXT)
+  await writeFile(join(dest, DEFAULTS_CFG), defaultsCfgText(serverName))
 
   let copied = 0
   async function walk(rel: string) {

@@ -41,7 +41,20 @@ public partial class PracSkins : BasePlugin
     private string ConfigDir => Path.Combine(Server.GameDirectory, "csgo", "addons", "counterstrikesharp", "configs", "plugins", "PracSkins");
     private string LoadoutPath => Path.Combine(ConfigDir, "loadout.json");
 
-    private static readonly string[] SoundCommands = ["play", "playvol", "play_distance", "playflush", "stopsound", "snd_playsounds"];
+    /// <summary>Server name shown in front of our chat and console messages; the app sets it with css_prac_chat_prefix.</summary>
+    private static string _serverName = "CS2Prac";
+    private static string Tag => $"[{_serverName}]";
+    private static string ChatTag => $" {ChatColors.Green}[{_serverName}]{ChatColors.Default}";
+
+    [ConsoleCommand("css_prac_chat_prefix", "Name shown in front of CS2Prac messages")]
+    [CommandHelper(minArgs: 1, usage: "<name>", whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnChatPrefixCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var name = command.ArgString.Trim().Trim('"').Trim();
+        if (name.Length > 0) _serverName = name;
+    }
+
+    private static readonly string[] SoundCommands =["play", "playvol", "play_distance", "playflush", "stopsound", "snd_playsounds"];
 
     public override void Load(bool hotReload)
     {
@@ -160,7 +173,7 @@ public partial class PracSkins : BasePlugin
         if (line.Length >= 2 && line[0] == '"' && line[^1] == '"') line = line[1..^1];
         Logger.LogInformation("{Player} ran: {Command}", caller?.PlayerName ?? "console", line);
         Server.ExecuteCommand(line);
-        command.ReplyToCommand($"[CS2Prac] ran: {line}");
+        command.ReplyToCommand($"{Tag} ran: {line}");
     }
 
     [ConsoleCommand("css_prac_status", "Show what PracSkins sees for each player")]

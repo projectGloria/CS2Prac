@@ -7,6 +7,12 @@ describe('configOverride', () => {
     expect(configOverride('match')).toMatch(/^matchzy_autostart_mode 1$/m)
     expect(configOverride('off')).toMatch(/^matchzy_autostart_mode 0$/m)
   })
+
+  it('uses the server name for the chat prefix and hostname', () => {
+    const cfg = configOverride('practice', 'Nihil Prac Server')
+    expect(cfg).toMatch(/^matchzy_chat_prefix "\[\{Green\}Nihil Prac Server\{Default\}\]"$/m)
+    expect(cfg).toMatch(/^matchzy_hostname_format "Nihil Prac Server"$/m)
+  })
 })
 
 describe('mergeMatchZyAdmins', () => {

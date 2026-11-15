@@ -12,7 +12,8 @@ import {
   type Settings,
   type SetupProgress,
   type SetupState,
-  type StartOptions
+  type StartOptions,
+  cleanServerName
 } from '@shared/ipc'
 import { isInstalled, layout, loadSettings, saveSettings, userCfgDir } from './paths'
 import { ensureAdmins, syncServerCfgs } from './setup/serverConfig'
@@ -257,6 +258,7 @@ function registerIpc() {
     const { installDir: _dir, serverSource: _source, rconPassword: _pw, ...rest } = patch
     if (rest.matchzyMode !== undefined && !['practice', 'match', 'off'].includes(rest.matchzyMode))
       throw new Error('Unknown MatchZy mode')
+    if (rest.serverName !== undefined) rest.serverName = cleanServerName(rest.serverName)
     const next = { ...(await loadSettings()), ...rest }
     await saveSettings(next)
     return next
@@ -288,8 +290,9 @@ function registerIpc() {
     else send(IPC.serverLog, '[cs2prac] no Steam account found in loginusers.vdf – nobody is admin')
     // Installs MatchZy for setups made before it was added (and after a version bump)
     await ensureMatchZy(csgoDir, (p) => p.percent == null && send(IPC.serverLog, `[cs2prac] ${p.message}`))
-    await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId))
-    const cfgs = await syncServerCfgs(userCfgDir(), csgoDir)
+    const serverName = cleanServerName(settings.serverName)
+    await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId), serverName)
+    const cfgs = await syncServerCfgs(userCfgDir(), csgoDir, serverName)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
     const stale = await killStaleServers(layout(installDir).cs2Exe)
     if (stale.length) send(IPC.serverLog, `[cs2prac] closed a leftover server process (${stale.join(', ')})`)

@@ -3,9 +3,14 @@ import { existsSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
-import type { Settings } from '@shared/ipc'
+import { DEFAULT_SERVER_NAME, type Settings } from '@shared/ipc'
 
-const DEFAULT_SETTINGS: Omit<Settings, 'rconPassword'> = { installDir: null, serverSource: 'client', matchzyMode: 'practice' }
+const DEFAULT_SETTINGS: Omit<Settings, 'rconPassword'> = {
+  installDir: null,
+  serverSource: 'client',
+  matchzyMode: 'practice',
+  serverName: DEFAULT_SERVER_NAME
+}
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 

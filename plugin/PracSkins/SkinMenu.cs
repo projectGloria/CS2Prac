@@ -73,18 +73,18 @@ public partial class PracSkins
         if (player is not { IsValid: true } || player.IsBot) return false;
         if (_loadout.Owner != null && player.SteamID.ToString() != _loadout.Owner)
         {
-            Reply("[CS2Prac] Skins are set up for another Steam account (CS2Prac app > Loadout > Skins for).");
+            Reply($"{Tag} Skins are set up for another Steam account (CS2Prac app > Loadout > Skins for).");
             return false;
         }
         if (player.TeamNum is not (2 or 3))
         {
-            Reply("[CS2Prac] Join T or CT first.");
+            Reply($"{Tag} Join T or CT first.");
             return false;
         }
         LoadCatalogIfChanged();
         if (_catalog.Weapons.Count == 0)
         {
-            Reply("[CS2Prac] No item list yet: open the Loadout tab in the CS2Prac app once, then restart the server.");
+            Reply($"{Tag} No item list yet: open the Loadout tab in the CS2Prac app once, then restart the server.");
             return false;
         }
         if (ReferenceEquals(_loadout, LoadoutFile.Empty)) _loadout = new LoadoutFile { Schema = 2 };
@@ -123,7 +123,7 @@ public partial class PracSkins
         var held = HeldWeapon(player!);
         if (held == null)
         {
-            command.ReplyToCommand("[CS2Prac] Hold the weapon you want to change.");
+            command.ReplyToCommand($"{Tag} Hold the weapon you want to change.");
             return;
         }
         var q = command.ArgString;
@@ -162,7 +162,7 @@ public partial class PracSkins
         var held = HeldWeapon(player!);
         if (held is not { Kind: "weapon" })
         {
-            command.ReplyToCommand("[CS2Prac] Hold the gun you want to put stickers on.");
+            command.ReplyToCommand($"{Tag} Hold the gun you want to put stickers on.");
             return;
         }
         var q = command.ArgString;
@@ -177,7 +177,7 @@ public partial class PracSkins
         var held = HeldWeapon(player!);
         if (held is not { Kind: "weapon" })
         {
-            command.ReplyToCommand("[CS2Prac] Hold the gun you want to put a charm on.");
+            command.ReplyToCommand($"{Tag} Hold the gun you want to put a charm on.");
             return;
         }
         OpenMenu(player!, CharmPage(held.Def, command.ArgString));

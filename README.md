@@ -26,6 +26,8 @@ The server runs as a LAN `-insecure` server, so it is only meant for practising 
 1. Download `CS2Prac-Setup-<version>.exe` from the [latest release](https://github.com/projectGloria/CS2Prac/releases/latest) and run it.
    It is not code-signed, so Windows SmartScreen warns the first time: **More info → Run anyway**.
 2. Open CS2Prac and click **Set up**. When CS2 is installed through Steam, everything else is automatic.
+   Metamod:Source, CounterStrikeSharp, MatchZy and a skin data snapshot come inside the installer, so setup needs no
+   downloads (only the SteamCMD server option and **Update plugins to latest** go online).
 
 The app updates itself: new releases are downloaded in the background and a **Restart to update** banner appears.
 Settings, loadouts and logs are in `%APPDATA%\CS2Prac` and are kept across updates and reinstalls (the **Logs** link
@@ -55,7 +57,8 @@ npm run dev            # start the app
 npm test               # unit tests (vitest)
 npm run typecheck
 npm run build:plugin   # rebuild plugin/PracSkins -> resources/plugin/PracSkins/PracSkins.dll
-npm run dist           # local Windows installer -> dist/CS2Prac-Setup-<version>.exe (not published)
+npm run build:bundle   # download the pinned Metamod/CSS/MatchZy zips + skin data into resources/bundle (git-ignored)
+npm run dist           # build:bundle, then the local Windows installer -> dist/CS2Prac-Setup-<version>.exe (not published)
 ```
 
 npm 11 runs package install scripts only when they are approved. Electron's (which downloads the Electron
@@ -85,6 +88,9 @@ Saving in the app sends `css_prac_reload` to a running server.
 2. If skins stop showing, the memory signature PracSkins uses may have changed. Put the new one in
    `configs/plugins/PracSkins/signatures.json` (`{ "windows": "…", "linux": "…" }`). The
    cs2-WeaponPaints gamedata (`CAttributeList_SetOrAddAttributeValueByName`) is a good source.
+
+Third-party licenses (Metamod:Source zlib, CounterStrikeSharp GPL-3.0 with a plugin exception, MatchZy MIT,
+CSGO-API MIT) are shipped in `resources/bundle/licenses`, next to the bundled copies.
 
 Skin data comes from [ByMykel/CSGO-API](https://github.com/ByMykel/CSGO-API). The skin technique follows
 [cs2-WeaponPaints](https://github.com/Nereziel/cs2-WeaponPaints).

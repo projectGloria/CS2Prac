@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { MatchZyMode, SetupProgress } from '@shared/ipc'
 import { installZip, needsInstall, readPluginVersions, writePluginVersions, type PluginMode } from './plugins'
+import { bundledZip } from './bundle'
 
 /**
  * MatchZy (https://github.com/shobhit-pathak/MatchZy): practice mode (.prac, .bot, .rethrow, .savenade …) and
@@ -28,7 +29,7 @@ export async function ensureMatchZy(csgoDir: string, report: (p: SetupProgress) 
   const target = mode === 'latest' ? await latestMatchZy() : MATCHZY_VERSION
   if (!needsInstall(existsSync(matchZyDll(csgoDir)), versions.matchzy, target, mode)) return false
   // MatchZy's own cfgs (config.cfg, prac.cfg …) are replaced; our *_override.cfg files are not in the zip.
-  await installZip(matchZyUrl(target), csgoDir, 'MatchZy', report)
+  await installZip(matchZyUrl(target), csgoDir, 'MatchZy', report, bundledZip('matchzy', target))
   await writePluginVersions(csgoDir, { ...(await readPluginVersions(csgoDir)), matchzy: target })
   return true
 }
@@ -36,10 +37,11 @@ export async function ensureMatchZy(csgoDir: string, report: (p: SetupProgress) 
 const AUTOSTART: Record<MatchZyMode, number> = { off: 0, match: 1, practice: 2 }
 
 /** cfg/MatchZy/config_override.cfg, executed by MatchZy right after its config.cfg. */
-export function configOverride(mode: MatchZyMode): string {
-  return `// Written by CS2Prac before every start; changes here are overwritten. Use the app's Mode setting.
+export function configOverride(mode: MatchZyMode, serverName = 'CS2Prac'): string {
+  return `// Written by CS2Prac before every start; changes here are overwritten. Use the app's Mode and Server name settings.
 matchzy_autostart_mode ${AUTOSTART[mode]}
-matchzy_hostname_format "CS2Prac"
+matchzy_hostname_format "${serverName}"
+matchzy_chat_prefix "[{Green}${serverName}{Default}]"
 matchzy_show_credits_on_match_start false
 matchzy_kick_when_no_match_loaded false
 `
@@ -69,10 +71,15 @@ export function mergeMatchZyAdmins(text: string | null, ours: string[], previous
   return JSON.stringify(admins, null, 2)
 }
 
-export async function writeMatchZyConfig(csgoDir: string, mode: MatchZyMode, steamIds: string[]): Promise<void> {
+export async function writeMatchZyConfig(
+  csgoDir: string,
+  mode: MatchZyMode,
+  steamIds: string[],
+  serverName?: string
+): Promise<void> {
   const dir = join(csgoDir, 'cfg', 'MatchZy')
   await mkdir(dir, { recursive: true })
-  await writeFile(join(dir, 'config_override.cfg'), configOverride(mode))
+  await writeFile(join(dir, 'config_override.cfg'), configOverride(mode, serverName))
   await writeFile(join(dir, 'prac_override.cfg'), PRAC_OVERRIDE)
 
   const file = join(dir, 'admins.json')
