@@ -129,7 +129,8 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   (say listener) / `css_spawns`; `css_prac_spawns 1` in prac_override.cfg turns them on when practice starts. Redrawn
   on every round start (restarts remove them).
 - Bot glow: `.glow` / `css_glow`; a relay prop_dynamic follows the pawn and a glow prop_dynamic follows the relay
-  (Glow.GlowType 3, GlowTeam -1). Re-added on bot spawn. Server-side test switches: `css_prac_spawns`, `css_prac_glow`.
+  (Glow.GlowType 3, GlowTeam -1, Glowing true, plus glowstate/glowcolor spawn keyvalues and StartGlowing). Both props
+  must spawn at the pawn's origin (`origin` keyvalue): FollowEntity alone left them at 0,0,0, so nothing showed. Re-added on bot spawn. Server-side test switches: `css_prac_spawns`, `css_prac_glow`.
 
 ## Hardening (Phase 6)
 - Plugin versions: `PINNED` in setup/plugins.ts (Metamod, CSS) and `MATCHZY_VERSION` in setup/matchzy.ts. Setup and

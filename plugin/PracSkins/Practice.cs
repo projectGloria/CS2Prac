@@ -338,25 +338,40 @@ public partial class PracSkins
         {
             var kv = new CEntityKeyValues();
             kv.SetString("model", model);
+            // spawn on the bot: FollowEntity alone left the props at the world origin
+            if (pawn.AbsOrigin is { } at) kv.SetVector("origin", at.X, at.Y, at.Z);
+            if (pawn.AbsRotation is { } rot) kv.SetAngle("angles", rot.X, rot.Y, rot.Z);
             return kv;
         }
+
+        var color = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
 
         relay.Spawnflags = 256u;
         relay.RenderMode = RenderMode_t.kRenderNone;
         relay.DispatchSpawn(ModelKv());
 
+        // The glow goes in at spawn (prop_dynamic's glow keyvalues + the fields), and StartGlowing afterwards: field
+        // writes after spawn alone never reached the client ("glow on" but nothing visible).
+        var glowKv = ModelKv();
+        glowKv.SetInt("glowstate", 3);
+        glowKv.SetColor("glowcolor", color);
+        glowKv.SetInt("glowrange", 5000);
+        glowKv.SetInt("glowrangemin", 0);
+        glowKv.SetInt("glowteam", -1);
         glow.Spawnflags = 256u;
         glow.Render = Color.FromArgb(1, 255, 255, 255);
-        glow.DispatchSpawn(ModelKv());
-
-        glow.Glow.GlowColorOverride = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
+        glow.Glow.GlowColorOverride = color;
         glow.Glow.GlowRange = 5000;
         glow.Glow.GlowRangeMin = 0;
         glow.Glow.GlowTeam = -1;
         glow.Glow.GlowType = 3;
+        glow.Glow.Glowing = true;
+        glow.DispatchSpawn(glowKv);
 
         relay.AcceptInput("FollowEntity", pawn, relay, "!activator");
         glow.AcceptInput("FollowEntity", relay, glow, "!activator");
+        glow.AcceptInput("SetGlowColor", null, null, $"{color.R} {color.G} {color.B}");
+        glow.AcceptInput("StartGlowing");
         _glows[pawn.Index] = (relay, glow);
     }
 
