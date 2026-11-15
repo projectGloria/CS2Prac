@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ConnectInfo, GameMode, MapChoice, ServerStatus, Settings } from '@shared/ipc'
+import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerStatus, Settings } from '@shared/ipc'
 
 const MODES: { id: GameMode; label: string }[] = [
   { id: 'competitive', label: 'Competitive' },
@@ -25,6 +25,33 @@ function CopyLine({ text, hidden }: { text: string; hidden?: string }) {
     </div>
   )
 }
+
+const MZ_MODES: { id: MatchZyMode; label: string; hint: string }[] = [
+  { id: 'practice', label: 'Practice', hint: 'MatchZy practice mode: infinite ammo and money, respawn, nade trajectories, .bot, .rethrow …' },
+  { id: 'match', label: 'Match', hint: 'MatchZy match mode: warmup, .ready, knife round, pauses.' },
+  { id: 'off', label: 'Plain', hint: 'MatchZy stays idle; the game mode rules apply. Use .prac in game to switch anyway.' }
+]
+
+/** MatchZy chat commands (also with ! instead of .). */
+const MZ_COMMANDS: [string, string][] = [
+  ['.prac / .exitprac', 'start or leave practice mode'],
+  ['.bot / .cbot', 'place a bot where you stand (crouching)'],
+  ['.nobots', 'remove all bots'],
+  ['.spawn <n> / .ctspawn / .tspawn', 'teleport to a spawn'],
+  ['.showspawns / .hidespawns', 'show spawn points'],
+  ['.rethrow / .last', 'rethrow your last grenade / go back to where you threw it'],
+  ['.savenade <name> / .loadnade <name>', 'save and load lineups'],
+  ['.listnades', 'list saved lineups'],
+  ['.noflash', 'toggle flash immunity'],
+  ['.clear', 'remove smokes and fires'],
+  ['.ff', 'fast-forward 20 seconds'],
+  ['.timer', 'stopwatch for runs'],
+  ['.god', 'toggle god mode'],
+  ['.dryrun', 'dry-run a round with match settings'],
+  ['.ct / .t / .spec', 'switch team'],
+  ['.map <name>', 'change map'],
+  ['!cmd <command>', 'run any server command (CS2Prac)']
+]
 
 const mapLabel = (m: MapChoice) => (m.kind === 'official' ? m.name : `Workshop ${m.id}`)
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
@@ -109,6 +136,24 @@ export default function Play({ status }: { status: ServerStatus }) {
           </select>
         </label>
 
+        {settings && (
+          <label className="field">
+            MatchZy
+            <select
+              value={settings.matchzyMode}
+              disabled={!stopped}
+              onChange={(e) => updateSettings({ matchzyMode: e.target.value as MatchZyMode })}
+            >
+              {MZ_MODES.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            <span className="muted small">{MZ_MODES.find((m) => m.id === settings.matchzyMode)?.hint}</span>
+          </label>
+        )}
+
         <p className="muted small">
           Selected: <strong>{mapLabel(selected)}</strong>
           {status.state !== 'stopped' && (
@@ -140,6 +185,22 @@ export default function Play({ status }: { status: ServerStatus }) {
           )}
         </div>
         {error && <p className="error-text">{error}</p>}
+
+        <details className="mz-help">
+          <summary>MatchZy commands</summary>
+          <table>
+            <tbody>
+              {MZ_COMMANDS.map(([c, d]) => (
+                <tr key={c}>
+                  <td>
+                    <code>{c}</code>
+                  </td>
+                  <td className="muted small">{d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
 
         {running && info && (
           <div className="connect-box">

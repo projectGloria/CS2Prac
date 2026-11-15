@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import type { Settings } from '@shared/ipc'
 
-const DEFAULT_SETTINGS: Omit<Settings, 'rconPassword'> = { installDir: null, serverSource: 'client' }
+const DEFAULT_SETTINGS: Omit<Settings, 'rconPassword'> = { installDir: null, serverSource: 'client', matchzyMode: 'practice' }
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 

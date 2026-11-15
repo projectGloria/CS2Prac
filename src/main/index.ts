@@ -15,6 +15,7 @@ import {
 } from '@shared/ipc'
 import { isInstalled, layout, loadSettings, saveSettings, userCfgDir } from './paths'
 import { ensureAdmins, syncServerCfgs } from './setup/serverConfig'
+import { ensureMatchZy, matchZyDll, writeMatchZyConfig } from './setup/matchzy'
 import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
@@ -52,7 +53,7 @@ async function getState(): Promise<SetupState> {
     sameDrive: !!(installDir && client && sameDrive(installDir, client.dir))
   }
   if (!installDir)
-    return { ...base, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pracSkinsInstalled: false, pluginVersions: {} }
+    return { ...base, steamcmdInstalled: false, serverInstalled: false, pluginsInstalled: false, pracSkinsInstalled: false, matchzyInstalled: false, pluginVersions: {} }
   const l = layout(installDir)
   const pluginVersions = await readPluginVersions(l.csgoDir)
   return {
@@ -62,6 +63,7 @@ async function getState(): Promise<SetupState> {
     pluginsInstalled:
       isInstalled(join(l.csgoDir, 'addons', 'metamod')) && isInstalled(join(l.csgoDir, 'addons', 'counterstrikesharp')),
     pracSkinsInstalled: isInstalled(join(installedPluginDir(l.csgoDir), 'PracSkins.dll')),
+    matchzyInstalled: isInstalled(matchZyDll(l.csgoDir)),
     pluginVersions
   }
 }
@@ -163,13 +165,16 @@ function registerIpc() {
         await ensureSteamCmd(installDir, report)
         await installOrUpdateServer(installDir, report, setupLog)
       }
-      const v = await ensurePlugins(installDir, report)
-      const skins = await installPracSkins(layout(installDir).csgoDir)
+      await ensurePlugins(installDir, report)
+      const { csgoDir } = layout(installDir)
+      const skins = await installPracSkins(csgoDir)
+      await ensureMatchZy(csgoDir, report)
+      const v = await readPluginVersions(csgoDir)
       report({
         phase: 'done',
         percent: 100,
         message:
-          `Ready: CS2 server, Metamod ${v.metamod}, CounterStrikeSharp ${v.counterstrikesharp}` +
+          `Ready: CS2 server, Metamod ${v.metamod}, CounterStrikeSharp ${v.counterstrikesharp}, MatchZy ${v.matchzy}` +
           (skins ? ', PracSkins' : ' (PracSkins plugin not built – skins disabled)')
       })
     } catch (e) {
@@ -184,6 +189,8 @@ function registerIpc() {
   ipcMain.handle(IPC.settingsGet, loadSettings)
   ipcMain.handle(IPC.settingsUpdate, async (_e, patch: Partial<Settings>) => {
     const { installDir: _dir, serverSource: _source, rconPassword: _pw, ...rest } = patch
+    if (rest.matchzyMode !== undefined && !['practice', 'match', 'off'].includes(rest.matchzyMode))
+      throw new Error('Unknown MatchZy mode')
     const next = { ...(await loadSettings()), ...rest }
     await saveSettings(next)
     return next
@@ -211,6 +218,9 @@ function registerIpc() {
     await ensureAdmins(csgoDir, accounts.map((a) => a.steamId))
     if (accounts.length) send(IPC.serverLog, `[cs2prac] admins: ${accounts.map((a) => a.personaName).join(', ')}`)
     else send(IPC.serverLog, '[cs2prac] no Steam account found in loginusers.vdf – nobody is admin')
+    // Installs MatchZy for setups made before it was added (and after a version bump)
+    await ensureMatchZy(csgoDir, (p) => p.percent == null && send(IPC.serverLog, `[cs2prac] ${p.message}`))
+    await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId))
     const cfgs = await syncServerCfgs(userCfgDir(), csgoDir)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
     await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined })

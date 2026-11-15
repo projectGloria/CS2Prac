@@ -1,7 +1,7 @@
+import { extractZip } from './unzip'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import extract from 'extract-zip'
 import type { PluginVersions, SetupProgress } from '@shared/ipc'
 import { layout } from '../paths'
 import { downloadFile } from './steamcmd'
@@ -20,6 +20,10 @@ export async function readPluginVersions(csgoDir: string): Promise<PluginVersion
   }
 }
 
+export async function writePluginVersions(csgoDir: string, v: PluginVersions): Promise<void> {
+  await writeFile(versionsFile(csgoDir), JSON.stringify(v, null, 2))
+}
+
 async function latestMetamod(): Promise<{ version: string; url: string }> {
   const res = await fetch(MMS_BASE + 'mmsource-latest-windows')
   if (!res.ok) throw new Error(`Could not look up the latest Metamod build (${res.status})`)
@@ -36,7 +40,7 @@ async function latestCounterStrikeSharp(): Promise<{ version: string; url: strin
   return { version: rel.tag_name, url: asset.browser_download_url }
 }
 
-async function installZip(url: string, csgoDir: string, label: string, report: (p: SetupProgress) => void) {
+export async function installZip(url: string, csgoDir: string, label: string, report: (p: SetupProgress) => void) {
   const tmp = join(csgoDir, `.cs2prac-${label}.zip`)
   try {
     await downloadFile(url, tmp, (pct) =>
@@ -44,7 +48,7 @@ async function installZip(url: string, csgoDir: string, label: string, report: (
     )
     report({ phase: 'plugins', percent: null, message: `Extracting ${label}…` })
     // Both archives contain a top-level addons/ folder meant for game/csgo/.
-    await extract(tmp, { dir: csgoDir })
+    await extractZip(tmp, csgoDir)
   } finally {
     await rm(tmp, { force: true })
   }
@@ -71,7 +75,7 @@ export async function ensurePlugins(installDir: string, report: (p: SetupProgres
     installed.counterstrikesharp = css.version
   }
 
-  await writeFile(versionsFile(csgoDir), JSON.stringify(installed, null, 2))
+  await writePluginVersions(csgoDir, installed)
   await ensureGameinfoPatched(csgoDir)
   return installed
 }

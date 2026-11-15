@@ -26,12 +26,14 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [ ] **User check in game:** do client-side `rcon` (after pasting the `rcon_address/rcon_password` line from the Play page) and `!cmd` both work? (Verified server-side: `css_cmd`, admins.json, cfg exec after map load.)
 
 ## Phase 3: MatchZy (req 3)
-- [ ] Add `src/main/setup/matchzy.ts`. It installs the pinned `MatchZy-<ver>.zip` (plugin only; latest is 0.9.3) from GitHub Releases into `game/csgo/`, using the same `installZip` and versions-file pattern as `setup/plugins.ts`. MatchZy needs CSS v369 or newer.
-- [ ] Write `cfg/MatchZy/admins.json` with `{ "<your steamid>": "" }`. An empty flags string grants all MatchZy admin commands.
-- [ ] Write `cfg/MatchZy/config_override.cfg` with `matchzy_autostart_mode` from the UI: Practice is 2 (default), Match is 1, Off is 0. Put our practice defaults in `prac_override.cfg`. Never edit MatchZy's own cfgs, because its updates replace them.
-- [ ] On the Play page, add a Mode selector (Practice / Match / Plain) and show the MatchZy version in the status.
-- [ ] Check that PracSkins and MatchZy work together. Skins must survive `.prac`, `.bot`, `.rethrow` and round restarts, and MatchZy bots must not get your skins.
-- [ ] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade`…).
+- [x] Add `src/main/setup/matchzy.ts`. It installs the pinned `MatchZy-<ver>.zip` (plugin only; latest is 0.9.3) from GitHub Releases into `game/csgo/`, using the same `installZip` and versions-file pattern as `setup/plugins.ts`. MatchZy needs CSS v369 or newer.
+- [x] Write `cfg/MatchZy/admins.json` with `{ "<your steamid>": "" }`. An empty flags string grants all MatchZy admin commands.
+- [x] Write `cfg/MatchZy/config_override.cfg` with `matchzy_autostart_mode` from the UI: Practice is 2 (default), Match is 1, Off is 0. Put our practice defaults in `prac_override.cfg`. Never edit MatchZy's own cfgs, because its updates replace them.
+- [x] On the Play page, add a Mode selector (Practice / Match / Plain) and show the MatchZy version in the status.
+- [x] (Server-side verified: both load; knife skin applies to bots with MatchZy loaded and survives `mp_restartgame`. MatchZy kicks `bot_add` bots in practice mode, so `.bot` bots need an in-game check.) Check that PracSkins and MatchZy work together. Skins must survive `.prac`, `.bot`, `.rethrow` and round restarts, and MatchZy bots must not get your skins.
+- [x] Add a quick-reference panel in the app for MatchZy commands (`.prac`, `.bot`, `.spawn`, `.rethrow`, `.noflash`, `.clear`, `.god`, `.savenade`…).
+- [x] Replaced `extract-zip` (it hung forever on MatchZy's zip) with Windows' built-in `tar.exe` (`src/main/setup/unzip.ts`).
+- [ ] **User check in game:** practice mode on join, `.bot`, `.rethrow`, `.savenade`, and that your skins survive `.prac` / `.bot`.
 
 ## Phase 4: Full item catalog (req 5: all skins, agents, stickers, keychains)
 - [ ] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.

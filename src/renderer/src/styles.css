@@ -123,3 +123,8 @@ details.advanced > summary { cursor: pointer; color: var(--muted); }
 button.small-btn { padding: 4px 10px; font-size: 12px; }
 .connect-box { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border); }
 .connect-box h3 { margin: 8px 0 4px; }
+.mz-help { margin-top: 12px; }
+.mz-help summary { cursor: pointer; color: var(--muted); }
+.mz-help table { border-collapse: collapse; margin-top: 6px; width: 100%; }
+.mz-help td { padding: 3px 6px 3px 0; vertical-align: top; }
+.mz-help code { font-size: 12px; white-space: nowrap; }

@@ -1,10 +1,10 @@
+import { extractZip } from './unzip'
 import { spawn } from 'node:child_process'
 import { createWriteStream, existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import extract from 'extract-zip'
 import type { SetupProgress } from '@shared/ipc'
 import { layout } from '../paths'
 
@@ -36,7 +36,7 @@ export async function ensureSteamCmd(installDir: string, report: Report) {
   await downloadFile(STEAMCMD_URL, zip, (pct) =>
     report({ phase: 'steamcmd', percent: pct, message: 'Downloading SteamCMD…' })
   )
-  await extract(zip, { dir: steamcmdDir })
+  await extractZip(zip, steamcmdDir)
   await rm(zip, { force: true })
 }
 

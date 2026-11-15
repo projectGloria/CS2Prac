@@ -123,6 +123,9 @@ export default function Setup({ state, onState, serverStopped }: Props) {
           {v.metamod && <span className="muted small"> (MM {v.metamod}, CSS {v.counterstrikesharp})</span>}
         </li>
         <li className={state.pracSkinsInstalled ? 'ok' : ''}>PracSkins (skin plugin)</li>
+        <li className={state.matchzyInstalled ? 'ok' : ''}>
+          MatchZy (practice and match mode){v.matchzy && <span className="muted small"> ({v.matchzy})</span>}
+        </li>
       </ul>
 
       <button className="primary" disabled={!canInstall} onClick={() => install()}>

@@ -5,7 +5,11 @@ export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | '
 export interface PluginVersions {
   metamod?: string
   counterstrikesharp?: string
+  matchzy?: string
 }
+
+/** What MatchZy loads on map start: practice mode, match mode, or neither ("plain" server). */
+export type MatchZyMode = 'practice' | 'match' | 'off'
 
 /** Where the server's game files come from. */
 export type ServerSource = 'client' | 'steamcmd'
@@ -22,6 +26,7 @@ export interface SetupState {
   pluginsInstalled: boolean
   /** our skin plugin, copied into the server */
   pracSkinsInstalled: boolean
+  matchzyInstalled: boolean
   pluginVersions: PluginVersions
 }
 
@@ -40,6 +45,7 @@ export interface Settings {
   authKey?: string
   /** fixed RCON password, so `rcon` from the game console keeps working across restarts */
   rconPassword: string
+  matchzyMode: MatchZyMode
 }
 
 /** Lines to paste into the CS2 console. */

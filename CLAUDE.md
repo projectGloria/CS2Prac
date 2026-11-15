@@ -24,6 +24,9 @@ src/main/            Electron main process (Node). Does all the real work.
   setup/plugins.ts   downloads Metamod 2.x + CounterStrikeSharp (with-runtime) into game/csgo
   setup/gameinfo.ts  patches gameinfo.gi with `Game csgo/addons/metamod` (re-applied every start)
   setup/cssConfig.ts sets CSS core.json FollowCS2ServerGuidelines=false (required for skins)
+  setup/matchzy.ts   pinned MatchZy (MATCHZY_VERSION) install; every start writes cfg/MatchZy/config_override.cfg
+                     (matchzy_autostart_mode from settings.matchzyMode), prac_override.cfg and MatchZy admins.json
+  setup/unzip.ts     extractZip via C:\Windows\System32	ar.exe (extract-zip hung on some zips; don't bring it back)
   setup/pracskins.ts copies the prebuilt PracSkins plugin and ensures the CSS config
   setup/serverConfig.ts  every start: CSS admins.json (all local Steam accounts = @css/root, entries prefixed cs2prac_),
                      copies %APPDATA%/CS2Prac/cfg into server cfg/, writes cs2prac_defaults.cfg (sv_cheats 1 ...)
@@ -81,6 +84,14 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   Not named `css_rcon` because MatchZy has `.rcon`.
 - PracSkins runs `execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg` 2 s after every map start.
 
+## MatchZy (Phase 3)
+- Installed by Setup and, if missing or a different pinned version, on server start. Only edit `*_override.cfg`
+  files, never MatchZy's own cfgs (its updates replace them).
+- MatchZy registers lots of `css_*` commands (`css_rcon`, `css_t`, `css_ct`, `css_bot` …); check for clashes before
+  naming new PracSkins commands (`strings MatchZy.dll | grep css_`).
+- In practice mode MatchZy kicks bots added with `bot_add` ("erroneous spawning"); use `.bot` in game. For bot-based
+  live tests use MatchZy mode `off`.
+
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
 - `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.
@@ -88,4 +99,4 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–2 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–3 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.
