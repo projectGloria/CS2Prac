@@ -143,6 +143,16 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - A server exit that wasn't requested sets `status.crashed`. `killStaleServers` (on app launch and before every start)
   kills only cs2.exe processes running from our server folder.
 
+## Own client cfgs (cfg bridge)
+- A client can't run server commands on a dedicated server: replicated cvars (sv_cheats, sv_infinite_ammo …) are
+  refused by the client itself, and bot_kick/ent_fire/mp_warmup_end are rejected by the engine before any plugin
+  hook sees them (too many rejections kick the player). So this can't be fixed server-side alone.
+- Every start, `writeCfgBridge` (src/main/setup/cfgBridge.ts) writes `<client cfg>/cs2prac/<name>.cfg` for each
+  non-Valve cfg: runs of server commands (prefixes in SERVER_PREFIXES) become helper aliases
+  `cs2prac_<stem>_<n>` → `css_cfgrun <stem>_<n>`; the commands go to the plugin's `cfgbridge.json`
+  (plugin/PracSkins/CfgBridge.cs, @css/root). Helper aliases keep everything one word, so no nested quotes are ever
+  added. The user runs `exec cs2prac/<name>` instead of `exec <name>`.
+
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
 - `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.

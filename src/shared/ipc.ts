@@ -58,6 +58,8 @@ export interface ConnectInfo {
   rcon: string
   /** the app's cfg folder that is copied to the server before each start */
   cfgDir: string
+  /** `exec cs2prac/<name>` for each of the user's client cfgs that has server commands (cfg bridge) */
+  bridgedCfgs: string[]
 }
 
 export type GameMode = 'casual' | 'competitive' | 'wingman' | 'deathmatch'

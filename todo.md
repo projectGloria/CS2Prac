@@ -93,6 +93,11 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Tests: catalog parsing, loadout v2 migration, the admins.json and MatchZy cfg writers, and the plugin JSON round-trip.
 - [ ] Tag `v1.0.0`, which publishes the installer.
 - [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
+### Own client cfgs on the server (asked for during testing)
+- [x] Cfg bridge (`src/main/setup/cfgBridge.ts` ↔ `plugin/PracSkins/CfgBridge.cs`): every server start writes a copy of each user cfg to the client's `cfg/cs2prac/<name>.cfg`. In the copy, each run of server commands (sv_, mp_, bot_, ent_ …) becomes a helper alias that sends `css_cfgrun <id>`, and PracSkins runs them from `cfgbridge.json`. Binds, crosshair, play and alias toggles stay client-side. The Play page shows `exec cs2prac/Nihil`.
+  - Why: on a dedicated server the client refuses replicated cvars itself and the server rejects bot_kick/ent_fire/mp_warmup_end from players. Repeated rejections (local_clear = 6× ent_fire) got the user kicked for "too many failed console commands".
+  - Verified live (port 27115): steps run as the server (bot_stop 0 → 1), unknown ids answer clearly, no asserts.
+- [ ] **User check in game:** `exec cs2prac/Nihil`, then `pracNihil`, the bot/clear/ammo/impact keys, no kick on spamming DEL. Bind K to `css_menu` (the user does this).
 
 ## Next
 - [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.

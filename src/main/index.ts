@@ -16,6 +16,7 @@ import {
 } from '@shared/ipc'
 import { isInstalled, layout, loadSettings, saveSettings, userCfgDir } from './paths'
 import { ensureAdmins, syncServerCfgs } from './setup/serverConfig'
+import { BRIDGE_DIR, writeCfgBridge } from './setup/cfgBridge'
 import { ensureMatchZy, matchZyDll, writeMatchZyConfig } from './setup/matchzy'
 import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
@@ -130,6 +131,22 @@ function watchLoadout(csgoDir: string) {
   })
 }
 
+/** Bridged copies of the user's client cfgs (see setup/cfgBridge.ts), as `exec cs2prac/<name>` lines. */
+let bridgedCfgs: string[] = []
+async function bridgeClientCfgs(csgoDir: string) {
+  try {
+    const client = await findCs2Install()
+    if (!client) return
+    const { cfgs } = await writeCfgBridge(join(client.dir, 'game', 'csgo', 'cfg'), pluginConfigDir(csgoDir))
+    const used = cfgs.filter((c) => c.steps > 0)
+    bridgedCfgs = used.map((c) => `exec ${BRIDGE_DIR}/${c.name}`)
+    for (const c of used)
+      send(IPC.serverLog, `[cs2prac] your ${c.name}.cfg on this server: exec ${BRIDGE_DIR}/${c.name} (${c.steps} server step(s))`)
+  } catch (e) {
+    logError('cfg bridge', e)
+  }
+}
+
 let lastProblems: string[] = []
 
 async function getHealth(): Promise<ServerHealth> {
@@ -167,7 +184,8 @@ async function connectInfo(): Promise<ConnectInfo> {
   return {
     connect: ['127.0.0.1', ...lanAddresses()].map((ip) => `connect ${ip}:${SERVER_PORT}`),
     rcon: `rcon_address 127.0.0.1:${SERVER_PORT}; rcon_password ${rconPassword}`,
-    cfgDir: userCfgDir()
+    cfgDir: userCfgDir(),
+    bridgedCfgs
   }
 }
 
@@ -291,6 +309,7 @@ function registerIpc() {
     await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId))
     const cfgs = await syncServerCfgs(userCfgDir(), csgoDir)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
+    await bridgeClientCfgs(csgoDir)
     const stale = await killStaleServers(layout(installDir).cs2Exe)
     if (stale.length) send(IPC.serverLog, `[cs2prac] closed a leftover server process (${stale.join(', ')})`)
     await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined })

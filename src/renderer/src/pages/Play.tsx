@@ -249,6 +249,17 @@ export default function Play({ status }: { status: ServerStatus }) {
               <code>!cmd &lt;command&gt;</code>, e.g. <code>css_cmd exec mycfg</code>. What the server prints shows up in the Console
               tab here. (CS2's own <code>rcon</code> command doesn't reach the server, so it isn't used.)
             </p>
+            {info.bridgedCfgs.length > 0 && (
+              <>
+                <p className="muted small">
+                  Your own cfgs: exec the CS2Prac copy instead of the original, so the server commands in your aliases
+                  (sv_, mp_, bot_, ent_fire …) run on the server:
+                </p>
+                {info.bridgedCfgs.map((c) => (
+                  <CopyLine key={c} text={c} />
+                ))}
+              </>
+            )}
           </div>
         )}
 
