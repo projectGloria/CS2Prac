@@ -21,3 +21,13 @@ describe('mergeMatchZyAdmins', () => {
     expect(out).toEqual({ a2: '@css/map', b: '' })
   })
 })
+
+describe('needsInstall', async () => {
+  const { needsInstall } = await import('./plugins')
+  it('pinned mode only installs what is missing; latest mode follows the version', () => {
+    expect(needsInstall(false, undefined, 'a', 'pinned')).toBe(true)
+    expect(needsInstall(true, 'old', 'a', 'pinned')).toBe(false)
+    expect(needsInstall(true, 'old', 'a', 'latest')).toBe(true)
+    expect(needsInstall(true, 'a', 'a', 'latest')).toBe(false)
+  })
+})

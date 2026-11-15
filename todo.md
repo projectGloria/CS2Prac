@@ -79,8 +79,13 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [ ] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
 
 ## Phase 6: Hardening and v1.0
-- [ ] Pin known-good versions of Metamod, CSS and MatchZy. "Check for plugin updates" becomes an explicit button, so a bad upstream release can't break a start.
-- [ ] Detect a CS2 update (the buildid changes) and broken plugins (CSS missing from `meta list`, or a signature failure in `css_prac_status`). Show a clear banner with a Repair button.
-- [ ] Crash recovery: detect when the server dies and offer a restart. On app launch, clean up a stale cs2.exe.
-- [ ] Tests: catalog parsing, loadout v2 migration, the admins.json and MatchZy cfg writers, and the plugin JSON round-trip.
+- [x] Pin known-good versions of Metamod, CSS and MatchZy. "Check for plugin updates" becomes an explicit button, so a bad upstream release can't break a start.
+- [x] Detect a CS2 update (the buildid changes) and broken plugins (CSS missing from `meta list`, or a signature failure in `css_prac_status`). Show a clear banner with a Repair button.
+- [x] Crash recovery: detect when the server dies and offer a restart. On app launch, clean up a stale cs2.exe.
+- [x] Tests: catalog parsing, loadout v2 migration, the admins.json and MatchZy cfg writers, and the plugin JSON round-trip.
 - [ ] Tag `v1.0.0`, which publishes the installer.
+- [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
+
+## Next
+- [ ] User tests Phases 1–6 in game and reports issues.
+- [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).

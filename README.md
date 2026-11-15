@@ -1,8 +1,16 @@
 # CS2Prac
 
-A Windows desktop app that runs a local CS2 practice server with any map and any weapon, knife or glove skin.
+A Windows desktop app that runs a local CS2 practice server: any map, MatchZy practice mode, you as admin, and every
+weapon skin, knife, glove, agent, sticker and charm, picked in the app or live in game.
 
-It sets up a CS2 server, Metamod:Source and CounterStrikeSharp, and its own small skin plugin (**PracSkins**).
+- **Start a server** on any official or workshop map, then join with the `connect` line the app shows.
+- **You are admin.** Every Steam account on the PC gets full rights: run any command with `!cmd <command>`
+  (or `rcon <command>` after pasting the app's rcon line), and your own cfgs from the app's server cfg folder.
+- **MatchZy** practice mode by default (`.bot`, `.rethrow`, `.savenade`, `.noflash` …), or match mode, or neither.
+- **Skins everywhere.** Use the Loadout tab, or press K in game (`bind k css_menu`) for a menu: W/S move, A/D page, E select,
+  R back. In chat, `!skin`, `!knife`, `!gloves`, `!agent`, `!sticker` and `!charm` search by name. Picks apply at once and stay in sync with the app.
+
+It sets up a CS2 server with Metamod:Source, CounterStrikeSharp, MatchZy and its own plugin (**PracSkins**).
 The server's game files come from one of two places:
 
 - **Your CS2 installation (default).** The server folder is made of hard links to the CS2 game you already

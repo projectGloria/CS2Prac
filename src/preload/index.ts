@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type Api, type ServerStatus, type SetupProgress, type UpdateStatus } from '@shared/ipc'
+import { IPC, type Api, type ServerHealth, type ServerStatus, type SetupProgress, type UpdateStatus } from '@shared/ipc'
 import type { LoadoutStore } from '@shared/skins'
 
 function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
@@ -24,7 +24,7 @@ const api: Api = {
     chooseInstallDir: () => ipcRenderer.invoke(IPC.setupChooseDir),
     useSuggestedDir: () => ipcRenderer.invoke(IPC.setupSuggestedDir),
     setSource: (source) => ipcRenderer.invoke(IPC.setupSetSource, source),
-    install: () => ipcRenderer.invoke(IPC.setupInstall),
+    install: (mode) => ipcRenderer.invoke(IPC.setupInstall, mode ?? 'pinned'),
     onProgress: (cb) => subscribe<SetupProgress>(IPC.setupProgress, cb),
     onLog: (cb) => subscribe<string>(IPC.setupLog, cb)
   },
@@ -39,6 +39,8 @@ const api: Api = {
     stop: () => ipcRenderer.invoke(IPC.serverStop),
     changeMap: (map) => ipcRenderer.invoke(IPC.serverChangeMap, map),
     connectInfo: () => ipcRenderer.invoke(IPC.serverConnectInfo),
+    getHealth: () => ipcRenderer.invoke(IPC.serverGetHealth),
+    onHealth: (cb) => subscribe<ServerHealth>(IPC.serverHealth, cb),
     openCfgFolder: () => ipcRenderer.invoke(IPC.serverOpenCfg),
     exec: (cmd) => ipcRenderer.invoke(IPC.serverExec, cmd),
     onStatus: (cb) => subscribe<ServerStatus>(IPC.serverStatus, cb),

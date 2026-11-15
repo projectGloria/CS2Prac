@@ -28,13 +28,13 @@ export default function Setup({ state, onState, serverStopped }: Props) {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight)
   }, [log])
 
-  async function install(quick = false) {
+  async function install(quick = false, mode: 'pinned' | 'latest' = 'pinned') {
     setBusy(true)
     setLog([])
     try {
       // One click: use the CS2 install's drive when no usable folder is chosen yet
       if (quick && (!state.installDir || !state.sameDrive)) onState(await window.api.setup.useSuggestedDir())
-      await window.api.setup.install()
+      await window.api.setup.install(mode)
     } catch {
       /* error is reported through the progress event */
     } finally {
@@ -131,7 +131,18 @@ export default function Setup({ state, onState, serverStopped }: Props) {
       <button className="primary" disabled={!canInstall} onClick={() => install()}>
         {busy ? 'Working…' : ready ? 'Update / repair' : 'Install'}
       </button>
+      {ready && (
+        <button disabled={!canInstall} onClick={() => install(false, 'latest')} title="Download the newest Metamod, CounterStrikeSharp and MatchZy">
+          Update plugins to latest
+        </button>
+      )}
       {!serverStopped && <p className="muted small">Stop the server to update it.</p>}
+      {ready && (
+        <p className="muted small">
+          “Update / repair” keeps the plugin versions CS2Prac was tested with. After a CS2 update breaks them, use “Update plugins
+          to latest”.
+        </p>
+      )}
       {ready && (
         <p className="muted small">
           {linked ? 'Game files are re-linked automatically before each start. ' : 'Run “Update / repair” after a CS2 update. '} Each CS2 update can break the plugins until new Metamod and

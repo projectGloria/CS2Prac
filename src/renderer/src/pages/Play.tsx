@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerStatus, Settings } from '@shared/ipc'
+import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
 const MODES: { id: GameMode; label: string }[] = [
   { id: 'competitive', label: 'Competitive' },
@@ -65,6 +65,12 @@ export default function Play({ status }: { status: ServerStatus }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
+  const [health, setHealth] = useState<ServerHealth | null>(null)
+
+  useEffect(() => {
+    window.api.server.getHealth().then(setHealth)
+    return window.api.server.onHealth(setHealth)
+  }, [])
 
   useEffect(() => {
     window.api.server.listMaps().then(setMaps)
@@ -97,8 +103,30 @@ export default function Play({ status }: { status: ServerStatus }) {
   const updateSettings = async (patch: Partial<Settings>) => setSettings(await window.api.settings.update(patch))
   const isSelected = (m: MapChoice) => JSON.stringify(m) === JSON.stringify(selected)
 
+  const crashed = status.state === 'stopped' ? status.crashed : undefined
   return (
     <div className="play">
+      {(crashed || health?.cs2Updated || !!health?.problems.length) && (
+        <div className="notices">
+          {crashed && (
+            <p className="notice error">
+              The server stopped unexpectedly (exit code {crashed.code ?? 'unknown'}). The Console tab and the Logs link show what it
+              printed last. Start it again when ready.
+            </p>
+          )}
+          {health?.problems.map((p) => (
+            <p key={p} className="notice error">
+              {p}
+            </p>
+          ))}
+          {health?.cs2Updated && !health.problems.length && (
+            <p className="notice">
+              CS2 has been updated since your last working start. If the server or skins misbehave, use Setup → Update plugins to
+              latest.
+            </p>
+          )}
+        </div>
+      )}
       <section className="card wide">
         <h2>Map</h2>
         <div className="map-grid">

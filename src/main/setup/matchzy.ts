@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { MatchZyMode, SetupProgress } from '@shared/ipc'
-import { installZip, readPluginVersions, writePluginVersions } from './plugins'
+import { installZip, needsInstall, readPluginVersions, writePluginVersions, type PluginMode } from './plugins'
 
 /**
  * MatchZy (https://github.com/shobhit-pathak/MatchZy): practice mode (.prac, .bot, .rethrow, .savenade …) and
@@ -14,13 +14,22 @@ const matchZyUrl = (v: string) => `https://github.com/shobhit-pathak/MatchZy/rel
 export const matchZyDll = (csgoDir: string) =>
   join(csgoDir, 'addons', 'counterstrikesharp', 'plugins', 'MatchZy', 'MatchZy.dll')
 
-/** Installs the pinned MatchZy (plugin-only zip: addons/ + cfg/MatchZy) unless it is already there. */
-export async function ensureMatchZy(csgoDir: string, report: (p: SetupProgress) => void): Promise<boolean> {
+async function latestMatchZy(): Promise<string> {
+  const res = await fetch('https://api.github.com/repos/shobhit-pathak/MatchZy/releases/latest', {
+    headers: { Accept: 'application/vnd.github+json' }
+  })
+  if (!res.ok) throw new Error(`Could not look up the latest MatchZy release (${res.status})`)
+  return ((await res.json()) as { tag_name: string }).tag_name
+}
+
+/** Installs MatchZy (plugin-only zip: addons/ + cfg/MatchZy): the pinned version if missing, or the latest. */
+export async function ensureMatchZy(csgoDir: string, report: (p: SetupProgress) => void, mode: PluginMode = 'pinned'): Promise<boolean> {
   const versions = await readPluginVersions(csgoDir)
-  if (versions.matchzy === MATCHZY_VERSION && existsSync(matchZyDll(csgoDir))) return false
+  const target = mode === 'latest' ? await latestMatchZy() : MATCHZY_VERSION
+  if (!needsInstall(existsSync(matchZyDll(csgoDir)), versions.matchzy, target, mode)) return false
   // MatchZy's own cfgs (config.cfg, prac.cfg …) are replaced; our *_override.cfg files are not in the zip.
-  await installZip(matchZyUrl(MATCHZY_VERSION), csgoDir, 'MatchZy', report)
-  await writePluginVersions(csgoDir, { ...(await readPluginVersions(csgoDir)), matchzy: MATCHZY_VERSION })
+  await installZip(matchZyUrl(target), csgoDir, 'MatchZy', report)
+  await writePluginVersions(csgoDir, { ...(await readPluginVersions(csgoDir)), matchzy: target })
   return true
 }
 

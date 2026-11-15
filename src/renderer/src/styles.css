@@ -137,3 +137,6 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .extra-fields details .inline-field { margin: 4px 0; }
 .picker { border: 1px solid var(--accent); border-radius: 6px; padding: 8px; margin-bottom: 10px; }
 .picker .skin-grid { max-height: 360px; overflow-y: auto; }
+.notices { grid-column: 1 / -1; display: grid; gap: 6px; }
+.notice { margin: 0; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 6px; font-size: 14px; }
+.notice.error { border-color: var(--err); }

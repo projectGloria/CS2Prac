@@ -41,6 +41,8 @@ export interface Settings {
   installDir: string | null
   /** 'client': hard-link the player's CS2 install (no extra space); 'steamcmd': download the dedicated server */
   serverSource: ServerSource
+  /** CS2 build id at the last start where every plugin loaded */
+  lastGoodBuildId?: string
   /** Steam Web API key; some workshop maps need it on a dedicated server. */
   authKey?: string
   /** fixed RCON password, so `rcon` from the game console keeps working across restarts */
@@ -68,8 +70,16 @@ export interface StartOptions {
 }
 
 export type ServerStatus =
-  | { state: 'stopped' }
+  /** crashed: the process ended without being asked to (exit code, if any) */
+  | { state: 'stopped'; crashed?: { code: number | null } }
   | { state: 'starting' | 'running' | 'stopping'; map: MapChoice }
+
+export interface ServerHealth {
+  /** problems found after the last start (plugins not loaded, missing signature) */
+  problems: string[]
+  /** CS2 has a different build than at the last start where everything loaded */
+  cs2Updated: boolean
+}
 
 export type UpdateStatus =
   | { state: 'idle' | 'disabled' | 'checking' | 'latest' }
@@ -99,7 +109,8 @@ export interface Api {
     /** <drive of the CS2 install>\CS2Prac */
     useSuggestedDir(): Promise<SetupState>
     setSource(source: ServerSource): Promise<SetupState>
-    install(): Promise<void>
+    /** 'latest' updates Metamod, CounterStrikeSharp and MatchZy to their newest releases */
+    install(mode?: 'pinned' | 'latest'): Promise<void>
     onProgress(cb: (p: SetupProgress) => void): () => void
     onLog(cb: (line: string) => void): () => void
   }
@@ -114,6 +125,8 @@ export interface Api {
     stop(): Promise<void>
     changeMap(map: MapChoice): Promise<void>
     connectInfo(): Promise<ConnectInfo>
+    getHealth(): Promise<ServerHealth>
+    onHealth(cb: (h: ServerHealth) => void): () => void
     openCfgFolder(): Promise<void>
     exec(command: string): Promise<string>
     onStatus(cb: (s: ServerStatus) => void): () => void
@@ -161,6 +174,8 @@ export const IPC = {
   serverStop: 'server:stop',
   serverChangeMap: 'server:changeMap',
   serverConnectInfo: 'server:connectInfo',
+  serverGetHealth: 'server:getHealth',
+  serverHealth: 'server:health',
   serverOpenCfg: 'server:openCfg',
   serverExec: 'server:exec',
   serverStatus: 'server:status',

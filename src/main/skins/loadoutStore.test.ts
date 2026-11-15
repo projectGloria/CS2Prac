@@ -74,3 +74,11 @@ describe('fromLoadoutFile', () => {
     expect(back.name).toBe('Mine')
   })
 })
+
+describe('normalizeProfile', () => {
+  it('adds the agents of profiles saved before agents existed', async () => {
+    const { normalizeProfile } = await import('@shared/skins')
+    const old = { id: 'a', name: 'Old', weapons: {}, knife: { t: null, ct: null }, gloves: { t: null, ct: null } }
+    expect(normalizeProfile(old as never).agents).toEqual({ t: null, ct: null })
+  })
+})

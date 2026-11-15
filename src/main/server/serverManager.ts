@@ -35,6 +35,8 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
   private child: ChildProcess | null = null
   private rcon: Rcon | null = null
   private status: ServerStatus = { state: 'stopped' }
+  /** set by stop(); an exit without it is a crash */
+  private stopRequested = false
 
   getStatus() {
     return this.status
@@ -49,6 +51,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
     if (this.status.state !== 'stopped') throw new Error(`Server is ${this.status.state}`)
     const { cs2Exe, csgoDir } = layout(installDir)
 
+    this.stopRequested = false
     this.setStatus({ state: 'starting', map: opts.map })
     try {
       await ensureGameinfoPatched(csgoDir) // CS2 updates revert this file
@@ -101,11 +104,12 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
   }
 
   private onExit(code: number | null) {
-    this.emit('log', `[cs2prac] server exited (code ${code})`)
+    const crashed = !this.stopRequested && this.status.state === 'running'
+    this.emit('log', crashed ? `[cs2prac] the server stopped unexpectedly (exit code ${code})` : `[cs2prac] server exited (code ${code})`)
     this.child = null
     this.rcon?.close()
     this.rcon = null
-    this.setStatus({ state: 'stopped' })
+    this.setStatus(crashed ? { state: 'stopped', crashed: { code } } : { state: 'stopped' })
   }
 
   async exec(command: string): Promise<string> {
@@ -122,6 +126,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
   }
 
   async stop(): Promise<void> {
+    this.stopRequested = true
     const child = this.child
     if (!child) {
       if (this.status.state !== 'stopped') this.onExit(null)

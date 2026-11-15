@@ -112,6 +112,16 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - In practice mode MatchZy kicks bots added with `bot_add` ("erroneous spawning"); use `.bot` in game. For bot-based
   live tests use MatchZy mode `off`.
 
+## Hardening (Phase 6)
+- Plugin versions: `PINNED` in setup/plugins.ts (Metamod, CSS) and `MATCHZY_VERSION` in setup/matchzy.ts. Setup and
+  Repair install pinned versions only when missing; "Update plugins to latest" (install mode 'latest') moves to the newest.
+  PracSkins is compiled against the pinned CSS (PracSkins.csproj); bump both together after testing.
+- After each start, `checkHealth` (index.ts, server/health.ts) runs `meta list`, `css_plugins list`, `css_prac_status`;
+  problems go to the Console and a Play-page banner. A clean start stores the CS2 build id (`lastGoodBuildId`); a newer
+  build shows a "CS2 has been updated" notice.
+- A server exit that wasn't requested sets `status.crashed`. `killStaleServers` (on app launch and before every start)
+  kills only cs2.exe processes running from our server folder.
+
 ## Debugging in game or in the server console
 - `meta list` should show CounterStrikeSharp. `css_plugins list` should show PracSkins (and later MatchZy).
 - `css_prac_status` prints the loadout summary, whether the attribute function resolved, and per player the steamid, team, glove def and each weapon's def/paint/wear/quality/itemid.
@@ -119,4 +129,4 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–5 are committed (not yet tested in game by the user). Check `todo.md` for the next unticked phase.
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed (not yet tested in game by the user). Next: the user's in-game test results, then the v1.0.0 release when they ask.

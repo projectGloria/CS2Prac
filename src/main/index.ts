@@ -5,6 +5,7 @@ import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   IPC,
+  type ServerHealth,
   type ConnectInfo,
   type MapChoice,
   type ServerSource,
@@ -23,6 +24,7 @@ import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
+import { killStaleServers, parseHealth } from './server/health'
 import { cachedCatalog, getCatalog } from './skins/catalog'
 import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore } from './skins/loadoutStore'
 import { exportPluginCatalog } from './skins/pluginCatalog'
@@ -128,6 +130,27 @@ function watchLoadout(csgoDir: string) {
   })
 }
 
+let lastProblems: string[] = []
+
+async function getHealth(): Promise<ServerHealth> {
+  const { lastGoodBuildId, serverSource } = await loadSettings()
+  const client = serverSource === 'client' ? await findCs2Install() : null
+  return { problems: lastProblems, cs2Updated: !!(lastGoodBuildId && client?.buildId && client.buildId !== lastGoodBuildId) }
+}
+
+/** Asks the running server what loaded, remembers the CS2 build when all is well, and tells the UI. */
+async function checkHealth(expectMatchZy: boolean) {
+  const ask = (cmd: string) => server.exec(cmd).catch(() => '')
+  const [meta, plugins, status] = [await ask('meta list'), await ask('css_plugins list'), await ask('css_prac_status')]
+  lastProblems = parseHealth(meta, plugins, status, expectMatchZy)
+  for (const p of lastProblems) send(IPC.serverLog, `[cs2prac] problem: ${p}`)
+  if (!lastProblems.length) {
+    const client = await findCs2Install()
+    if (client?.buildId) await saveSettings({ ...(await loadSettings()), lastGoodBuildId: client.buildId })
+  }
+  send(IPC.serverHealth, await getHealth())
+}
+
 /** Every agent model, so the plugin can precache them and agents switch without a map change. */
 const agentModels = async () => (await cachedCatalog())?.agents.map((a) => a.model) ?? []
 
@@ -184,7 +207,8 @@ function registerIpc() {
   })
 
   let installing = false
-  ipcMain.handle(IPC.setupInstall, async () => {
+  ipcMain.handle(IPC.setupInstall, async (_e, mode: 'pinned' | 'latest' = 'pinned') => {
+    if (mode !== 'pinned' && mode !== 'latest') throw new Error('Unknown install mode')
     if (installing) throw new Error('An install is already running')
     if (server.getStatus().state !== 'stopped') throw new Error('Stop the server before updating it')
     const installDir = await requireInstallDir()
@@ -207,10 +231,10 @@ function registerIpc() {
         await ensureSteamCmd(installDir, report)
         await installOrUpdateServer(installDir, report, setupLog)
       }
-      await ensurePlugins(installDir, report)
+      await ensurePlugins(installDir, report, mode)
       const { csgoDir } = layout(installDir)
       const skins = await installPracSkins(csgoDir)
-      await ensureMatchZy(csgoDir, report)
+      await ensureMatchZy(csgoDir, report, mode)
       const v = await readPluginVersions(csgoDir)
       report({
         phase: 'done',
@@ -267,11 +291,15 @@ function registerIpc() {
     await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId))
     const cfgs = await syncServerCfgs(userCfgDir(), csgoDir)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
+    const stale = await killStaleServers(layout(installDir).cs2Exe)
+    if (stale.length) send(IPC.serverLog, `[cs2prac] closed a leftover server process (${stale.join(', ')})`)
     await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined })
+    checkHealth(settings.matchzyMode !== 'off').catch((e) => logError('health', e))
   })
   ipcMain.handle(IPC.serverStop, () => server.stop())
   ipcMain.handle(IPC.serverChangeMap, (_e, map: MapChoice) => server.changeMap(map))
   ipcMain.handle(IPC.serverConnectInfo, connectInfo)
+  ipcMain.handle(IPC.serverGetHealth, getHealth)
   ipcMain.handle(IPC.serverOpenCfg, async () => {
     await mkdir(userCfgDir(), { recursive: true })
     await shell.openPath(userCfgDir())
@@ -329,10 +357,17 @@ function createWindow() {
 process.on('uncaughtException', (e) => logError('main', e))
 process.on('unhandledRejection', (e) => logError('main', e))
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log('app', `CS2Prac ${app.getVersion()} starting${app.isPackaged ? '' : ' (dev)'}`)
   registerIpc()
   createWindow()
+  // A server left running by a crashed or killed app would block the port.
+  const { installDir } = await loadSettings()
+  if (installDir)
+    killStaleServers(layout(installDir).cs2Exe).then(
+      (pids) => pids.length && log('app', `closed leftover server process(es) ${pids.join(', ')}`),
+      (e) => logError('app', e)
+    )
   initUpdater((s) => send(IPC.appUpdateStatus, s))
 })
 
