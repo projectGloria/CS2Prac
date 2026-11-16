@@ -301,3 +301,20 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .import-text { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--mono, monospace); font-size: 12px; }
 .import-preview { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
 .import-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* Lineups (MatchZy saved nades) */
+.lineup-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.lineup-list { margin-top: 10px; display: flex; flex-direction: column; }
+.lineup-row { border-top: 1px solid var(--border); padding: 6px 0; }
+.lineup-head { display: flex; align-items: center; gap: 8px; }
+.lineup-name { flex: 1; min-width: 0; }
+.lineup-type { flex: none; width: 62px; text-align: center; font-size: 11px; font-weight: 600; padding: 2px 0; border-radius: 4px; background: var(--hover); color: var(--muted); }
+.lineup-type.t-smoke { color: #c9ced8; }
+.lineup-type.t-flash { color: #f2e27a; }
+.lineup-type.t-he { color: #e86a5a; }
+.lineup-type.t-molly { color: #f0954a; }
+.lineup-type.t-decoy { color: #8fb7e8; }
+.lineup-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px 70px; }
+.lineup-types { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 3px 10px; font-size: 12px; border-radius: 999px; }
+.chip.picked { border-color: var(--accent); color: var(--accent); }

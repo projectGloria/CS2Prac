@@ -38,6 +38,8 @@ public class SetSession
     public MoveType_t PreviousMoveType { get; set; } = MoveType_t.MOVETYPE_WALK;
     public uint HudBitsAdded { get; set; }
     public List<SetRow> Rows { get; set; } = new();
+    /// <summary>Nades tab type filter ("" = all).</summary>
+    public string NadeFilter { get; set; } = "";
 }
 
 /// <summary>configs/plugins/PracSkins/server_prefs.json: setting id -> value, for every map and per map.</summary>
@@ -60,7 +62,7 @@ public partial class PracSkins
     private const int RowChips = 6;
 
     private static readonly (string Id, string Label)[] SetTabs =
-        [("practice", "Practice"), ("server", "Server"), ("bots", "Bots"), ("sky", "Sky"), ("map", "Map"), ("spots", "Spots")];
+        [("practice", "Practice"), ("server", "Server"), ("bots", "Bots"), ("sky", "Sky"), ("map", "Map"), ("spots", "Spots"), ("nades", "Nades")];
 
     private static readonly SetOpt[] OffOn = [new("Off", "0"), new("On", "1")];
 
@@ -372,6 +374,9 @@ public partial class PracSkins
                 }
                 break;
             }
+            case "nades":
+                BuildNadeRows(player, s);
+                break;
             case "spots":
             {
                 LoadMoveSpots();
@@ -487,7 +492,7 @@ public partial class PracSkins
     private MenuPage SettingsMenuRoot() => new()
     {
         Title = "Server settings",
-        Build = () => SetTabs.Where(t => t.Id is not ("sky" or "map" or "spots"))
+        Build = () => SetTabs.Where(t => t.Id is not ("sky" or "map" or "spots" or "nades"))
             .Select(t => new MenuItem(t.Label, pl => PushPage(pl, SettingsMenuTab(t.Id, t.Label)))).ToList()
     };
 

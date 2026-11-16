@@ -260,9 +260,14 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] User check: import a real inspect link from the market/inventory (the hex kind) and compare in game.
 
 ## Phase 12: Lineup library (extra)
-- [ ] Read MatchZy's saved nades (find its file format and location) into the app: list per map, rename, describe,
-  delete, export/import a share file.
-- [ ] In game: a lineup page in the L window (teleport + angles, like `.spawn`), optional throw replay via MatchZy.
+- [x] Read MatchZy's saved nades (`cfg/MatchZy/savednades.json`, steamid|"default" → name → LineupPos/LineupAng/Desc/
+  Map/Type) into the app: Play page "Lineups" lists per map, rename, describe, set the type, delete, copy the
+  `.importnade` code, export/import a share file (our JSON, a raw savednades.json or `.importnade` lines).
+- [x] In game: L window "Nades" tab (this map, own + global, type filter); Go teleports onto the spot with the saved
+  angles and puts the grenade in hand. Live-tested on 27115 (teleport lands on the saved position).
+- [ ] Throw replay not done: MatchZy's `.rethrow` only replays your last grenade; recording throws per lineup would
+  need our own projectile capture (later, if wanted).
+- [ ] **User check:** `.savenade` in practice, the Lineups panel in the app, the Nades tab (restart CS2: new layout).
 
 ## Phase 13: Workshop map browser (extra)
 - [ ] App: search the Steam Workshop (public web API; or paste an ID/URL), thumbnails, start on a map via

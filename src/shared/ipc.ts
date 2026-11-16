@@ -1,6 +1,7 @@
 import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
+import type { Lineup } from './lineups'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
 
@@ -168,6 +169,16 @@ export interface Api {
      * started without any) */
     save(bots: BotsConfig): Promise<{ bots: BotsConfig; restartForPictures: boolean }>
   }
+  /** MatchZy's saved nades (cfg/MatchZy/savednades.json in the server folder) */
+  lineups: {
+    list(): Promise<Lineup[]>
+    update(owner: string, name: string, patch: Partial<Pick<Lineup, 'name' | 'desc' | 'type'>>): Promise<Lineup[]>
+    remove(owner: string, name: string): Promise<Lineup[]>
+    /** save dialog; resolves to the written path, or null when cancelled */
+    exportFile(lineups: Lineup[], fileName: string): Promise<string | null>
+    /** open dialog; adds the file's lineups as global ones (`map` for .importnade codes, which carry none) */
+    importFile(map: string): Promise<LineupImportResult | null>
+  }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
     listSteamAccounts(): Promise<SteamAccount[]>
@@ -180,6 +191,8 @@ export interface Api {
     onChanged(cb: (store: LoadoutStore) => void): () => void
   }
 }
+
+export type LineupImportResult = { ok: true; lineups: Lineup[]; added: number } | { ok: false; error: string }
 
 export interface LoadoutSaveResult {
   /** loadout.json written to the server's plugin config folder */
@@ -227,6 +240,11 @@ export const IPC = {
   serverPrefsChanged: 'server:prefsChanged',
   botsGet: 'bots:get',
   botsSave: 'bots:save',
+  lineupsList: 'lineups:list',
+  lineupsUpdate: 'lineups:update',
+  lineupsRemove: 'lineups:remove',
+  lineupsExport: 'lineups:export',
+  lineupsImport: 'lineups:import',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

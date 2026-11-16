@@ -13,12 +13,14 @@ import {
   Trophy,
   Users,
   Bot as BotIcon,
+  Bomb,
   type LucideIcon
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import CopyLine from '../components/CopyLine'
 import ServerSettings from '../components/ServerSettings'
 import Bots from '../components/Bots'
+import Lineups from '../components/Lineups'
 import splashArt from '../../../../assets/CS2Prac.png'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
@@ -80,6 +82,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
   const [busy, setBusy] = useState(false)
   const [showPrefs, setShowPrefs] = useState(false)
   const [showBots, setShowBots] = useState(false)
+  const [showLineups, setShowLineups] = useState(false)
   /** set from the Start click until the start finishes or fails (the prep before cs2.exe runs isn't 'starting' yet) */
   const [launching, setLaunching] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
@@ -276,6 +279,10 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                 <BotIcon size={15} aria-hidden />
                 Bots
               </button>
+              <button title="Saved nade lineups (MatchZy .savenade)" onClick={() => setShowLineups(true)}>
+                <Bomb size={15} aria-hidden />
+                Lineups
+              </button>
             </div>
           </div>
           {error && <p className="error-text">{error}</p>}
@@ -303,6 +310,12 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
 
         {showPrefs && <ServerSettings onClose={() => setShowPrefs(false)} />}
         {showBots && <Bots onClose={() => setShowBots(false)} />}
+        {showLineups && (
+          <Lineups
+            currentMap={status.state !== 'stopped' && status.map.kind === 'official' ? status.map.name : null}
+            onClose={() => setShowLineups(false)}
+          />
+        )}
 
         <section className="card mz-help">
           <h2>MatchZy commands</h2>

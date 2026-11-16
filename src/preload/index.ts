@@ -62,6 +62,13 @@ const api: Api = {
     get: () => ipcRenderer.invoke(IPC.botsGet),
     save: (bots) => ipcRenderer.invoke(IPC.botsSave, bots)
   },
+  lineups: {
+    list: () => ipcRenderer.invoke(IPC.lineupsList),
+    update: (owner, name, patch) => ipcRenderer.invoke(IPC.lineupsUpdate, owner, name, patch),
+    remove: (owner, name) => ipcRenderer.invoke(IPC.lineupsRemove, owner, name),
+    exportFile: (lineups, fileName) => ipcRenderer.invoke(IPC.lineupsExport, lineups, fileName),
+    importFile: (map) => ipcRenderer.invoke(IPC.lineupsImport, map)
+  },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),
     listSteamAccounts: () => ipcRenderer.invoke(IPC.skinsSteamAccounts)

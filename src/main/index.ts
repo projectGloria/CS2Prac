@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync, watch, type FSWatcher } from 'node:fs'
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
@@ -35,6 +35,8 @@ import type { ServerPrefs } from '@shared/serverSettings'
 import { listSteamAccounts, steamPath } from './steam/accounts'
 import { readBots, saveBots, writeServerBots } from './setup/bots'
 import type { BotsConfig } from '@shared/bots'
+import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
+import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
 import type { LoadoutStore } from '@shared/skins'
@@ -382,6 +384,43 @@ function registerIpc() {
       }
     }
     return { bots: saved, restartForPictures }
+  })
+  // --- lineups (MatchZy's savednades.json; MatchZy re-reads it on every command, so edits apply while running) ---
+  const nadesDir = async () => layout(await requireInstallDir()).csgoDir
+  ipcMain.handle(IPC.lineupsList, async () => {
+    const { installDir } = await loadSettings()
+    return installDir ? readLineups(layout(installDir).csgoDir) : []
+  })
+  ipcMain.handle(IPC.lineupsUpdate, async (_e, owner: string, name: string, patch: Partial<Lineup>) => {
+    const dir = await nadesDir()
+    return writeRawNades(dir, updateLineup(await readRawNades(dir), owner, name, patch))
+  })
+  ipcMain.handle(IPC.lineupsRemove, async (_e, owner: string, name: string) => {
+    const dir = await nadesDir()
+    return writeRawNades(dir, deleteLineup(await readRawNades(dir), owner, name))
+  })
+  ipcMain.handle(IPC.lineupsExport, async (_e, lineups: Lineup[], fileName: string) => {
+    const r = await dialog.showSaveDialog(win!, {
+      title: 'Export lineups',
+      defaultPath: join(app.getPath('documents'), fileName.replace(/[<>:"/\\|?*]/g, '_')),
+      filters: [{ name: 'Lineups', extensions: ['json'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    await writeFile(r.filePath, toShareFile(lineups), 'utf8')
+    return r.filePath
+  })
+  ipcMain.handle(IPC.lineupsImport, async (_e, map: string) => {
+    const r = await dialog.showOpenDialog(win!, {
+      title: 'Import lineups',
+      properties: ['openFile'],
+      filters: [{ name: 'Lineups', extensions: ['json', 'txt', 'cfg'] }, { name: 'All files', extensions: ['*'] }]
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    const parsed = parseShareFile(await readFile(r.filePaths[0], 'utf8'), GLOBAL_OWNER, map)
+    if (!parsed.ok) return parsed
+    const dir = await nadesDir()
+    const { raw, added } = addLineups(await readRawNades(dir), parsed.lineups)
+    return { ok: true, lineups: await writeRawNades(dir, raw), added: added.length }
   })
   ipcMain.handle(IPC.serverConnectInfo, connectInfo)
   ipcMain.handle(IPC.serverGetHealth, getHealth)

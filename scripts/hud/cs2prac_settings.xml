@@ -14,6 +14,7 @@
 					<Button id="ps_tab_sky" class="pk-tab"><Label class="pk-tab-text" text="Sky" hittest="false" /></Button>
 					<Button id="ps_tab_map" class="pk-tab"><Label class="pk-tab-text" text="Map" hittest="false" /></Button>
 					<Button id="ps_tab_spots" class="pk-tab"><Label class="pk-tab-text" text="Spots" hittest="false" /></Button>
+					<Button id="ps_tab_nades" class="pk-tab"><Label class="pk-tab-text" text="Nades" hittest="false" /></Button>
 				</Panel>
 				<Button id="ps_close" class="pk-close"><Label class="pk-close-text" text="&#10005;" hittest="false" /></Button>
 			</Panel>

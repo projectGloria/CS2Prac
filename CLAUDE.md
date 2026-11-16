@@ -302,6 +302,17 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   `css_prac_chat_prefix` (cs2prac_defaults.cfg; PracSkins' `Tag`/`ChatTag`). MatchZy's own server-console log lines
   keep `[MatchZy]`; only chat changes. Verified live on 27115.
 
+## Lineups (Phase 12)
+- MatchZy's `.savenade <name> [desc]` (practice mode) writes `<csgo>/cfg/MatchZy/savednades.json`:
+  `{ "<steamid64>"|"default": { "<name>": { LineupPos "x y z", LineupAng "p y r", Desc, Map, Type? } } }`. "default"
+  = global (listed for everyone); a name is a dict key (unique per owner across maps). `.importnade` entries have no
+  Type (`.loadnade` then uses slot8). MatchZy re-reads the file on every command, so edits apply while running.
+- App: src/shared/lineups.ts (parse/edit/share file `{kind:'cs2prac-lineups', schema 1}`, import also takes a raw
+  savednades.json or `.importnade` lines), src/main/setup/lineups.ts (atomic write), Play page "Lineups"
+  (components/Lineups.tsx). Imports land under "default". Names: no spaces (`.loadnade` takes one word).
+- Plugin: Lineups.cs, L window tab `nades` (type filter chips, Go = teleport + give/select the grenade; no practice
+  check). Server test: `css_prac_lineups [index]` (first human, else bot; with an index it loads that lineup).
+
 ## Movement mode (plugin/PracSkins/Movement.cs)
 - `.movement` (say listener, like `.spawns`) / `css_movement <sub>`; `.next`/`.prev`/`.reset` only react while the
   player is in the mode (MatchZy has no such commands, but keep them gated). Spots: `configs/plugins/PracSkins/movement/<map>.json`
