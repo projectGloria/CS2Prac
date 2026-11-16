@@ -1,6 +1,6 @@
 {
   "name": "cs2prac",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Local CS2 practice server manager",
   "author": "projectGloria",
   "main": "out/main/index.js",
@@ -72,10 +72,13 @@
           ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "assets/CS2Prac.ico"
     },
     "nsis": {
       "oneClick": false,
+      "installerIcon": "assets/CS2Prac.ico",
+      "uninstallerIcon": "assets/CS2Prac.ico",
+      "installerHeaderIcon": "assets/CS2Prac.ico",
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "artifactName": "CS2Prac-Setup-${version}.exe",

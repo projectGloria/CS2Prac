@@ -42,7 +42,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   - Fixed: the first version dropped the client with NETWORK_DISCONNECT_OVERFLOW (SetModel before spawn → engine assert + minidump stall).
   - Fixed: the second version showed nothing (glow props at 0,0,0, glow never switched on). Server-side verified the props now sit on and follow the bots.
   - Fixed: still nothing on the client with the model as a spawn keyvalue. Now SetModel with the staging flag cleared + transparent bone-merged copy. **User-confirmed** the outline shows through walls.
-- [ ] **User check in game:** the floor squares look right everywhere (T spawn slope), `.glow` back after a bot respawns, E still opens doors / defuses when not aiming at a square.
+- [x] **User check in game:** the floor squares look right everywhere (T spawn slope), `.glow` back after a bot respawns, E still opens doors / defuses when not aiming at a square.
 
 ## Phase 4: Full item catalog (req 5: all skins, agents, stickers, keychains)
 - [x] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.
@@ -67,7 +67,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Live refresh: `css_prac_reload` re-gives the current weapons (keeping ammo and the active slot) and re-applies gloves and agent, with no respawn needed.
 - [x] Result of the data spike: ByMykel has `def_index` for agents, stickers (11k) and keychains, and `model_player` for agents (`agents/models/...vmdl`, confirmed in pak01_dir.vpk). No VPK reader needed.
 - [x] Server-side verified with bots: agents applied, sticker/keychain attributes set (also on a default-finish weapon), `css_prac_reload` swaps finishes live.
-- [ ] **User check in game:** stickers/charm look right (slot positions, scrape, the Position offsets), agent model and arms, instant refresh keeps ammo and active weapon.
+- [x] **User check in game (confirmed; scrape not tried, user is fine with it):** stickers/charm look right (slot positions, scrape, the Position offsets), agent model and arms, instant refresh keeps ammo and active weapon.
 
 ## Phase 5: In-game menu (req 4: press K, pick skins live)
 - [x] The app exports a compact `catalog.json` next to `loadout.json` for the plugin. It holds names and ids for weapons, knives, gloves, agents, stickers and keychains.
@@ -85,7 +85,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] The app shows the bind line to paste into your autoexec: `bind k css_menu`.
 - [x] Extra chat commands: `!agent`, `!charm`; `css_menu` toggles. Menu pages: finish (+ wear presets), knife model â†’ finish, gloves type â†’ finish, agent, sticker slots (scrape, remove), charm, StatTrak toggle.
 - [x] Verified server-side: plugin loads catalog.json (63 weapons, 63 agents, 11134 stickers, 78 charms); plugin-written loadout.json round-trips through the app's import unchanged (`css_prac_save`).
-- [ ] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
+- [x] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
 - [x] Fix: the text menu blinked (re-sent once a second; CS2 shows a center message only briefly) → re-sent every tick.
 
 ### Phase 5b: Skin window (real Panorama HUD, user's request "bigger, better UI")
@@ -97,7 +97,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] User feedback round 1: clicking a gun in the list equips it at once (replaces the gun of that slot; slot swap verified on a bot, `css_prac_hudequip`); AWP & co. were on page 2 → list and grid now scroll with the mouse wheel (36 rows / 64 tiles, no paging); click outside the window closes it (ESC can't reach the server).
 - [x] The round-1 layout didn't show at all: CS2's client rejected the clickable (Button) backdrop. Bisected with 4 layout variants in game; backdrop is a Panel again (no click-outside close). **User-confirmed:** window shows, mouse-wheel scrolling works.
 - [x] User feedback round 2: weapon icons in the left list (knives too; gloves show a finish); pager hidden while everything fits.
-- [ ] **User check in game:** restart CS2 (layout changed), icons in the left list, the gun you click lands in your hands.
+- [x] **User check in game:** restart CS2 (layout changed), icons in the left list, the gun you click lands in your hands.
 - [ ] Later: stickers and charms in the window; T/CT switch.
 
 ### Phase 5c: Third-person agent preview (user's request "like choosing a fighter")
@@ -106,7 +106,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Round 2 (plugin/PracSkins/AgentView.cs): a stand-in prop_dynamic with the agent's model on the player's spot faces the camera; the real pawn and its weapons are made invisible meanwhile. Turning (A/D, Turn buttons, Mouse1/Mouse2 in mouse look, mouse movement if the client reports it) rotates only the stand-in; the camera stays. Weapon poses bone-merge a weapon world model onto the stand-in (no more handing out real guns, so the Zeus problem is gone). Crouch removed (a prop can't crouch).
 - [x] Clicking an agent plays its `<voice>.vo_preview` (the random line the game's inventory plays) for that player only; voice set from items_game `vo_prefix`, else the faction (model folder).
 - [x] `css_prac_anim <input> [value]` sends an input to the stand-ins (try `!cmd css_prac_anim SetAnimation cu_t_pose01`; inventory poses cu_t_pose01-05 / cu_ct_pose01-05). Not live-tested (the user's server was running from the same folder).
-- [ ] **User check in game:** restart the server from the app and restart CS2. Agents → Third person: agent faces you, A/D/Turn rotate only the agent, voice line on click, does the stand-in stand idle or T-pose, does the pose weapon sit in its hand, is your own body gone? If the stand-in T-poses, try the css_prac_anim line above.
+- [x] (superseded by later rounds) **User check in game:** restart the server from the app and restart CS2. Agents → Third person: agent faces you, A/D/Turn rotate only the agent, voice line on click, does the stand-in stand idle or T-pose, does the pose weapon sit in its hand, is your own body gone? If the stand-in T-poses, try the css_prac_anim line above.
 - [x] Round 2 user test: works, but the own gloves still show on screen, weapon poses show nothing, the pose never changes.
 - [x] Round 3 findings (live on a throwaway mirror server, port 27115): the engine deletes any prop_dynamic(_override) with a weapon model ("has propdata … DELETED"), so pose weapons never existed; agent models have no named sequences (SetAnimation "no sequence named"), their animation is the animgraph only, whose parameters a server plugin can't set. Fixed so far: first-person viewmodel (arms/gloves) hidden while the preview runs (untested: bots have none); stand-in uses its anim graph (UseAnimGraph).
 - [x] User decision: a bot as the stand-in. Round 4 (plugin/PracSkins/AgentView.cs): MatchZy's `.bot` (run for the player; practice mode kicks any other bot as "untracked"), else `bot_add` on the other team (no name over its head); frozen (MOVETYPE_NONE, `bot_stop 1` while a preview runs, old value restored), no damage, no collision, on the player's spot with their agent model, gloves and skins (`_standInTeam` → `SkinTeam`); eye angles set every tick so it faces the camera and turns. Poses strip it and give one weapon. Kicked when the preview ends (`bot_kick`, or `kickid` + bot_quota − 1 for the MatchZy bot). Max 4 bot requests, then the prop stand-in (idle, no weapons). Weapon props removed.
@@ -117,7 +117,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Round 6: the stand-in stands ~72 units away (StandInSpot: behind, then sides/front; line traces at 16/38/64 and floor within 24 units), so MatchZy's timer ends at once; the player's weapons are stashed (killed) for the preview and given back on exit (clip/reserve, then `use` the one that was in hand). Live on 27115 (no MatchZy): gap 72, nothing in hand, knife/glock/C4 back after; 0 asserts. The MatchZy path needs a real player.
 - [x] Round 6 user check: no crash, bot next to you; but gloves/C4 still showed and the C4 kept dropping.
 - [x] Round 7: the client draws its own hands at the pawn's eye whatever the server does, so the pawn is teleported 140 units behind the camera (out of view; no damage meanwhile) and back to its spot on exit. C4 drops had two causes: loose C4s (a kicked carrier's, or what RemoveWeapons leaves) make a new one fall (RemoveLooseC4 before the give, at bot kick, before restoring the player's), and the game's AFK-bomb rule drops a T's C4 ~15 s into a round when it hasn't moved since spawn (stand-in gets HasMovedSinceSpawn = true every tick). A check re-gives it if it still falls. Live on 27115: T and CT stand-ins keep it across rifle→C4 for a whole round; 0 asserts.
-- [ ] **User check in game (round 7):** restart the server from the app. Gloves/C4 out of the picture? C4 pose holds the bomb (also late in the round, as T and CT)? Exit puts you back where you stood with your weapons?
+- [x] **User-confirmed (round 7), works as intended:** restart the server from the app. Gloves/C4 out of the picture? C4 pose holds the bomb (also late in the round, as T and CT)? Exit puts you back where you stood with your weapons?
 - [ ] Not possible server-side: mouse-wheel zoom (the wheel only switches weapons, the server never sees it); the agents' menu idle/celebration animations run on UI anim graphs (animation/graphs/ui/*) in the client only.
 
 ## Phase 6: Hardening and v1.0
@@ -125,12 +125,20 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Detect a CS2 update (the buildid changes) and broken plugins (CSS missing from `meta list`, or a signature failure in `css_prac_status`). Show a clear banner with a Repair button.
 - [x] Crash recovery: detect when the server dies and offer a restart. On app launch, clean up a stale cs2.exe.
 - [x] Tests: catalog parsing, loadout v2 migration, the admins.json and MatchZy cfg writers, and the plugin JSON round-trip.
-- [ ] Tag `v1.0.0`, which publishes the installer.
+- [x] Official icon `assets/CS2Prac.ico` (exe, installer, uninstaller, window); `assets/CS2Prac.png` as splash art.
+- [x] Start-up splash (static in index.html, window shown once it paints): splash art + spinner while images, settings,
+  maps and the skin catalog load (4 s min, 10 s max), then fades into the app. Fix: the art didn't show in dev (a
+  relative src in index.html isn't served there); now set from an import, and the window only shows once it decoded.
+- [x] "Server starting" overlay on the Play page (splash art, spinner, map, last console line, Cancel) from the Start
+  click until the server runs or fails.
+- [x] Version 1.0.0 in package.json.
+- [ ] **User check:** `npm run dev` restart: splash, then Start server shows the overlay.
+- [x] Tag `v1.0.0`: first public release, notes in docs/release-notes/v1.0.0 (user asked, 2026-11-16).
 - [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
 ### Own client cfg on the server (asked for during testing)
 - [x] The user's `pracNihil` (client cfg `Nihil.cfg`) only half worked: on a dedicated server the client refuses replicated cvars and the server rejects bot_kick/ent_fire/mp_warmup_end from players (6× ent_fire per DEL press got them kicked for "too many failed console commands").
 - [x] Fix, at the user's request, inside their own `Nihil.cfg` (no second cfg, no app-generated copy; an app-side "cfg bridge" was tried and reverted): a `pracGloria` section with `gloria_*` aliases that mirror pracNihil but send every server command as `css_cmd <command>`. pracNihil stays for offline practice.
-- [ ] **User check in game:** `exec Nihil`, connect, `pracGloria`; the bot/clear/ammo/impact/nade keys; no kick on spamming DEL. Bind K to `css_menu` (the user does this). Each `css_cmd` echoes one "[CS2Prac] ran: …" console line; make it quiet if the user finds it noisy.
+- [x] **User check in game:** `exec Nihil`, connect, `pracGloria`; the bot/clear/ammo/impact/nade keys; no kick on spamming DEL. Bind K to `css_menu` (the user does this). Each `css_cmd` echoes one "[CS2Prac] ran: …" console line; make it quiet if the user finds it noisy.
 
 ### Bundle and server name (asked for before v1.0)
 - [x] Everything in the installer: Metamod, CounterStrikeSharp (with runtime) and MatchZy at the pinned versions, a skin
@@ -138,7 +146,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   it with no download. Verified offline (network blocked): all three install; the installer is ~207 MB.
 - [x] Server name setting (Play → Options, default "Nihil Prac Server"): MatchZy chat prefix, hostname and PracSkins
   messages show `[Nihil Prac Server]`. Verified live on a test server.
-- [ ] **User check in game:** MatchZy and CS2Prac chat messages show `[Nihil Prac Server]`; a fresh Setup works offline.
+- [x] **User check in game:** MatchZy and CS2Prac chat messages show `[Nihil Prac Server]`; a fresh Setup works offline.
 
 ### Movement mode (asked for before v1.0; `plugin/PracSkins/Movement.cs`)
 - [x] `.movement` (or `!movement`) toggles it per player. Spots are recorded in game: `.movement save <name>` at the jump
@@ -149,8 +157,12 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   it counts as made. Center banner "Made it!" / "Missed" with made/attempts per spot. `.next`/`.prev`/`.reset` (only
   while on). No fall damage (sv_falldamage_scale 0 while anyone is in the mode, restored after).
 - [x] Verified on a test server: plugin loads, spot file is read, markers spawn, no engine asserts. Needs a player for the rest.
-- [ ] **User check in game:** record Mirage window → short, fall into mid (auto back + "Missed"), make it ("Made it!"),
-  counter, no fall damage, markers visible, `.next`/`.prev` with two spots.
+- [x] User check: recording a start works; but "Made it!" fired too early (any landing 80+ units from the start counted).
+- [x] End point: `.movement end` (stand where the jump lands) saves a gold end square per spot; only landing on it counts
+  as made, then back to the start after 1.5 s. Other landings above the fail height count as nothing. Re-saving a
+  start keeps its end. Built; not live-tested (needs a player).
+- [x] (marked done by the user; they'll check it later) **User check in game:** restart the server from the app; `.movement end` on the landing spot, gold square shows,
+  "Made it!" only on it, back to the start after, misses still put you back, `.next`/`.prev` with two spots.
 - [ ] Maybe later: movement spots in the K menu; E on a green square to go there.
 
 ### UI polish (asked for before v1.0)
@@ -159,7 +171,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Icons next to the tab names (Play, Loadout, Console, Setup) and Logs (lucide-react).
 - [x] Frameless window: our own title bar (icon, tabs, status, logs, version, minimize/maximize/close; drag to move,
   double-click to maximize). Thin overlay scrollbars that only show on hover instead of the classic Windows ones.
-- [ ] **User check:** start the server and see no window at all; the icons look right; the title bar and scrollbars feel right.
+- [x] **User check:** start the server and see no window at all; the icons look right; the title bar and scrollbars feel right.
 
 ### Loadout page (asked for before v1.0)
 - [x] Two columns like Play: slots left as cards with official CS2 icons (assets/cs-icons, weapon silhouettes from the
@@ -171,5 +183,5 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] **User-confirmed** in game: per-faction skins, stickers and charms.
 
 ## Next
-- [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
-- [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).
+- [x] User tests Phases 1–6 in game (confirmed 2026-11-16; the movement end point was marked done, the user checks it later).
+- [x] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (released 2026-11-16).

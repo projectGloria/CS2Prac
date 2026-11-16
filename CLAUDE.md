@@ -242,9 +242,12 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 ## Movement mode (plugin/PracSkins/Movement.cs)
 - `.movement` (say listener, like `.spawns`) / `css_movement <sub>`; `.next`/`.prev`/`.reset` only react while the
   player is in the mode (MatchZy has no such commands, but keep them gated). Spots: `configs/plugins/PracSkins/movement/<map>.json`
-  (camelCase MoveSpot: name, x, y, z, pitch, yaw, failZ), recorded by the player in game, not by the app.
+  (camelCase MoveSpot: name, x, y, z, pitch, yaw, failZ, endX/endY/endZ; end null until `.movement end`), recorded by
+  the player in game, not by the app.
 - Per tick per player: on the ground below failZ → back to the start (a miss if they had left the ground); on the
-  ground >80 units from the start and above failZ after leaving the ground → made. Back within 80 units re-arms.
+  ground on the end square (±24 units, ±32 high) after leaving the ground → made, back to the start 1.5 s later.
+  Landing anywhere else above failZ counts as nothing (user: "made" fired too early when any landing >80 units away
+  counted). Back within 80 units re-arms.
   Banner via PrintToCenterHtml (skipped while the K menu is open). Fall damage: `sv_falldamage_scale 0` while anyone
   is in the mode. Server test: `css_prac_movement [markers]` lists the map's spots.
 
@@ -262,9 +265,9 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed. The user is testing in game step by step: Phases 1–3 confirmed (plus
-spawn markers and `.glow`); `pracGloria` in their Nihil.cfg awaits their check. Then Phase 4
-(stickers/charms/agents), Phase 5 (K menu; K isn't bound by default, the user adds `bind k css_menu` themselves; `!skins`
-works without it), Phase 6 notices, and the v1.0.0 release only when they ask. Known: every `css_cmd` echoes
+See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed and user-confirmed
+in game (2026-11-16: markers, glow, stickers/charms/agents, text menu, K window, agent preview, pracGloria, server name,
+offline setup, UI). The movement end point is marked done (the user checks it later; fix if they report problems), sticker scrape untested (they're fine with it),
+and the v1.0.0 release only when they ask. Known: every `css_cmd` echoes
 "[CS2Prac] ran: …", so pracGloria prints ~40 lines (make it quiet only if they ask). Live-test recipe for bots: set `matchzy_autostart_mode 0`
 in cfg/MatchZy/config_override.cfg for the test server, restore it afterwards, and use port 27115.

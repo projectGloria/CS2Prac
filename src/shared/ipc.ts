@@ -105,6 +105,8 @@ export interface AppInfo {
 
 export interface Api {
   app: {
+    /** the splash has painted with its art: main shows the (hidden) window */
+    splashReady(): void
     info(): Promise<AppInfo>
     openLogsFolder(): Promise<void>
     checkForUpdates(): Promise<void>
@@ -172,6 +174,7 @@ export interface LoadoutSaveResult {
 
 export const IPC = {
   appInfo: 'app:info',
+  appSplashReady: 'app:splashReady',
   appOpenLogs: 'app:openLogs',
   appCheckUpdates: 'app:checkUpdates',
   appUpdateStatus: 'app:updateStatus',

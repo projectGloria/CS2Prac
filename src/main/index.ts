@@ -374,10 +374,15 @@ function createWindow() {
     backgroundColor: '#0e1014',
     frame: false,
     autoHideMenuBar: true,
-    // packaged builds take the icon from the exe; in dev it comes from build/
-    icon: app.isPackaged ? undefined : join(app.getAppPath(), 'build', 'icon.png'),
+    // shown once the splash screen has painted with its art (app:splashReady), so there is no empty frame first
+    show: false,
+    // packaged builds take the icon from the exe; in dev it comes from assets/
+    icon: app.isPackaged ? undefined : join(app.getAppPath(), 'assets', 'CS2Prac.ico'),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   })
+  const show = () => win && !win.isDestroyed() && !win.isVisible() && win.show()
+  ipcMain.once(IPC.appSplashReady, show)
+  setTimeout(show, 4000) // never stay invisible if the renderer failed
   win.on('maximize', () => send(IPC.winMaximized, true))
   win.on('unmaximize', () => send(IPC.winMaximized, false))
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import CopyLine from '../components/CopyLine'
+import splashArt from '../../../../assets/CS2Prac.png'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
 const MODES: { id: GameMode; label: string; icon: LucideIcon }[] = [
@@ -64,7 +65,7 @@ const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anub
 type MapPool = 'comp' | 'others'
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
 
-export default function Play({ status }: { status: ServerStatus }) {
+export default function Play({ status, lastLog }: { status: ServerStatus; lastLog?: string }) {
   const [maps, setMaps] = useState<string[]>([])
   const [selected, setSelected] = useState<MapChoice>({ kind: 'official', name: 'de_mirage' })
   const [pool, setPool] = useState<MapPool>('comp')
@@ -73,6 +74,8 @@ export default function Play({ status }: { status: ServerStatus }) {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** set from the Start click until the start finishes or fails (the prep before cs2.exe runs isn't 'starting' yet) */
+  const [launching, setLaunching] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
   const [health, setHealth] = useState<ServerHealth | null>(null)
 
@@ -114,8 +117,24 @@ export default function Play({ status }: { status: ServerStatus }) {
 
   const crashed = status.state === 'stopped' ? status.crashed : undefined
   const shownMap = status.state === 'stopped' ? selected : status.map
+  const showStarting = status.state === 'starting' || (launching && stopped)
   return (
     <div className="play">
+      {showStarting && (
+        <div className="starting-overlay" role="status">
+          <img src={splashArt} alt="" />
+          <div className="spinner" />
+          <strong>Server starting</strong>
+          <span className="muted">{shownMap.kind === 'official' ? prettyMap(shownMap.name) : mapLabel(shownMap)}</span>
+          <span className="muted small starting-log">{lastLog ?? ' '}</span>
+          {status.state === 'starting' && (
+            <button className="danger" onClick={() => run(() => window.api.server.stop())}>
+              <CircleStop size={15} aria-hidden />
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
       {(crashed || health?.cs2Updated || !!health?.problems.length) && (
         <div className="notices">
           {crashed && (
@@ -218,7 +237,14 @@ export default function Play({ status }: { status: ServerStatus }) {
             </div>
             <div className="server-actions">
               {stopped && (
-                <button className="primary big" disabled={busy} onClick={() => run(() => window.api.server.start({ map: selected, mode }))}>
+                <button
+                  className="primary big"
+                  disabled={busy}
+                  onClick={() => {
+                    setLaunching(true)
+                    run(() => window.api.server.start({ map: selected, mode })).finally(() => setLaunching(false))
+                  }}
+                >
                   <PlayIcon size={16} aria-hidden />
                   Start server
                 </button>

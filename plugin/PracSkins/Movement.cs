@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
@@ -22,6 +23,12 @@ public class MoveSpot
     public float Pitch { get; set; }
     public float Yaw { get; set; }
     public float FailZ { get; set; }
+    /// <summary>Where the jump ends (.movement end): standing on it counts as made. Null until recorded.</summary>
+    public float? EndX { get; set; }
+    public float? EndY { get; set; }
+    public float? EndZ { get; set; }
+
+    [JsonIgnore] public bool HasEnd => EndX != null && EndY != null && EndZ != null;
 }
 
 /// <summary>One player's movement practice: current spot and per-spot made/attempt counters.</summary>
@@ -33,6 +40,8 @@ public class MoveSession
     public bool Armed { get; set; }
     public bool LeftGround { get; set; }
     public float IgnoreUntil { get; set; }
+    /// <summary>After a made jump: back to the start at this time (0 = nothing pending).</summary>
+    public float ReturnAt { get; set; }
     /// <summary>The made/missed banner, re-sent every tick until BannerUntil (a center message alone lasts a moment).</summary>
     public string? Banner { get; set; }
     public float BannerUntil { get; set; }
@@ -41,16 +50,22 @@ public class MoveSession
 /// <summary>
 /// .movement: practice movement spots (e.g. Mirage window to short). The player records spots in game
 /// (.movement save name), is teleported to the start, and when they land below the spot's fail height they are put
-/// straight back. A landing away from the start and above the fail height counts as made. Spots are saved per map in
-/// configs/plugins/PracSkins/movement/&lt;map&gt;.json and drawn as green squares while anyone uses the mode.
+/// straight back. Landing on the spot's end square (.movement end) counts as made, and 1.5 s later they are back at
+/// the start; landings elsewhere above the fail height count as nothing. Spots are saved per map in
+/// configs/plugins/PracSkins/movement/&lt;map&gt;.json and drawn as green (start) and gold (end) squares while anyone
+/// uses the mode.
 /// No fall damage while the mode is on (sv_falldamage_scale 0, restored when the last player leaves it).
 /// </summary>
 public partial class PracSkins
 {
-    private const float MadeDistance = 80f; // a landing at least this far from the start counts as a jump
+    private const float RearmDistance = 80f; // back within this of the start: the next jump is a new try
     private const float DefaultFailDrop = 64f; // fail height below the start when not set with .movement fail
+    private const float EndHalf = 24f; // end square half size (a bit wider than the 32-unit hull, so a foot on it counts)
+    private const float EndHeight = 32f; // standing this far above/below the recorded end still counts
+    private const float ReturnDelay = 1.5f; // seconds on the end square before going back to the start
     private static readonly Color MoveColor = Color.FromArgb(255, 80, 230, 120);
-    private static readonly string[] MoveWords = { "save", "fail", "delete", "del", "list", "next", "prev", "reset", "off", "on", "help" };
+    private static readonly Color EndColor = Color.FromArgb(255, 255, 200, 60);
+    private static readonly string[] MoveWords = { "save", "fail", "end", "delete", "del", "list", "next", "prev", "reset", "off", "on", "help" };
 
     private readonly Dictionary<int, MoveSession> _move = new();
     private readonly List<CEntityInstance> _moveMarkers = new();
@@ -123,7 +138,7 @@ public partial class PracSkins
         MovementUsersChanged();
     }
 
-    [ConsoleCommand("css_movement", "Movement practice: !movement, !movement save <name>, fail, delete <name>, list, next, prev, reset")]
+    [ConsoleCommand("css_movement", "Movement practice: !movement, !movement save <name>, end, fail, delete <name>, list, next, prev, reset")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnMovementCommand(CCSPlayerController? player, CommandInfo info)
     {
@@ -139,7 +154,8 @@ public partial class PracSkins
         info.ReplyToCommand($"{Tag} movement: {_moveSpots.Count} spots on {_moveMap} ({MoveFile(_moveMap)}), " +
                             $"{_move.Count} players in the mode, {_moveMarkers.Count} marker entities");
         foreach (var s in _moveSpots)
-            info.ReplyToCommand($"  {s.Name}: {s.X:F1} {s.Y:F1} {s.Z:F1} yaw {s.Yaw:F1}, fail below {s.FailZ:F1}");
+            info.ReplyToCommand($"  {s.Name}: {s.X:F1} {s.Y:F1} {s.Z:F1} yaw {s.Yaw:F1}, fail below {s.FailZ:F1}, " +
+                                (s.HasEnd ? $"end {s.EndX:F1} {s.EndY:F1} {s.EndZ:F1}" : "no end"));
     }
 
     private void MovementCommand(CCSPlayerController player, string[] args)
@@ -168,6 +184,9 @@ public partial class PracSkins
             case "fail":
                 SetFailHeight(player, session);
                 break;
+            case "end":
+                SetEnd(player, session);
+                break;
             case "delete" or "del":
                 DeleteSpot(player, rest);
                 break;
@@ -191,7 +210,7 @@ public partial class PracSkins
                 break;
             case "help":
                 player.PrintToChat($"{ChatTag} .movement on/off · .movement <spot> · .next .prev .reset · " +
-                                   ".movement save <name> · .movement fail · .movement delete <name> · .movement list");
+                                   ".movement save <name> · .movement end · .movement fail · .movement delete <name> · .movement list");
                 break;
             default:
                 var index = _moveSpots.FindIndex(s => s.Name == SpotName(string.Join(' ', args)));
@@ -316,7 +335,13 @@ public partial class PracSkins
         };
         var index = _moveSpots.FindIndex(s => s.Name == name);
         var replaced = index >= 0;
-        if (replaced) _moveSpots[index] = spot;
+        if (replaced)
+        {
+            // a new start keeps the end that was recorded
+            var old = _moveSpots[index];
+            (spot.EndX, spot.EndY, spot.EndZ) = (old.EndX, old.EndY, old.EndZ);
+            _moveSpots[index] = spot;
+        }
         else
         {
             _moveSpots.Add(spot);
@@ -334,10 +359,50 @@ public partial class PracSkins
             session.LeftGround = false;
             DrawMoveMarkers();
         }
-        player.PrintToChat($"{ChatTag} Spot {name} {(replaced ? "updated" : "saved")}. Landing more than " +
-                           $"{DefaultFailDrop:F0} units lower counts as a fall; to set that exactly, stand on the floor you'd " +
-                           "fall onto and type .movement fail.");
+        player.PrintToChat($"{ChatTag} Spot {name} {(replaced ? "updated" : "saved")}. " +
+                           (spot.HasEnd ? "" : "Now stand where the jump ends and type .movement end. ") +
+                           $"Landing more than {DefaultFailDrop:F0} units lower counts as a fall; to set that exactly, " +
+                           "stand on the floor you'd fall onto and type .movement fail.");
     }
+
+    private void SetEnd(CCSPlayerController player, MoveSession? session)
+    {
+        if (session == null || _moveSpots.Count == 0)
+        {
+            player.PrintToChat($"{ChatTag} Turn on .movement and pick the spot first.");
+            return;
+        }
+        var spot = _moveSpots[Math.Clamp(session.Spot, 0, _moveSpots.Count - 1)];
+        var pawn = AlivePawn(player);
+        if (pawn == null || !OnGround(pawn))
+        {
+            player.PrintToChat($"{ChatTag} Stand on the ground where the jump ends, then type .movement end.");
+            return;
+        }
+        var o = pawn.AbsOrigin!;
+        var dx = o.X - spot.X;
+        var dy = o.Y - spot.Y;
+        if (MathF.Sqrt(dx * dx + dy * dy) <= RearmDistance)
+        {
+            player.PrintToChat($"{ChatTag} That's too close to the start of {spot.Name}. Stand where the jump lands.");
+            return;
+        }
+        if (o.Z < spot.FailZ)
+        {
+            player.PrintToChat($"{ChatTag} That's below the fail height of {spot.Name}. Stand where the jump lands.");
+            return;
+        }
+        (spot.EndX, spot.EndY, spot.EndZ) = (o.X, o.Y, o.Z);
+        SaveMoveSpots();
+        foreach (var s in _move.Values) s.Counts.Remove(spot.Name);
+        DrawMoveMarkers();
+        player.PrintToChat($"{ChatTag} {spot.Name}: end saved. Land on the gold square to make it.");
+        GoToSpot(player, session);
+    }
+
+    private static bool OnEnd(MoveSpot spot, Vector o) =>
+        spot.HasEnd && MathF.Abs(o.X - spot.EndX!.Value) <= EndHalf && MathF.Abs(o.Y - spot.EndY!.Value) <= EndHalf &&
+        MathF.Abs(o.Z - spot.EndZ!.Value) <= EndHeight;
 
     private void SetFailHeight(CCSPlayerController player, MoveSession? session)
     {
@@ -396,6 +461,7 @@ public partial class PracSkins
         pawn.Teleport(new Vector(spot.X, spot.Y, spot.Z), new QAngle(spot.Pitch, spot.Yaw, 0), new Vector(0, 0, 0));
         session.Armed = true;
         session.LeftGround = false;
+        session.ReturnAt = 0;
         session.IgnoreUntil = Server.CurrentTime + 0.3f;
         if (announce) Banner(player, $"<font color='#50e678'>{spot.Name}</font>", session, spot);
     }
@@ -419,6 +485,13 @@ public partial class PracSkins
             if (player is not { IsValid: true } || AlivePawn(player) is not { } pawn) continue;
             var spot = _moveSpots[Math.Clamp(session.Spot, 0, _moveSpots.Count - 1)];
             var o = pawn.AbsOrigin!;
+
+            if (session.ReturnAt > 0)
+            {
+                // made it: a moment on the end square, then back to the start for the next try
+                if (now >= session.ReturnAt) GoToSpot(player, session);
+                continue;
+            }
 
             if (!OnGround(pawn))
             {
@@ -444,18 +517,20 @@ public partial class PracSkins
                 continue;
             }
 
-            if (fromStart <= MadeDistance)
+            if (session.Armed && session.LeftGround && OnEnd(spot, o))
+            {
+                // only the end square counts as made; ledges and steps on the way count as nothing
+                var c = session.Counts.GetValueOrDefault(spot.Name);
+                session.Counts[spot.Name] = (c.Made + 1, c.Attempts + 1);
+                session.Armed = false;
+                session.ReturnAt = now + ReturnDelay;
+                Banner(player, "<font color='#50e678'>Made it!</font>", session, spot);
+            }
+            else if (fromStart <= RearmDistance)
             {
                 // back at the start (walked back or hopped in place): the next jump is a new try
                 session.Armed = true;
                 session.LeftGround = false;
-            }
-            else if (session.Armed && session.LeftGround)
-            {
-                var c = session.Counts.GetValueOrDefault(spot.Name);
-                session.Counts[spot.Name] = (c.Made + 1, c.Attempts + 1);
-                session.Armed = false;
-                Banner(player, "<font color='#50e678'>Made it!</font>", session, spot);
             }
         }
     }
@@ -502,7 +577,34 @@ public partial class PracSkins
             text.DispatchSpawn();
             text.Teleport(new Vector(spot.X, spot.Y, spot.Z + 48), new QAngle(0, 0, 90), new Vector(0, 0, 0));
             _moveMarkers.Add(text);
+
+            if (spot.HasEnd) DrawEndMarker(spot);
         }
+    }
+
+    private void DrawEndMarker(MoveSpot spot)
+    {
+        float x = spot.EndX!.Value, y = spot.EndY!.Value, z = spot.EndZ!.Value + 1;
+        var corners = new[]
+        {
+            new Vector(x - EndHalf, y - EndHalf, z), new Vector(x + EndHalf, y - EndHalf, z),
+            new Vector(x + EndHalf, y + EndHalf, z), new Vector(x - EndHalf, y + EndHalf, z)
+        };
+        for (var i = 0; i < 4; i++) AddBeam(corners[i], corners[(i + 1) % 4], EndColor, _moveMarkers);
+        var text = Utilities.CreateEntityByName<CPointWorldText>("point_worldtext");
+        if (text == null) return;
+        text.MessageText = spot.Name + " end";
+        text.Enabled = true;
+        text.Fullbright = true;
+        text.FontSize = 40;
+        text.WorldUnitsPerPx = 0.25f;
+        text.Color = EndColor;
+        text.JustifyHorizontal = PointWorldTextJustifyHorizontal_t.POINT_WORLD_TEXT_JUSTIFY_HORIZONTAL_CENTER;
+        text.JustifyVertical = PointWorldTextJustifyVertical_t.POINT_WORLD_TEXT_JUSTIFY_VERTICAL_CENTER;
+        text.ReorientMode = PointWorldTextReorientMode_t.POINT_WORLD_TEXT_REORIENT_AROUND_UP;
+        text.DispatchSpawn();
+        text.Teleport(new Vector(x, y, z + 47), new QAngle(0, 0, 90), new Vector(0, 0, 0));
+        _moveMarkers.Add(text);
     }
 
     private void ClearMoveMarkers()

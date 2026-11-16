@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Copy, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, SlidersHorizontal, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
 import type { AppInfo, ServerStatus, SetupState, UpdateStatus } from '@shared/ipc'
-import appIcon from '../../../build/icon.png'
+import appIcon from '../../../assets/CS2Prac.png'
+import { hideSplash, warmUp } from './splash'
 import Setup from './pages/Setup'
 import Play from './pages/Play'
 import Console from './pages/Console'
@@ -28,10 +29,14 @@ export default function App() {
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
-    window.api.setup.getState().then((s) => {
-      setSetup(s)
-      if (!s.serverInstalled || !s.pluginsInstalled) setTab('setup')
-    })
+    window.api.setup
+      .getState()
+      .then((s) => {
+        setSetup(s)
+        if (!s.serverInstalled || !s.pluginsInstalled) setTab('setup')
+      })
+      .then(warmUp)
+      .finally(hideSplash)
     window.api.server.getStatus().then(setStatus)
     window.api.app.info().then(setInfo)
     window.api.app.getUpdateStatus().then(setUpdate)
@@ -48,7 +53,7 @@ export default function App() {
     }
   }, [])
 
-  if (!setup) return <div className="center muted">Loading…</div>
+  if (!setup) return null // the splash covers the window meanwhile
   const ready = setup.serverInstalled && setup.pluginsInstalled
 
   return (
@@ -104,7 +109,7 @@ export default function App() {
         </div>
       )}
       <main className="content">
-        {tab === 'play' && <Play status={status} />}
+        {tab === 'play' && <Play status={status} lastLog={serverLog[serverLog.length - 1]} />}
         {tab === 'loadout' && <Loadout />}
         {tab === 'console' && <Console status={status} log={serverLog} onClear={() => setServerLog([])} />}
         {tab === 'options' && <Options />}

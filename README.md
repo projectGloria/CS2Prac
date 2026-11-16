@@ -8,7 +8,8 @@ weapon skin, knife, glove, agent, sticker and charm, picked in the app or live i
   (or `rcon <command>` after pasting the app's rcon line), and your own cfgs from the app's server cfg folder.
 - **MatchZy** practice mode by default (`.bot`, `.rethrow`, `.savenade`, `.noflash` …), or match mode, or neither.
 - **Movement practice.** `.movement` in chat: record jump spots per map (`.movement save window-short` where the jump
-  starts), get put back at the start whenever you fall, and see made/attempts. `.next`/`.prev` switch spots, `.reset` goes
+  starts, `.movement end` where it lands), get put back at the start whenever you fall, land on the end square to
+  make it, and see made/attempts. `.next`/`.prev` switch spots, `.reset` goes
   back. No fall damage while it's on.
 - **Skins everywhere.** Use the Loadout tab, or press K in game (`bind k css_menu`) for a menu: W/S move, A/D page, E select,
   R back. In chat, `!skin`, `!knife`, `!gloves`, `!agent`, `!sticker` and `!charm` search by name. Picks apply at once and stay in sync with the app.

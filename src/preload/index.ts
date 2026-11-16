@@ -12,6 +12,7 @@ function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
 
 const api: Api = {
   app: {
+    splashReady: () => ipcRenderer.send(IPC.appSplashReady),
     info: () => ipcRenderer.invoke(IPC.appInfo),
     openLogsFolder: () => ipcRenderer.invoke(IPC.appOpenLogs),
     checkForUpdates: () => ipcRenderer.invoke(IPC.appCheckUpdates),
