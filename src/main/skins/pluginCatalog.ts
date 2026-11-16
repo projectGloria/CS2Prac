@@ -18,6 +18,7 @@ export interface PluginCatalog {
   keychains: { def: number; name: string }[]
   pins: { def: number; name: string }[]
   musicKits: { def: number; name: string }[]
+  graffiti: { def: number; name: string; tinted: boolean }[]
 }
 
 export function toPluginCatalog(c: Catalog): PluginCatalog {
@@ -32,7 +33,8 @@ export function toPluginCatalog(c: Catalog): PluginCatalog {
     stickers: (c.stickers ?? []).map((s) => ({ def: s.defIndex, name: s.event && !s.name.includes(s.event) ? `${s.name} (${s.event})` : s.name })),
     keychains: (c.keychains ?? []).map((k) => ({ def: k.defIndex, name: k.name })),
     pins: (c.pins ?? []).map((p) => ({ def: p.defIndex, name: p.name })),
-    musicKits: (c.musicKits ?? []).map((m) => ({ def: m.defIndex, name: m.name }))
+    musicKits: (c.musicKits ?? []).map((m) => ({ def: m.defIndex, name: m.name })),
+    graffiti: (c.graffiti ?? []).map((g) => ({ def: g.defIndex, name: g.name, tinted: Object.keys(g.tints).length > 0 }))
   }
 }
 

@@ -76,7 +76,42 @@ export interface CatalogMusicKit {
   rarityColor: string
 }
 
-export const CATALOG_VERSION = 4
+/** a graffiti pattern (sticker kit def index); tinted ones come in GRAFFITI_TINTS colours, each with its own image */
+export interface CatalogGraffiti {
+  defIndex: number
+  /** without the "Sealed Graffiti | " prefix and the tint */
+  name: string
+  /** untinted image, or the first tint's for tinted graffiti */
+  image: string
+  rarityColor: string
+  /** tint id -> image; empty for graffiti that has no tints */
+  tints: Record<string, string>
+}
+
+/** graffiti tints (items_game graffiti_tints ids 1-19) */
+export const GRAFFITI_TINTS: { id: number; name: string; color: string }[] = [
+  { id: 1, name: 'Brick Red', color: '#874444' },
+  { id: 2, name: 'Blood Red', color: '#b14d4d' },
+  { id: 3, name: 'Tiger Orange', color: '#b87148' },
+  { id: 4, name: 'Dust Brown', color: '#8f7d5d' },
+  { id: 5, name: 'Desert Amber', color: '#ae833d' },
+  { id: 6, name: 'Tracer Yellow', color: '#d4c95b' },
+  { id: 7, name: 'Battle Green', color: '#789d53' },
+  { id: 8, name: 'Jungle Green', color: '#417a4a' },
+  { id: 9, name: 'Frog Green', color: '#488f80' },
+  { id: 10, name: 'Cash Green', color: '#a6c4a5' },
+  { id: 11, name: 'Wire Blue', color: '#6ba5b2' },
+  { id: 12, name: 'Monarch Blue', color: '#4e7fa9' },
+  { id: 13, name: 'SWAT Blue', color: '#4c5b98' },
+  { id: 14, name: 'Violent Violet', color: '#af92df' },
+  { id: 15, name: 'Monster Purple', color: '#6e4f9f' },
+  { id: 16, name: 'Bazooka Pink', color: '#ba68b2' },
+  { id: 17, name: 'Princess Pink', color: '#9d567a' },
+  { id: 18, name: 'War Pig Pink', color: '#e4ccd5' },
+  { id: 19, name: 'Shark White', color: '#c1c1c1' }
+]
+
+export const CATALOG_VERSION = 5
 
 export interface Catalog {
   version: number
@@ -88,6 +123,7 @@ export interface Catalog {
   keychains: CatalogKeychain[]
   pins: CatalogPin[]
   musicKits: CatalogMusicKit[]
+  graffiti: CatalogGraffiti[]
 }
 
 // ---------- loadout (what the user picks) ----------
@@ -162,6 +198,9 @@ export interface Profile {
   pin: number
   /** music kit def index, 0 = none */
   musicKit: number
+  /** graffiti sticker kit def index (0 = none) and tint id (0 = none, 1-19) */
+  graffiti: number
+  graffitiTint: number
 }
 
 export interface LoadoutStore {
@@ -193,7 +232,7 @@ export const MAX_SEED = 1000
 export const MAX_NAMETAG = 20
 
 export function emptyProfile(id: string, name: string): Profile {
-  return { id, name, weapons: { t: {}, ct: {} }, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null }, pin: 0, musicKit: 0 }
+  return { id, name, weapons: { t: {}, ct: {} }, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null }, pin: 0, musicKit: 0, graffiti: 0, graffitiTint: 0 }
 }
 
 /**
@@ -215,7 +254,9 @@ export function normalizeProfile(p: Profile): Profile {
     weapons: perTeamWeapons(p.weapons),
     agents: p.agents ?? { t: null, ct: null },
     pin: Number.isInteger(p.pin) && p.pin > 0 ? p.pin : 0,
-    musicKit: Number.isInteger(p.musicKit) && p.musicKit > 0 ? p.musicKit : 0
+    musicKit: Number.isInteger(p.musicKit) && p.musicKit > 0 ? p.musicKit : 0,
+    graffiti: Number.isInteger(p.graffiti) && p.graffiti > 0 ? p.graffiti : 0,
+    graffitiTint: Number.isInteger(p.graffitiTint) && p.graffitiTint > 0 && p.graffitiTint <= 19 ? p.graffitiTint : 0
   }
 }
 

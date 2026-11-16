@@ -99,7 +99,7 @@ describe('per-team weapons', () => {
     p.weapons.t['7'] = { paintKit: 282, wear: 0.1, seed: 0, statTrak: null, nameTag: '' }
     p.weapons.ct['7'] = { paintKit: 44, wear: 0.1, seed: 0, statTrak: null, nameTag: '' }
     const f = toLoadoutFile(p, null)
-    expect(f.schema).toBe(4)
+    expect(f.schema).toBe(5)
     expect(f.weapons.t['7'].paintKit).toBe(282)
     expect(f.weapons.ct['7'].paintKit).toBe(44)
   })
@@ -122,5 +122,16 @@ describe('per-team weapons', () => {
     const v3 = { ...f, schema: 3, pin: undefined, musicKit: undefined }
     expect(fromLoadoutFile(v3 as never, p).musicKit).toBe(3)
     expect(toLoadoutFile({ ...p, pin: -5 }, null).pin).toBe(0)
+  })
+
+  it('exports and imports graffiti and tint (schema 5), keeps them for older files', async () => {
+    const { fromLoadoutFile } = await import('./loadoutStore')
+    const p = { ...emptyProfile('id', 'x'), graffiti: 1697, graffitiTint: 5 }
+    const f = toLoadoutFile(p, null)
+    expect([f.graffiti, f.graffitiTint]).toEqual([1697, 5])
+    expect(fromLoadoutFile({ ...f, graffiti: 1653, graffitiTint: 0 }, p)).toMatchObject({ graffiti: 1653, graffitiTint: 0 })
+    const v4 = { ...f, schema: 4, graffiti: undefined, graffitiTint: undefined }
+    expect(fromLoadoutFile(v4 as never, p)).toMatchObject({ graffiti: 1697, graffitiTint: 5 })
+    expect(toLoadoutFile({ ...p, graffitiTint: 42 }, null).graffitiTint).toBe(0)
   })
 })

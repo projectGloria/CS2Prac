@@ -107,6 +107,19 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   econ/status_icons/…, `.pk-img.m<def>` from music_definitions). Text menu: `!pin`, `!music` and root entries.
   Live-tested on 27115 (status shows pin/music per player, survives mp_restartgame).
 
+## Graffiti (Phase 9, loadout schema 5)
+- plugin/PracSkins/Graffiti.cs: `css_spray` (client; bind a key, or `!spray`) traces from the eye (200 units,
+  `Masks.PlayerSolidBrushOnly`, rejects angles flatter than dot −0.2) and spawns `player_spray_decal` itself:
+  UniqueID = sticker kit def, TintID 1–19 (items_game graffiti_tints; 0 = untinted), EndPos/Normal/Left (left in the
+  surface: horizontal on walls, from yaw on floors), AccountID, Player = controller index, then DispatchSpawn +
+  Teleport to the hit. The decal's `Entity` field clashes with CEntityInstance.Entity (read-only): not set.
+- **No GC signing:** the game's own spray asks the Steam GC to sign the decal (account involved); we never touch
+  that path. Whether the client draws an unsigned decal is for the user to check in game.
+- Catalog `graffiti` (ByMykel graffiti.json; one entry per def, `tints` = tint id → image from `graffiti-<def>_<tint>`).
+  loadout.json `graffiti` / `graffitiTint` (both teams). K window tab `graffiti` (tints in the side list, icons
+  `.pk-img.g<def>` from sticker_kits spray_* `econ/stickers/<sticker_material>_png`). 3 s cooldown, 5 sprays per player.
+- Server test: `css_prac_spray [def] [tint]` (first live bot; aims down if it looks at the horizon; prints every decal).
+
 ## Loadout schema 3 (weapons per team)
 - loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
   flat map; the plugin's TeamWeaponsConverter and the app's `perTeamWeapons` (also for old profiles in loadouts.json)

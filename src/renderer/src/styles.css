@@ -268,3 +268,22 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .srv-group h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .srv-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
 .srv-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.tint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.tint-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.tint-chip.active {
+  border-color: var(--text, #fff);
+  box-shadow: 0 0 0 2px var(--accent, #e8a33d);
+}

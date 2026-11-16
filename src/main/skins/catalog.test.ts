@@ -94,3 +94,19 @@ describe('pins and music kits', () => {
     expect(pins.map((p) => [p.defIndex, p.type])).toEqual([[874, 'Other'], [6034, 'Pin']])
   })
 })
+
+describe('graffiti', () => {
+  it('groups tints under one def and strips prefix and tint from the name', async () => {
+    const { buildGraffiti } = await import('./catalog')
+    const g = buildGraffiti([
+      { id: 'graffiti-1697_5', name: 'Sealed Graffiti | Recoil AK-47 (Desert Amber)', def_index: '1697', image: 'a5', tint: { id: '5', name: 'Desert Amber' } },
+      { id: 'graffiti-1697_2', name: 'Sealed Graffiti | Recoil AK-47 (Blood Red)', def_index: '1697', image: 'a2', tint: { id: '2', name: 'Blood Red' } },
+      { id: 'graffiti-1653', name: 'Sealed Graffiti | 8-Ball (Unique)', def_index: '1653', image: 'b', rarity: { color: '#fff' } },
+      { id: 'graffiti-9', name: 'No image', def_index: '9', image: '' }
+    ])
+    expect(g).toEqual([
+      { defIndex: 1653, name: '8-Ball (Unique)', image: 'b', rarityColor: '#fff', tints: {} },
+      { defIndex: 1697, name: 'Recoil AK-47', image: 'a2', rarityColor: '#b0c3d9', tints: { '2': 'a2', '5': 'a5' } }
+    ])
+  })
+})

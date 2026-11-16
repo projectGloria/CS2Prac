@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Layers, Music, Pin, Plus, Trash2, User, Users } from 'lucide-react'
+import { Copy, Layers, Music, Pin, Plus, SprayCan, Trash2, User, Users } from 'lucide-react'
 import type { LoadoutSaveResult } from '@shared/ipc'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
@@ -7,6 +7,7 @@ import {
   emptyKeychain,
   emptyProfile,
   emptySticker,
+  GRAFFITI_TINTS,
   isEmptySel,
   MAX_NAMETAG,
   MAX_SEED,
@@ -15,6 +16,7 @@ import {
   type AgentSel,
   type Catalog,
   type CatalogAgent,
+  type CatalogGraffiti,
   type CatalogKeychain,
   type CatalogSkin,
   type CatalogSticker,
@@ -30,7 +32,7 @@ import {
   type Team
 } from '@shared/skins'
 
-type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent' | 'pin' | 'music' }
+type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent' | 'pin' | 'music' | 'graffiti' }
 type SaveState = { state: 'idle' | 'saving' | 'error'; result?: LoadoutSaveResult; error?: string }
 
 const TEAM_LABEL: Record<Team, string> = { t: 'T', ct: 'CT' }
@@ -140,6 +142,8 @@ export default function Loadout() {
     g ? `${index.weaponByDef.get(g.defIndex)?.name ?? 'Gloves'} | ${index.skin(g.defIndex, g.paintKit)?.name ?? g.paintKit}` : 'Default'
   const pinItem = profile.pin ? catalog.pins?.find((x) => x.defIndex === profile.pin) : undefined
   const musicItem = profile.musicKit ? catalog.musicKits?.find((x) => x.defIndex === profile.musicKit) : undefined
+  const graffitiItem = profile.graffiti ? catalog.graffiti?.find((x) => x.defIndex === profile.graffiti) : undefined
+  const graffitiTintName = profile.graffitiTint ? GRAFFITI_TINTS.find((t) => t.id === profile.graffitiTint)?.name : undefined
   const agentLabel = (a: AgentSel | null) =>
     a ? (catalog.agents.find((x) => x.defIndex === a.defIndex)?.name.split(' | ')[0] ?? `Agent ${a.defIndex}`) : 'Default'
   const weaponLabel = (defIndex: number, sel: SkinSel | undefined) => {
@@ -281,7 +285,7 @@ export default function Loadout() {
             />
             {weapons.filter((w) => w.className === ZEUS).map(weaponSlot)}
           </div>
-          <h4>Pin & music kit (both teams)</h4>
+          <h4>Pin, music kit & graffiti (both teams)</h4>
           <div className="slot-grid">
             <SlotButton
               active={slot.kind === 'pin'}
@@ -300,6 +304,32 @@ export default function Loadout() {
               set={!!profile.musicKit}
               color={musicItem?.rarityColor}
               onClick={() => setSlot({ kind: 'music' })}
+            />
+            <SlotButton
+              active={slot.kind === 'graffiti'}
+              icon={
+                graffitiItem ? (
+                  <img
+                    className="slot-item-img"
+                    src={graffitiItem.tints[String(profile.graffitiTint)] ?? graffitiItem.image}
+                    alt=""
+                    draggable={false}
+                  />
+                ) : (
+                  <SprayCan size={22} aria-hidden />
+                )
+              }
+              title="Graffiti"
+              sub={
+                graffitiItem
+                  ? graffitiItem.name + (graffitiTintName && Object.keys(graffitiItem.tints).length ? ` (${graffitiTintName})` : '')
+                  : profile.graffiti
+                    ? `Graffiti ${profile.graffiti}`
+                    : 'None'
+              }
+              set={!!profile.graffiti}
+              color={graffitiItem?.rarityColor}
+              onClick={() => setSlot({ kind: 'graffiti' })}
             />
           </div>
           {WEAPON_CATEGORIES.map((cat) => {
@@ -385,6 +415,14 @@ export default function Loadout() {
               items={catalog.musicKits ?? []}
               value={profile.musicKit}
               onChange={(musicKit) => updateProfile((p) => ({ ...p, musicKit }))}
+            />
+          )}
+          {slot.kind === 'graffiti' && (
+            <GraffitiPanel
+              items={catalog.graffiti ?? []}
+              value={profile.graffiti}
+              tint={profile.graffitiTint}
+              onChange={(graffiti, graffitiTint) => updateProfile((p) => ({ ...p, graffiti, graffitiTint }))}
             />
           )}
           {slot.kind === 'agent' && (
@@ -886,6 +924,58 @@ function ItemPanel(props: {
           )}
         </div>
         <p className="muted small">{hint}</p>
+        <SkinGrid tiles={tiles} search />
+      </div>
+    </div>
+  )
+}
+
+function GraffitiPanel(props: {
+  items: CatalogGraffiti[]
+  value: number
+  tint: number
+  onChange: (def: number, tint: number) => void
+}) {
+  const { items, value, tint, onChange } = props
+  const current = value ? items.find((g) => g.defIndex === value) : undefined
+  const tinted = !!current && Object.keys(current.tints).length > 0
+  const tiles: Tile[] = [
+    { key: 'none', name: 'No graffiti', image: null, selected: !value, onClick: () => onChange(0, 0) },
+    ...items.map((g) => {
+      const hasTints = Object.keys(g.tints).length > 0
+      return {
+        key: String(g.defIndex),
+        name: g.name,
+        image: (value === g.defIndex && g.tints[String(tint)]) || g.image,
+        color: g.rarityColor,
+        selected: value === g.defIndex,
+        // keep the picked tint when switching to another tinted graffiti that has it
+        onClick: () => onChange(g.defIndex, hasTints ? (g.tints[String(tint)] ? tint : Number(Object.keys(g.tints)[0])) : 0)
+      }
+    })
+  ]
+  return (
+    <div className="panel-split">
+      <div className="panel-main">
+        <h2>Graffiti</h2>
+        <p className="muted small">
+          Spray it in game with a key bound to <code>css_spray</code> (for example <code>bind t css_spray</code> in your
+          client console). Only our server draws it; Steam is never asked.
+        </p>
+        {tinted && (
+          <div className="tint-row">
+            {GRAFFITI_TINTS.filter((t) => current!.tints[String(t.id)]).map((t) => (
+              <button
+                key={t.id}
+                className={'tint-chip' + (t.id === tint ? ' active' : '')}
+                style={{ background: t.color }}
+                title={t.name}
+                aria-label={t.name}
+                onClick={() => onChange(current!.defIndex, t.id)}
+              />
+            ))}
+          </div>
+        )}
         <SkinGrid tiles={tiles} search />
       </div>
     </div>

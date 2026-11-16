@@ -226,11 +226,16 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] **User check in game:** pin on the scoreboard, music kit at round end / MVP.
 
 ## Phase 9: Graffiti (req 2)
-- [ ] **Spike first:** spawn `player_spray_decal` server-side at the aim point (trace from the eye) with the graffiti
-  def and tint; find which fields the client needs to draw it. Check whether the client's spray key reaches the
-  server; otherwise `bind <key> css_spray`.
-- [ ] Catalog: graffiti + tints; loadout `graffiti {defIndex, tint}`.
-- [ ] App Loadout slot + K window Graffiti tab; cooldown like the game; `css_prac_spray` server test.
+- [x] **Spike:** the server spawns `player_spray_decal` itself at the aim point (eye trace, PlayerSolidBrushOnly)
+  with UniqueID = sticker kit def, TintID, EndPos/Normal/Left, AccountID, Player. Live-tested on 27115: fields land,
+  survives mp_restartgame, no asserts. The game's own spray key asks the Steam GC to sign the decal, so we don't use
+  it: `bind <key> css_spray` (or `!spray`). No GC or account involved.
+- [ ] **User check in game:** does the client draw the unsigned decal? (If not: look at which field it checks.)
+- [x] Catalog: graffiti + tints (ByMykel graffiti.json, grouped by def, tint from the id suffix); loadout schema 5
+  `graffiti` + `graffitiTint`.
+- [x] App Loadout slot (tile grid + tint chips) + K window Graffiti tab (tints in the side list, `.pk-img.g<def>`
+  icons from the VPK); `css_graffiti`, text-menu entry; 3 s cooldown, last 5 sprays per player kept;
+  `css_prac_spray [def] [tint]` server test.
 
 ## Phase 10: Custom bot names and pictures (app UI only) (req 4)
 - [ ] Names: a "Bots" panel in the app with a name list per team (+ optional clan tag); the plugin renames bots on

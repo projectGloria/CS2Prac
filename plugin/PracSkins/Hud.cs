@@ -58,7 +58,7 @@ public partial class PracSkins
     // CBasePlayerPawn.m_iHideHUD bits hidden while the window is open: weapon selection, crosshair, radar.
     private const uint HudHideBits = (1u << 0) | (1u << 8) | (1u << 12);
 
-    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music"];
+    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music", "graffiti"];
 
     private CCSCustomHudLayout? _hud;
     private bool _hudWorldReady;
@@ -534,6 +534,31 @@ public partial class PracSkins
                     }));
                 break;
             }
+            case "graffiti":
+            {
+                // left: the tints (only for graffiti that has them); tiles: the patterns
+                var cur = _catalog.Graffiti.FirstOrDefault(g => g.Def == _loadout.Graffiti);
+                if (cur is { Tinted: true })
+                    foreach (var t in GraffitiTints)
+                        s.Side.Add(new HudSide(t.Name, _loadout.GraffitiTint == t.Id ? "in use" : "", _loadout.GraffitiTint == t.Id, pl =>
+                        {
+                            CommitGraffiti(pl, cur.Def, t.Id, $"{cur.Name} ({t.Name})");
+                            HudStatus(pl, s, $"{cur.Name} ({t.Name}): spray with css_spray");
+                        }));
+                s.Tiles.Add(new HudTile("No graffiti", "", "", _loadout.Graffiti <= 0, pl =>
+                {
+                    CommitGraffiti(pl, 0, 0, "Graffiti removed");
+                    HudStatus(pl, s, "Graffiti removed");
+                }));
+                foreach (var g in _catalog.Graffiti)
+                    s.Tiles.Add(new HudTile(g.Name, $"g{g.Def}", "", _loadout.Graffiti == g.Def, pl =>
+                    {
+                        var tint = g.Tinted ? (_loadout.GraffitiTint > 0 ? _loadout.GraffitiTint : 1) : 0;
+                        CommitGraffiti(pl, g.Def, tint, $"{g.Name} picked");
+                        HudStatus(pl, s, g.Tinted ? $"{g.Name}: pick a colour on the left, spray with css_spray" : $"{g.Name}: spray with css_spray");
+                        }));
+                break;
+            }
         }
         s.SidePage = Math.Clamp(s.SidePage, 0, Math.Max(0, (s.Side.Count - 1) / SideRows));
         s.GridPage = Math.Clamp(s.GridPage, 0, Math.Max(0, (s.Tiles.Count - 1) / GridTiles));
@@ -584,7 +609,7 @@ public partial class PracSkins
         }
 
         // left list
-        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" or "music");
+        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" or "music" || (s.Tab == "graffiti" && s.Side.Count == 0));
         var sideStart = s.SidePage * SideRows;
         for (var i = 0; i < SideRows; i++)
         {
@@ -605,6 +630,7 @@ public partial class PracSkins
             "gloves" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Gloves",
             "pins" => "Pin (both teams)",
             "music" => "Music kit (both teams)",
+            "graffiti" => "Graffiti (spray: bind a key to css_spray)",
             _ => $"Agents ({(team == 2 ? "T" : "CT")})"
         });
         var empty = s.Tiles.Count > 0 ? "" : s.Tab switch

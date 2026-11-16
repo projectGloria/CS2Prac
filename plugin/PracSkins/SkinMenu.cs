@@ -170,6 +170,14 @@ public partial class PracSkins
         OpenMenu(player!, MusicPage(command.ArgString));
     }
 
+    [ConsoleCommand("css_graffiti", "Pick a graffiti: !graffiti [text] (spray it with css_spray)")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnGraffitiSearch(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!CanEdit(player, command)) return;
+        OpenMenu(player!, GraffitiPage(command.ArgString));
+    }
+
     [ConsoleCommand("css_sticker", "Search stickers for the weapon in your hand: !sticker <text>")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStickerSearch(CCSPlayerController? player, CommandInfo command)
@@ -302,6 +310,7 @@ public partial class PracSkins
             else items.Add(new("(hold a gun for its skin, stickers and charm)", Color: "#8a93a3"));
             items.Add(new($"Pin: {PinLabel()}", pl => PushPage(pl, PinPage(""))));
             items.Add(new($"Music kit: {MusicLabel()}", pl => PushPage(pl, MusicPage(""))));
+            items.Add(new($"Graffiti: {GraffitiLabel()}", pl => PushPage(pl, GraffitiPage(""))));
             items.Add(new("Close", CloseMenu));
             return items;
         }
@@ -601,6 +610,48 @@ public partial class PracSkins
                 items.Add(new(m.Name, pl => { _loadout.MusicKit = m.Def; CommitProfileItems(pl, $"{m.Name} applied"); }, Current: _loadout.MusicKit == m.Def));
             return items;
         }
+    };
+
+    private string GraffitiLabel()
+    {
+        if (_loadout.Graffiti <= 0) return "None";
+        var g = _catalog.Graffiti.FirstOrDefault(x => x.Def == _loadout.Graffiti);
+        var name = g?.Name ?? $"Graffiti {_loadout.Graffiti}";
+        return g is { Tinted: true } && _loadout.GraffitiTint > 0 ? $"{name} ({TintName(_loadout.GraffitiTint)})" : name;
+    }
+
+    private void CommitGraffiti(CCSPlayerController player, int def, int tint, string flash)
+    {
+        _loadout.Graffiti = def;
+        _loadout.GraffitiTint = tint;
+        SaveLoadout();
+        Flash(player, flash);
+    }
+
+    private MenuPage GraffitiPage(string query) => new()
+    {
+        Title = "Graffiti",
+        Build = () =>
+        {
+            var items = new List<MenuItem>
+            {
+                new("No graffiti", pl => CommitGraffiti(pl, 0, 0, "Graffiti removed"), Current: _loadout.Graffiti <= 0)
+            };
+            foreach (var g in _catalog.Graffiti.Where(g => Matches(g.Name, query)))
+                items.Add(new(g.Tinted ? $"{g.Name} (tints)" : g.Name, pl =>
+                {
+                    if (g.Tinted) PushPage(pl, TintPage(g));
+                    else CommitGraffiti(pl, g.Def, 0, $"{g.Name}: spray with css_spray");
+                }, Current: _loadout.Graffiti == g.Def));
+            return items;
+        }
+    };
+
+    private MenuPage TintPage(CatalogGraffiti g) => new()
+    {
+        Title = g.Name,
+        Build = () => GraffitiTints.Select(t => new MenuItem(t.Name, pl => CommitGraffiti(pl, g.Def, t.Id, $"{g.Name} ({t.Name}): spray with css_spray"),
+            Current: _loadout.Graffiti == g.Def && _loadout.GraffitiTint == t.Id)).ToList()
     };
 
     private static StickerPaint? SlotOf(Paint p, int slot) => slot < p.Stickers.Count ? p.Stickers[slot] : null;

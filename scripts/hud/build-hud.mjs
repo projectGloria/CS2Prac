@@ -13,6 +13,7 @@
 //   .pk-bar.s<def>_<paint>    rarity colour
 //   .pk-img.p<def>            pin/coin/medal (items' image_inventory econ/status_icons/…)
 //   .pk-img.m<def>            music kit (music_definitions' image_inventory econ/music_kits/…)
+//   .pk-img.g<def>            graffiti (sticker_kits spray_*: econ/stickers/<sticker_material>_png)
 //   .pk-img.a<def>            agent portrait (econ/characters/customplayer_<model>[_square]_png)
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -171,6 +172,13 @@ function buildImageCss(cs2) {
       const image = Array.isArray(body) ? get(body, 'image_inventory') : null
       const img = image && `panorama/images/${image}_png.vtex`
       if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.m${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
+    }
+  for (const section of all(game, 'sticker_kits'))
+    for (const [def, body] of section) {
+      if (!Array.isArray(body) || !String(get(body, 'name') ?? '').startsWith('spray_')) continue
+      const mat = get(body, 'sticker_material')
+      const img = mat && `panorama/images/econ/stickers/${mat}_png.vtex`
+      if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.g${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
     }
 
   // default_generated/<item>_<codename>_light_png: split at the longest item name that leaves a known codename

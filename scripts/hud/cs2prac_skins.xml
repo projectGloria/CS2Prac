@@ -26,6 +26,7 @@
 					<Button id="pk_tab_agents" class="pk-tab"><Label class="pk-tab-text" text="Agents" hittest="false" /></Button>
 					<Button id="pk_tab_pins" class="pk-tab"><Label class="pk-tab-text" text="Pins" hittest="false" /></Button>
 					<Button id="pk_tab_music" class="pk-tab"><Label class="pk-tab-text" text="Music" hittest="false" /></Button>
+					<Button id="pk_tab_graffiti" class="pk-tab"><Label class="pk-tab-text" text="Graffiti" hittest="false" /></Button>
 				</Panel>
 				<Button id="pk_close" class="pk-close"><Label class="pk-close-text" text="&#10005;" hittest="false" /></Button>
 			</Panel>

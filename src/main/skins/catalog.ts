@@ -8,6 +8,7 @@ import {
   type Catalog,
   type CatalogAgent,
   type CatalogKeychain,
+  type CatalogGraffiti,
   type CatalogMusicKit,
   type CatalogPin,
   type CatalogSkin,
@@ -85,12 +86,22 @@ export interface ApiMusicKit {
   rarity?: { color: string } | null
 }
 
+export interface ApiGraffiti {
+  id: string
+  name: string
+  def_index: string | number
+  image: string
+  tint?: { id: string; name: string } | null
+  rarity?: { color: string } | null
+}
+
 export interface ApiExtras {
   agents: ApiAgent[]
   stickers: ApiSticker[]
   keychains: ApiKeychain[]
   collectibles?: ApiCollectible[]
   musicKits?: ApiMusicKit[]
+  graffiti?: ApiGraffiti[]
 }
 
 const defOf = (v: string | number) => {
@@ -160,6 +171,32 @@ export function buildMusicKits(raw: ApiMusicKit[]): CatalogMusicKit[] {
     out.push({ defIndex, name: m.name.replace(/^Music Kit \| /, ''), image: m.image, rarityColor: m.rarity?.color ?? GREY })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * One entry per graffiti pattern. Tinted ones are listed once per tint ("graffiti-1697_5", "… (Desert Amber)"); the
+ * tint id is the number after the underscore, and each gets its own image.
+ */
+export function buildGraffiti(raw: ApiGraffiti[]): CatalogGraffiti[] {
+  const byDef = new Map<number, CatalogGraffiti>()
+  for (const g of raw) {
+    const defIndex = defOf(g.def_index)
+    if (!defIndex || !g.image) continue
+    const tint = g.tint ? Number(g.id.split('_').pop()) : 0
+    if (g.tint && !(Number.isInteger(tint) && tint >= 1 && tint <= 19)) continue
+    let entry = byDef.get(defIndex)
+    if (!entry) {
+      const plain = g.name.replace(/^Sealed Graffiti \| /, '')
+      const name = g.tint ? plain.replace(/ \([^)]*\)$/, '') : plain
+      entry = { defIndex, name, image: g.image, rarityColor: g.rarity?.color ?? GREY, tints: {} }
+      byDef.set(defIndex, entry)
+    }
+    if (tint) {
+      if (Object.keys(entry.tints).length === 0 || tint < Math.min(...Object.keys(entry.tints).map(Number))) entry.image = g.image
+      entry.tints[String(tint)] = g.image
+    }
+  }
+  return [...byDef.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
 const kindOf = (category: string): WeaponKind =>
@@ -234,7 +271,8 @@ export function buildCatalog(
     stickers: buildStickers(extras.stickers),
     keychains: buildKeychains(extras.keychains),
     pins: buildPins(extras.collectibles ?? []),
-    musicKits: buildMusicKits(extras.musicKits ?? [])
+    musicKits: buildMusicKits(extras.musicKits ?? []),
+    graffiti: buildGraffiti(extras.graffiti ?? [])
   }
 }
 
@@ -276,11 +314,12 @@ export async function getCatalog(refresh = false): Promise<Catalog> {
       fetchJson<ApiKeychain[]>('keychains.json')
     ])
     // newer extras: a failed download leaves them empty instead of failing the whole catalog
-    const [collectibles, musicKits] = await Promise.all([
+    const [collectibles, musicKits, graffiti] = await Promise.all([
       fetchJson<ApiCollectible[]>('collectibles.json').catch(() => []),
-      fetchJson<ApiMusicKit[]>('music_kits.json').catch(() => [])
+      fetchJson<ApiMusicKit[]>('music_kits.json').catch(() => []),
+      fetchJson<ApiGraffiti[]>('graffiti.json').catch(() => [])
     ])
-    memo = buildCatalog(skins, base, Date.now(), { agents, stickers, keychains, collectibles, musicKits })
+    memo = buildCatalog(skins, base, Date.now(), { agents, stickers, keychains, collectibles, musicKits, graffiti })
     await writeFile(cacheFile(), JSON.stringify(memo))
     return memo
   } catch (e) {
@@ -307,13 +346,18 @@ async function bundledCatalog(): Promise<Catalog | null> {
       const f = bundledCatalogFile(name)
       return f ? JSON.parse(gunzipSync(await readFile(f)).toString('utf8')) : []
     }
-    const [collectibles, musicKits] = await Promise.all([optional('collectibles.json'), optional('music_kits.json')])
+    const [collectibles, musicKits, graffiti] = await Promise.all([
+      optional('collectibles.json'),
+      optional('music_kits.json'),
+      optional('graffiti.json')
+    ])
     const c = buildCatalog(skins, base, Date.now() - CACHE_TTL_MS + 60 * 60 * 1000, {
       agents,
       stickers,
       keychains,
       collectibles,
-      musicKits
+      musicKits,
+      graffiti
     })
     await writeFile(cacheFile(), JSON.stringify(c))
     return c
