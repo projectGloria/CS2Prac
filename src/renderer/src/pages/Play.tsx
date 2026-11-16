@@ -1,13 +1,27 @@
 import { useEffect, useState } from 'react'
-import { LayoutGrid, Trophy } from 'lucide-react'
+import {
+  CircleStop,
+  Crosshair,
+  FolderOpen,
+  LayoutGrid,
+  Play as PlayIcon,
+  Power,
+  RefreshCw,
+  Skull,
+  Swords,
+  Target,
+  Trophy,
+  Users,
+  type LucideIcon
+} from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
-const MODES: { id: GameMode; label: string }[] = [
-  { id: 'competitive', label: 'Competitive' },
-  { id: 'casual', label: 'Casual' },
-  { id: 'wingman', label: 'Wingman' },
-  { id: 'deathmatch', label: 'Deathmatch' }
+const MODES: { id: GameMode; label: string; icon: LucideIcon }[] = [
+  { id: 'competitive', label: 'Competitive', icon: Trophy },
+  { id: 'casual', label: 'Casual', icon: Users },
+  { id: 'wingman', label: 'Wingman', icon: Swords },
+  { id: 'deathmatch', label: 'Deathmatch', icon: Skull }
 ]
 
 /** A console line with a copy button. */
@@ -28,10 +42,10 @@ function CopyLine({ text, hidden }: { text: string; hidden?: string }) {
   )
 }
 
-const MZ_MODES: { id: MatchZyMode; label: string; hint: string }[] = [
-  { id: 'practice', label: 'Practice', hint: 'MatchZy practice mode: infinite ammo and money, respawn, nade trajectories, .bot, .rethrow …' },
-  { id: 'match', label: 'Match', hint: 'MatchZy match mode: warmup, .ready, knife round, pauses.' },
-  { id: 'off', label: 'Plain', hint: 'MatchZy stays idle; the game mode rules apply. Use .prac in game to switch anyway.' }
+const MZ_MODES: { id: MatchZyMode; label: string; icon: LucideIcon; hint: string }[] = [
+  { id: 'practice', label: 'Practice', icon: Crosshair, hint: 'MatchZy practice mode: infinite ammo and money, respawn, nade trajectories, .bot, .rethrow …' },
+  { id: 'match', label: 'Match', icon: Target, hint: 'MatchZy match mode: warmup, .ready, knife round, pauses.' },
+  { id: 'off', label: 'Plain', icon: Power, hint: 'MatchZy stays idle; the game mode rules apply. Use .prac in game to switch anyway.' }
 ]
 
 /** MatchZy chat commands (also with ! instead of .). */
@@ -117,6 +131,7 @@ export default function Play({ status }: { status: ServerStatus }) {
   const isSelected = (m: MapChoice) => JSON.stringify(m) === JSON.stringify(selected)
 
   const crashed = status.state === 'stopped' ? status.crashed : undefined
+  const shownMap = status.state === 'stopped' ? selected : status.map
   return (
     <div className="play">
       {(crashed || health?.cs2Updated || !!health?.problems.length) && (
@@ -140,6 +155,65 @@ export default function Play({ status }: { status: ServerStatus }) {
           )}
         </div>
       )}
+      <section className="card server-bar">
+        <div className="server-controls">
+          <div className="field">
+            Mode
+            <Dropdown
+              value={mode}
+              disabled={!stopped}
+              onChange={setMode}
+              options={MODES.map((m) => ({ value: m.id, label: m.label, icon: m.icon }))}
+            />
+          </div>
+          {settings && (
+            <div className="field">
+              MatchZy
+              <Dropdown
+                value={settings.matchzyMode}
+                disabled={!stopped}
+                onChange={(v) => updateSettings({ matchzyMode: v })}
+                options={MZ_MODES.map((m) => ({ value: m.id, label: m.label, icon: m.icon }))}
+              />
+            </div>
+          )}
+          <div className="selected-map">
+            {shownMap.kind === 'official' && MAP_ICONS[shownMap.name] ? (
+              <img className="map-icon" src={MAP_ICONS[shownMap.name]} alt="" />
+            ) : (
+              <span className="map-icon" />
+            )}
+            <span className="map-text">
+              <span className="muted small">{stopped ? 'Selected map' : 'Running map'}</span>
+              <strong>{shownMap.kind === 'official' ? prettyMap(shownMap.name) : mapLabel(shownMap)}</strong>
+            </span>
+          </div>
+          <div className="server-actions">
+            {stopped && (
+              <button className="primary big" disabled={busy} onClick={() => run(() => window.api.server.start({ map: selected, mode }))}>
+                <PlayIcon size={16} aria-hidden />
+                Start server
+              </button>
+            )}
+            {status.state === 'starting' && <button disabled>Starting… (see Console)</button>}
+            {running && !isSelected(status.map) && (
+              <button disabled={busy} onClick={() => run(() => window.api.server.changeMap(selected))}>
+                <RefreshCw size={15} aria-hidden />
+                Change to {mapLabel(selected)}
+              </button>
+            )}
+            {!stopped && (
+              <button className="danger" disabled={status.state === 'stopping'} onClick={() => run(() => window.api.server.stop())}>
+                <CircleStop size={15} aria-hidden />
+                {status.state === 'stopping' ? 'Stopping…' : 'Stop server'}
+              </button>
+            )}
+          </div>
+        </div>
+        {settings && <p className="muted small hint">{MZ_MODES.find((m) => m.id === settings.matchzyMode)?.hint}</p>}
+        {error && <p className="error-text">{error}</p>}
+      </section>
+
       <section className="card wide">
         <div className="card-head">
           <h2>Map</h2>
@@ -178,88 +252,10 @@ export default function Play({ status }: { status: ServerStatus }) {
         </div>
       </section>
 
-      <section className="card side">
-        <h2>Server</h2>
-        <label className="field">
-          Mode
-          <select value={mode} disabled={!stopped} onChange={(e) => setMode(e.target.value as GameMode)}>
-            {MODES.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {settings && (
-          <label className="field">
-            MatchZy
-            <select
-              value={settings.matchzyMode}
-              disabled={!stopped}
-              onChange={(e) => updateSettings({ matchzyMode: e.target.value as MatchZyMode })}
-            >
-              {MZ_MODES.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            <span className="muted small">{MZ_MODES.find((m) => m.id === settings.matchzyMode)?.hint}</span>
-          </label>
-        )}
-
-        <p className="muted small">
-          Selected: <strong>{mapLabel(selected)}</strong>
-          {status.state !== 'stopped' && (
-            <>
-              <br />
-              Current: <strong>{mapLabel(status.map)}</strong>
-            </>
-          )}
-        </p>
-
-        <div className="stack">
-          {stopped && (
-            <button className="primary" disabled={busy} onClick={() => run(() => window.api.server.start({ map: selected, mode }))}>
-              Start server
-            </button>
-          )}
-          {status.state === 'starting' && <button disabled>Starting… (see Console)</button>}
-          {running && (
-            <>
-              <button disabled={busy} onClick={() => run(() => window.api.server.changeMap(selected))}>
-                Change map to {mapLabel(selected)}
-              </button>
-            </>
-          )}
-          {!stopped && (
-            <button className="danger" disabled={status.state === 'stopping'} onClick={() => run(() => window.api.server.stop())}>
-              {status.state === 'stopping' ? 'Stopping…' : 'Stop server'}
-            </button>
-          )}
-        </div>
-        {error && <p className="error-text">{error}</p>}
-
-        <details className="mz-help">
-          <summary>MatchZy commands</summary>
-          <table>
-            <tbody>
-              {MZ_COMMANDS.map(([c, d]) => (
-                <tr key={c}>
-                  <td>
-                    <code>{c}</code>
-                  </td>
-                  <td className="muted small">{d}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </details>
-
+      <div className="info-grid">
         {running && info && (
-          <div className="connect-box">
-            <h3>Join from CS2</h3>
+          <section className="card info-card">
+            <h2>Join from CS2</h2>
             <p className="muted small">Open the CS2 console (~) and paste:</p>
             <CopyLine text={info.connect[0]} />
             {info.connect.length > 1 && (
@@ -275,11 +271,10 @@ export default function Play({ status }: { status: ServerStatus }) {
               <code>!cmd &lt;command&gt;</code>, e.g. <code>css_cmd exec mycfg</code>. What the server prints shows up in the Console
               tab here. (CS2's own <code>rcon</code> command doesn't reach the server, so it isn't used.)
             </p>
-          </div>
+          </section>
         )}
-
-        <div className="connect-box">
-          <h3>In-game skin menu</h3>
+        <section className="card info-card">
+          <h2>In-game skin menu</h2>
           <p className="muted small">Paste once in the CS2 console (it is saved with your binds), then press K in game:</p>
           <CopyLine text="bind k css_menu" />
           <p className="muted small">
@@ -287,11 +282,10 @@ export default function Play({ status }: { status: ServerStatus }) {
             <code>!agent</code>, <code>!sticker</code>, <code>!charm</code> followed by a name, e.g. <code>!knife karambit fade</code>.
             Picks are applied immediately and saved to your active profile.
           </p>
-        </div>
-
+        </section>
         {settings && (
-          <>
-            <h3>Options</h3>
+          <section className="card info-card">
+            <h2>Options</h2>
             <label className="field">
               Server name (chat prefix)
               <input
@@ -308,7 +302,10 @@ export default function Play({ status }: { status: ServerStatus }) {
               Your cfg files: everything in the server cfg folder is copied to the server before each start.{' '}
               <code>cs2prac_server.cfg</code> runs after every map load.
             </p>
-            <button onClick={() => window.api.server.openCfgFolder()}>Open server cfg folder</button>
+            <button className="fit" onClick={() => window.api.server.openCfgFolder()}>
+              <FolderOpen size={15} aria-hidden />
+              Open server cfg folder
+            </button>
             <label className="field">
               Steam Web API key (optional, for workshop maps)
               <input
@@ -317,9 +314,24 @@ export default function Play({ status }: { status: ServerStatus }) {
                 onBlur={(e) => updateSettings({ authKey: e.target.value.trim() || undefined })}
               />
             </label>
-          </>
+          </section>
         )}
-      </section>
+        <section className="card info-card mz-help">
+          <h2>MatchZy commands</h2>
+          <table>
+            <tbody>
+              {MZ_COMMANDS.map(([c, d]) => (
+                <tr key={c}>
+                  <td>
+                    <code>{c}</code>
+                  </td>
+                  <td className="muted small">{d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
     </div>
   )
 }

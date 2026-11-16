@@ -74,7 +74,25 @@ h2 { margin: 0 0 14px; font-size: 16px; }
 h3 { margin: 20px 0 10px; font-size: 14px; }
 input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font: inherit; }
 .row input { flex: 1; }
-.play { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.play { display: flex; flex-direction: column; gap: 20px; }
+
+/* Play: horizontal server bar on top, info cards side by side below the maps */
+.server-bar { max-width: none; padding: 16px 20px; }
+.server-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+.server-controls .field { margin: 0; }
+.selected-map { display: flex; align-items: center; gap: 10px; padding: 0 4px; min-width: 0; }
+.selected-map .map-icon { width: 40px; height: 40px; }
+.selected-map strong { text-transform: capitalize; font-size: 15px; }
+.server-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.server-actions button { display: inline-flex; align-items: center; gap: 8px; }
+.server-bar .hint { margin: 12px 0 0; }
+.server-bar .error-text { margin: 8px 0 0; }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+.info-card { max-width: none; padding: 20px; }
+.info-card.mz-help { margin: 0; }
+.info-card.mz-help table { margin-top: 0; }
+button.fit { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.dropdown-trigger:disabled { opacity: 0.55; }
 .card.wide, .card.side { max-width: none; }
 .map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .map-tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; min-width: 0; }
@@ -91,7 +109,6 @@ button.danger { border-color: var(--err); color: var(--err); }
 .console { display: flex; flex-direction: column; height: 100%; gap: 8px; }
 .console-head { display: flex; justify-content: space-between; align-items: center; }
 .log.tall { flex: 1; max-height: none; margin: 0; white-space: pre-wrap; word-break: break-all; }
-@media (max-width: 900px) { .play { grid-template-columns: 1fr; } }
 
 /* --- milestone 3: loadout --- */
 .content:has(.loadout) { padding: 0; overflow: hidden; }

@@ -13,12 +13,14 @@ export default function Dropdown<T extends string>({
   value,
   options,
   onChange,
-  align = 'left'
+  align = 'left',
+  disabled = false
 }: {
   value: T
   options: DropdownOption<T>[]
   onChange: (v: T) => void
   align?: 'left' | 'right'
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [focus, setFocus] = useState(0)
@@ -42,6 +44,7 @@ export default function Dropdown<T extends string>({
   }
 
   const onKey = (e: React.KeyboardEvent) => {
+    if (disabled) return
     if (e.key === 'Escape') setOpen(false)
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
@@ -56,7 +59,7 @@ export default function Dropdown<T extends string>({
 
   return (
     <div className={`dropdown ${open ? 'open' : ''}`} ref={root} onKeyDown={onKey}>
-      <button type="button" className="dropdown-trigger" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="dropdown-trigger" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
         {CurrentIcon && <CurrentIcon size={15} className="dropdown-icon" aria-hidden />}
         <span>{current.label}</span>
         <ChevronDown size={15} className="dropdown-chevron" aria-hidden />
