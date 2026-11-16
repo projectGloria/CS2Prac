@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Copy, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
+import { Copy, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, SlidersHorizontal, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
 import type { AppInfo, ServerStatus, SetupState, UpdateStatus } from '@shared/ipc'
 import appIcon from '../../../build/icon.png'
 import Setup from './pages/Setup'
 import Play from './pages/Play'
 import Console from './pages/Console'
 import Loadout from './pages/Loadout'
+import Options from './pages/Options'
 
-type Tab = 'play' | 'loadout' | 'console' | 'setup'
+type Tab = 'play' | 'loadout' | 'console' | 'options' | 'setup'
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'play', label: 'Play', icon: PlayIcon },
   { id: 'loadout', label: 'Loadout', icon: Shirt },
   { id: 'console', label: 'Console', icon: SquareTerminal },
+  { id: 'options', label: 'Options', icon: SlidersHorizontal },
   { id: 'setup', label: 'Setup', icon: Settings }
 ]
 const MAX_LOG_LINES = 2000
@@ -105,6 +107,7 @@ export default function App() {
         {tab === 'play' && <Play status={status} />}
         {tab === 'loadout' && <Loadout />}
         {tab === 'console' && <Console status={status} log={serverLog} onClear={() => setServerLog([])} />}
+        {tab === 'options' && <Options />}
         {tab === 'setup' && <Setup state={setup} onState={setSetup} serverStopped={status.state === 'stopped'} />}
       </main>
     </div>

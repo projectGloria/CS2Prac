@@ -74,25 +74,38 @@ h2 { margin: 0 0 14px; font-size: 16px; }
 h3 { margin: 20px 0 10px; font-size: 14px; }
 input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font: inherit; }
 .row input { flex: 1; }
-.play { display: flex; flex-direction: column; gap: 20px; }
-
-/* Play: horizontal server bar on top, info cards side by side below the maps */
-.server-bar { max-width: none; padding: 16px 20px; }
-.server-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
-.server-controls .field { margin: 0; }
-.selected-map { display: flex; align-items: center; gap: 10px; padding: 0 4px; min-width: 0; }
-.selected-map .map-icon { width: 40px; height: 40px; }
+/* Play: maps left, server + MatchZy commands right; both columns fill the page height and scroll inside */
+.play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 20px; height: 100%; min-height: 560px; }
+.play:not(:has(.notices)) { grid-template-rows: minmax(0, 1fr); }
+.play > .card { max-width: none; }
+.play-maps { display: flex; flex-direction: column; min-height: 0; }
+.play-maps .map-grid { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 4px; }
+.play-maps .workshop-row { margin: 16px 0 0; }
+.play-side { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+.play-side > .card { max-width: none; }
+.server-card { flex: none; }
+.server-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.server-fields .field { margin: 0; }
+.server-fields .dropdown-trigger { width: 100%; }
+.server-card .hint { margin: 10px 0 0; }
+.server-launch { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.selected-map { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.selected-map .map-icon { width: 44px; height: 44px; }
 .selected-map strong { text-transform: capitalize; font-size: 15px; }
 .server-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .server-actions button { display: inline-flex; align-items: center; gap: 8px; }
-.server-bar .hint { margin: 12px 0 0; }
-.server-bar .error-text { margin: 8px 0 0; }
-.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
-.info-card { max-width: none; padding: 20px; }
-.info-card.mz-help { margin: 0; }
-.info-card.mz-help table { margin-top: 0; }
-button.fit { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.server-card .error-text { margin: 10px 0 0; }
+.play-side .mz-help { flex: 1; min-height: 0; margin: 0; display: flex; flex-direction: column; }
+.mz-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.mz-help table { margin-top: 0; }
+button.fit { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; }
 .dropdown-trigger:disabled { opacity: 0.55; }
+
+/* Options page */
+.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; align-items: start; }
+.options .card { max-width: none; }
+.title-icon { display: flex; align-items: center; gap: 8px; }
+.title-icon svg { color: var(--accent); }
 .card.wide, .card.side { max-width: none; }
 .map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .map-tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; min-width: 0; }
