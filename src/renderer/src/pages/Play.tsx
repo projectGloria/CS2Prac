@@ -150,7 +150,7 @@ export default function Play({ status }: { status: ServerStatus }) {
           {(pool === 'comp' ? COMP_POOL.filter((n) => maps.includes(n)) : maps.filter((n) => !COMP_POOL.includes(n))).map((name) => {
             const m: MapChoice = { kind: 'official', name }
             return (
-              <button key={name} className={`map-tile ${isSelected(m) ? 'selected' : ''}`} onClick={() => setSelected(m)}>
+              <button key={name} className={`map-tile ${isSelected(m) ? 'selected' : ''} ${name === 'de_inferno' ? 'wide' : ''}`} onClick={() => setSelected(m)}>
                 {MAP_ICONS[name] ? <img className="map-icon" src={MAP_ICONS[name]} alt="" /> : <span className="map-icon" />}
                 <span className="map-text">
                   <span className="map-name">{prettyMap(name)}</span>
