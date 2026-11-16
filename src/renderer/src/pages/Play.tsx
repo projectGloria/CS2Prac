@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { LayoutGrid, Trophy } from 'lucide-react'
+import Dropdown from '../components/Dropdown'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
 const MODES: { id: GameMode; label: string }[] = [
@@ -141,10 +143,15 @@ export default function Play({ status }: { status: ServerStatus }) {
       <section className="card wide">
         <div className="card-head">
           <h2>Map</h2>
-          <select value={pool} onChange={(e) => setPool(e.target.value as MapPool)}>
-            <option value="comp">Comp pool</option>
-            <option value="others">Others</option>
-          </select>
+          <Dropdown
+            value={pool}
+            onChange={setPool}
+            align="right"
+            options={[
+              { value: 'comp', label: 'Comp pool', icon: Trophy, hint: `${COMP_POOL.filter((n) => maps.includes(n)).length} maps` },
+              { value: 'others', label: 'Others', icon: LayoutGrid, hint: `${maps.filter((n) => !COMP_POOL.includes(n)).length} maps` }
+            ]}
+          />
         </div>
         <div className="map-grid">
           {(pool === 'comp' ? COMP_POOL.filter((n) => maps.includes(n)) : maps.filter((n) => !COMP_POOL.includes(n))).map((name) => {
