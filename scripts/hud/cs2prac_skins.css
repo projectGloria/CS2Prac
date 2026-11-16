@@ -287,6 +287,115 @@
 	visibility: collapse;
 }
 
+/* ---------------------------------------------------------------- agents tab: view, poses, camera */
+
+/* Third person: the window docks left (the agent stands on the right), no dim backdrop. */
+.pk-win.third
+{
+	width: 900px;
+	horizontal-align: left;
+	margin-left: 40px;
+	background-color: #0e1117e8;
+}
+
+.pk-agentbar
+{
+	width: 100%;
+	flow-children: down;
+	margin-bottom: 6px;
+}
+
+.pk-agentbar.gone
+{
+	visibility: collapse;
+}
+
+.pk-tp
+{
+	width: 100%;
+	flow-children: down;
+}
+
+.pk-tp.gone
+{
+	visibility: collapse;
+}
+
+.pk-barrow
+{
+	width: 100%;
+	height: 38px;
+	margin-bottom: 6px;
+	flow-children: right;
+}
+
+.pk-barlabel
+{
+	width: 62px;
+	vertical-align: center;
+	color: #8a93a3;
+	font-size: 13px;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.pk-chip
+{
+	height: 34px;
+	margin-right: 5px;
+	padding: 0px 9px;
+	vertical-align: center;
+	background-color: #1a1f29;
+	border: 1px solid #ffffff12;
+	border-radius: 4px;
+	transition-property: background-color, border-color;
+	transition-duration: 0.08s;
+}
+
+.pk-chip:hover
+{
+	background-color: #252c3a;
+	border-color: #ffffff30;
+}
+
+.pk-chip.picked
+{
+	background-color: #2a2418;
+	border-color: #e8a33d;
+}
+
+.pk-chip-text
+{
+	vertical-align: center;
+	color: #c9d1dc;
+	font-size: 13px;
+	font-weight: bold;
+}
+
+.pk-chip.picked .pk-chip-text
+{
+	color: #e8a33d;
+}
+
+.pk-hint
+{
+	margin-left: 12px;
+	vertical-align: center;
+	color: #8a93a3;
+	font-size: 13px;
+}
+
+/* Shorter grid under the agents bar (one row of buttons; three in third person). */
+.pk-win.agents .pk-grid
+{
+	height: 506px;
+}
+
+.pk-win.third .pk-grid
+{
+	height: 374px;
+}
+
 /* ---------------------------------------------------------------- tiles */
 
 .pk-tile

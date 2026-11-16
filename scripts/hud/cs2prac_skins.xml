@@ -36,6 +36,47 @@
 
 				<Panel class="pk-main" hittest="false">
 					<Label id="pk_heading" class="pk-heading" text="{s:text}" hittest="false" />
+					<!-- Agents tab only: view toggle; in third person also pose and camera buttons (AgentView.cs). -->
+					<Panel id="pk_agentbar" class="pk-agentbar" hittest="false">
+						<Panel class="pk-barrow" hittest="false">
+							<Label class="pk-barlabel" text="View" hittest="false" />
+							<Button id="pk_view_first" class="pk-chip"><Label class="pk-chip-text" text="First person" hittest="false" /></Button>
+							<Button id="pk_view_third" class="pk-chip"><Label class="pk-chip-text" text="Third person" hittest="false" /></Button>
+							<Label id="pk_hint" class="pk-hint" text="{s:text}" hittest="false" />
+						</Panel>
+						<Panel id="pk_tp" class="pk-tp" hittest="false">
+							<Panel class="pk-barrow" hittest="false">
+								<Label class="pk-barlabel" text="Pose" hittest="false" />
+								<Button id="pk_pose_held" class="pk-chip"><Label class="pk-chip-text" text="Yours" hittest="false" /></Button>
+								<Button id="pk_pose_knife" class="pk-chip"><Label class="pk-chip-text" text="Knife" hittest="false" /></Button>
+								<Button id="pk_pose_pistol" class="pk-chip"><Label class="pk-chip-text" text="Pistol" hittest="false" /></Button>
+								<Button id="pk_pose_smg" class="pk-chip"><Label class="pk-chip-text" text="SMG" hittest="false" /></Button>
+								<Button id="pk_pose_rifle" class="pk-chip"><Label class="pk-chip-text" text="Rifle" hittest="false" /></Button>
+								<Button id="pk_pose_shotgun" class="pk-chip"><Label class="pk-chip-text" text="Shotgun" hittest="false" /></Button>
+								<Button id="pk_pose_sniper" class="pk-chip"><Label class="pk-chip-text" text="Sniper" hittest="false" /></Button>
+								<Button id="pk_pose_mg" class="pk-chip"><Label class="pk-chip-text" text="MG" hittest="false" /></Button>
+								<Button id="pk_pose_grenade" class="pk-chip"><Label class="pk-chip-text" text="Grenade" hittest="false" /></Button>
+								<Button id="pk_pose_c4" class="pk-chip"><Label class="pk-chip-text" text="C4" hittest="false" /></Button>
+								<Button id="pk_pose_zeus" class="pk-chip"><Label class="pk-chip-text" text="Zeus" hittest="false" /></Button>
+							</Panel>
+							<Panel class="pk-barrow" hittest="false">
+								<Label class="pk-barlabel" text="Stance" hittest="false" />
+								<Button id="pk_stance_stand" class="pk-chip"><Label class="pk-chip-text" text="Stand" hittest="false" /></Button>
+								<Button id="pk_stance_crouch" class="pk-chip"><Label class="pk-chip-text" text="Crouch" hittest="false" /></Button>
+							</Panel>
+							<Panel class="pk-barrow" hittest="false">
+								<Label class="pk-barlabel" text="Camera" hittest="false" />
+								<Button id="pk_cam_left" class="pk-chip"><Label class="pk-chip-text" text="&#9664; Turn" hittest="false" /></Button>
+								<Button id="pk_cam_right" class="pk-chip"><Label class="pk-chip-text" text="Turn &#9654;" hittest="false" /></Button>
+								<Button id="pk_cam_in" class="pk-chip"><Label class="pk-chip-text" text="Zoom +" hittest="false" /></Button>
+								<Button id="pk_cam_out" class="pk-chip"><Label class="pk-chip-text" text="Zoom -" hittest="false" /></Button>
+								<Button id="pk_cam_up" class="pk-chip"><Label class="pk-chip-text" text="&#9650;" hittest="false" /></Button>
+								<Button id="pk_cam_down" class="pk-chip"><Label class="pk-chip-text" text="&#9660;" hittest="false" /></Button>
+								<Button id="pk_cam_reset" class="pk-chip"><Label class="pk-chip-text" text="Reset" hittest="false" /></Button>
+								<Button id="pk_cam_mouse" class="pk-chip"><Label class="pk-chip-text" text="Mouse look" hittest="false" /></Button>
+							</Panel>
+						</Panel>
+					</Panel>
 					<Label id="pk_empty" class="pk-empty" text="{s:text}" hittest="false" />
 					<Panel class="pk-grid" hittest="true">
 <!--GRID_ROWS-->

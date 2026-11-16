@@ -152,6 +152,40 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   slot's gun, GiveNamedItem, `use <DesignerName>` (M4A1-S is weapon_m4a1 there). Bots don't follow `use` reliably, so
   `css_prac_hudequip <def>` (server test on the first bot) only proves the slot swap, not the switch.
 
+## Third-person agent preview (plugin/PracSkins/AgentView.cs)
+- Agents tab "Third person" (pref per SteamID in configs/plugins/PracSkins/hud_prefs.json; the app's loadout watcher only
+  reacts to loadout.json). A model-less, transparent prop_dynamic becomes `pawn.CameraServices.ViewEntity` (restore with
+  `Raw = uint.MaxValue`); `SyncAgentView` runs it exactly while the agents tab shows with Third person picked.
+- **The client turns its own pawn to the view direction** (user-tested: through the camera you only ever see your own
+  back), so the preview shows a stand-in; the pawn, its weapons and its viewmodel (`predicted_viewmodel` found by owner)
+  go alpha 0 meanwhile. Camera (Yaw/Elev/Dist, shifted left by Dist × SideShift, wall trace) stays; the pawn's eye
+  angles are teleported to the camera's; turning changes only DollYaw.
+- **Stand-in = a bot** (props can't: the engine deletes prop_dynamic(_override) with a weapon model, "has propdata …
+  DELETED"; agent models have no sequences, SetAnimation says "no sequence named", their anim graph's params can't be set).
+  MatchZy practice kicks every bot it didn't add ("untracked"/"erroneous spawning"), so first `css_bot` is run for the
+  player (ExecuteClientCommandFromServer), else `bot_add_ct/t` on the other team (bot_join_after_player 0). The bot:
+  MOVETYPE_NONE, TakesDamage false, collision group debris, teleported to the spot, SetModel(player's model),
+  `_standInTeam[slot] = player team` (IsTarget true, SkinTeam used by every loadout lookup), EyeAngles/V_angle set each
+  tick (teleport angles don't turn a bot). bot_stop 1 while any preview runs (CvarInt: bot_stop isn't a plain int).
+  Poses: RemoveWeapons + one GiveNamedItem (a bot with one weapon holds it); the C4 only with the bot briefly a T
+  (TeamNum on controller + pawn), a CT drops it. Crouch: CBot.IsCrouching + DuckAmount/Ducked/DesiresDuck every tick
+  (MatchZy's crouch bot). Neither alpha/EF_NODRAW on the viewmodel nor a server-side null ActiveWeapon hid the user's
+  gloves/held weapon (user tests; the client predicts its own), so the player's weapons are stashed (killed) for the
+  preview and re-given on exit (StashWeapons/RestoreWeapons). Even then the client drew its hands at the pawn's eye, so
+  the pawn is teleported 140 units behind the camera (PlaceCamera, TakesDamage off) and back to PawnHome on exit.
+  **C4 rules (live-tested):** while any C4 lies loose (a kicked carrier's, or the orphan RemoveWeapons leaves) a newly
+  given one falls to the floor, so RemoveLooseC4 runs first; a CT gets it only as a T for the give (TeamNum 2 on both);
+  and the game's AFK-bomb rule drops a T's C4 ~15 s into a round unless `HasMovedSinceSpawn` (set on the stand-in
+  every tick in ApplyStance). **The stand-in must not stand on the player**: MatchZy's
+  `.bot` starts TemporarilyDisableCollisions, a repeating timer until the two stop overlapping; kicking the bot while
+  it still runs crashed the server (AccessViolation in MatchZy). StandInSpot puts it ~72 units away. Release: bot_kick name, or kickid +
+  bot_quota − 1 for the MatchZy one. ≤ 4 requests, then a prop stand-in (UseAnimGraph, idle only).
+- Agent voice: `<set>.vo_preview` via pawn.EmitSound with a one-player RecipientFilter. Sets from items_game vo_prefix
+  (AgentVoice table) or the model folder (FactionVoice). Event names come from soundevents/vo/agents/*.vsndevts_c (KV3, LZ4).
+- Server test: `css_prac_hudopen`, `css_prac_hudclick pk_tab_agents` / `pk_view_third` / `pk_pose_rifle`, `css_prac_view`
+  (bot, skins, weapons, eye angles). A throwaway server mirror (syncMirror into a scratch folder + copied addons) lets
+  you live-test without touching the user's running server, whose plugin folder hot-reloads.
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
   CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only

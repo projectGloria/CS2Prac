@@ -28,6 +28,8 @@ public class HudSession
     public ulong LastButtons { get; set; }
     public List<HudSide> Side { get; set; } = new();
     public List<HudTile> Tiles { get; set; } = new();
+    /// <summary>The third-person agent preview while it runs (AgentView.cs).</summary>
+    public AgentView? View { get; set; }
 }
 
 /// <summary>What the client was last sent per slot (texts, classes), so a render only sends changes.</summary>
@@ -227,8 +229,7 @@ public partial class PracSkins
                 Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
             }
         }
-        RenderHud(player, s);
-        HudFlag(player, "pk_dim", "shown", true);
+        RenderHud(player, s); // also shows the dim backdrop (not in third person)
         HudFlag(player, "pk_win", "shown", true);
         _hud!.SetInputCaptureEnabled(player, true);
     }
@@ -236,6 +237,7 @@ public partial class PracSkins
     private void CloseHud(CCSPlayerController player)
     {
         if (!_hudSessions.Remove(player.Slot, out var s)) return;
+        StopAgentView(player, s);
         if (!player.IsValid) return;
         if (HudReady)
         {
@@ -279,6 +281,7 @@ public partial class PracSkins
                 CloseHud(p);
                 continue;
             }
+            if (s.View != null) AgentViewTick(p, s, buttons, pressed);
             if (s.Status.Length == 0 || now < s.StatusUntil) continue;
             s.Status = "";
             HudText(p, "pk_status", "");
@@ -490,6 +493,7 @@ public partial class PracSkins
                         SetFor(_loadout.Agents, pl, new AgentPaint { DefIndex = a.Def, Model = a.Model });
                         SaveLoadout();
                         ApplyAgent(pl);
+                        PlayAgentVoice(pl, a.Def, a.Model);
                         HudStatus(pl, s, $"{a.Name.Split(" | ")[0]} applied");
                     }));
                 break;
@@ -522,6 +526,26 @@ public partial class PracSkins
         var team = player.TeamNum;
         HudText(player, "pk_title", $"Loadout · {(team == 2 ? "T" : "CT")}");
         foreach (var t in HudTabs) HudFlag(player, $"pk_tab_{t}", "picked", s.Tab == t);
+
+        // agents tab: first/third person; in third person the window moves left, no dim, pose + camera buttons
+        var agents = s.Tab == "agents";
+        var view = s.View;
+        var thirdPref = PrefsFor(player).View == "third";
+        HudFlag(player, "pk_dim", "shown", view == null);
+        HudFlag(player, "pk_win", "agents", agents);
+        HudFlag(player, "pk_win", "third", view != null);
+        HudFlag(player, "pk_agentbar", "gone", !agents);
+        HudFlag(player, "pk_view_first", "picked", !thirdPref);
+        HudFlag(player, "pk_view_third", "picked", thirdPref);
+        HudFlag(player, "pk_tp", "gone", view == null);
+        HudText(player, "pk_hint", AgentHint(view));
+        if (view != null)
+        {
+            foreach (var pose in Poses) HudFlag(player, $"pk_pose_{pose.Key}", "picked", view.Pose == pose.Key);
+            HudFlag(player, "pk_cam_mouse", "picked", view.MouseLook);
+            HudFlag(player, "pk_stance_stand", "picked", !view.Crouch);
+            HudFlag(player, "pk_stance_crouch", "picked", view.Crouch);
+        }
 
         // left list
         HudFlag(player, "pk_side", "gone", s.Tab == "agents");
@@ -605,6 +629,7 @@ public partial class PracSkins
             HudStatus(player, s, "Something went wrong, see the server log");
         }
         if (!_hudSessions.ContainsKey(player.Slot)) return; // closed
+        SyncAgentView(player, s);
         BuildHud(player, s);
         RenderHud(player, s);
     }
@@ -616,6 +641,7 @@ public partial class PracSkins
             CloseHud(player);
             return;
         }
+        if (HandleAgentViewClick(player, s, id)) return;
         if (id.StartsWith("pk_tab_"))
         {
             var tab = id["pk_tab_".Length..];
@@ -678,11 +704,7 @@ public partial class PracSkins
         // Run as the player on the server (works for bots too). Two engine rules shape the order: one gun per slot
         // (giving a second rifle drops it on the floor), and "use" only switches while something is in hand.
         // So: knife out, old gun of that slot removed, new gun given, switch to it.
-        void Use(string name)
-        {
-            if (!player.IsBot) player.ExecuteClientCommand($"use {name}"); // as RefreshPlayer does for players
-            player.ExecuteClientCommandFromServer($"use {name}");
-        }
+        void Use(string name) => UseWeapon(player, name);
         if (owned != null)
         {
             Use(useName!);

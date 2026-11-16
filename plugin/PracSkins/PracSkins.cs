@@ -215,6 +215,7 @@ public partial class PracSkins : BasePlugin
     {
         if (player is not { IsValid: true } || player.IsHLTV) return false;
         if (player.TeamNum is not (2 or 3)) return false;
+        if (IsStandIn(player)) return true; // third-person stand-in bot: shows the previewing player's loadout
         return _loadout.Owner is null || player.SteamID.ToString() == _loadout.Owner;
     }
 
@@ -336,8 +337,8 @@ public partial class PracSkins : BasePlugin
 
     private Paint? PaintFor(CCSPlayerController player, CBasePlayerWeapon weapon) =>
         IsKnife(weapon)
-            ? _loadout.Knife.For(player.TeamNum)
-            : _loadout.WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex, player.TeamNum);
+            ? _loadout.Knife.For(SkinTeam(player))
+            : _loadout.WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex, SkinTeam(player));
 
     private void ApplyToCurrentWeapons(CCSPlayerController player)
     {
@@ -354,7 +355,7 @@ public partial class PracSkins : BasePlugin
 
         if (IsKnife(weapon))
         {
-            var knife = _loadout.Knife.For(player.TeamNum);
+            var knife = _loadout.Knife.For(SkinTeam(player));
             if (knife == null || knife.DefIndex <= 0) return;
 
             if (item.ItemDefinitionIndex != knife.DefIndex)
@@ -365,7 +366,7 @@ public partial class PracSkins : BasePlugin
         }
         else
         {
-            paint = _loadout.WeaponPaint(item.ItemDefinitionIndex, player.TeamNum);
+            paint = _loadout.WeaponPaint(item.ItemDefinitionIndex, SkinTeam(player));
             if (paint == null) return;
             item.EntityQuality = paint.StatTrak >= 0 ? 9 : 0;
         }
@@ -427,7 +428,7 @@ public partial class PracSkins : BasePlugin
 
     private void ApplyAgent(CCSPlayerController player)
     {
-        var agent = _loadout.Agents.For(player.TeamNum);
+        var agent = _loadout.Agents.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (agent is not { DefIndex: > 0 } || string.IsNullOrEmpty(agent.Model) || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
         try
@@ -492,7 +493,7 @@ public partial class PracSkins : BasePlugin
 
     private void ApplyGloves(CCSPlayerController player)
     {
-        var glove = _loadout.Gloves.For(player.TeamNum);
+        var glove = _loadout.Gloves.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (glove is not { PaintKit: > 0 } || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
 
