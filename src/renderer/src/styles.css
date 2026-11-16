@@ -77,7 +77,6 @@ input, select { background: var(--bg); color: var(--text); border: 1px solid var
 .play { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .card.wide, .card.side { max-width: none; }
 .map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.map-tile.wide { grid-column: 1 / -1; }
 .map-tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; min-width: 0; }
 .map-icon { width: 44px; height: 44px; flex: none; object-fit: contain; }
 .map-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
