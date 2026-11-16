@@ -17,6 +17,14 @@ describe('buildLaunchArgs', () => {
     expect(a).not.toContain('+map')
   })
 
+  it('turns on server avatar overrides only when asked (bot pictures)', () => {
+    const map = { kind: 'official', name: 'de_mirage' } as const
+    expect(buildLaunchArgs({ ...base, mode: 'competitive', map })).not.toContain('+sv_reliableavatardata')
+    const a = buildLaunchArgs({ ...base, mode: 'competitive', map, avatars: true })
+    expect(a.slice(a.indexOf('+sv_reliableavatardata'), a.indexOf('+sv_reliableavatardata') + 2)).toEqual(['+sv_reliableavatardata', '1'])
+    expect(a.indexOf('+sv_reliableavatardata')).toBeLessThan(a.indexOf('+map'))
+  })
+
   it('rejects injected map names and bad workshop ids', () => {
     expect(() => buildLaunchArgs({ ...base, mode: 'casual', map: { kind: 'official', name: 'de_dust2; quit' } })).toThrow()
     expect(() => buildLaunchArgs({ ...base, mode: 'casual', map: { kind: 'workshop', id: '12a' } })).toThrow()

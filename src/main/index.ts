@@ -32,7 +32,9 @@ import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore
 import { exportPluginCatalog } from './skins/pluginCatalog'
 import { SERVER_PREFS_FILE, addRecentWorkshop, readServerPrefs, writeServerPrefs, writeWorkshopMaps } from './server/serverPrefs'
 import type { ServerPrefs } from '@shared/serverSettings'
-import { listSteamAccounts } from './steam/accounts'
+import { listSteamAccounts, steamPath } from './steam/accounts'
+import { readBots, saveBots, writeServerBots } from './setup/bots'
+import type { BotsConfig } from '@shared/bots'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
 import type { LoadoutStore } from '@shared/skins'
@@ -52,6 +54,10 @@ async function rememberWorkshop(map: MapChoice) {
 let win: BrowserWindow | null = null
 const server = new ServerManager()
 const send = (channel: string, payload: unknown) => win?.webContents.send(channel, payload)
+/** the app's bot list (names, clans, pictures as data URLs); written for the server on every start */
+const botsFile = () => join(app.getPath('userData'), 'bots.json')
+/** whether the running server was started with +sv_reliableavatardata 1 (pictures need it before the map loads) */
+let startedWithAvatars = false
 
 async function requireInstallDir(): Promise<string> {
   const { installDir } = await loadSettings()
@@ -338,9 +344,12 @@ function registerIpc() {
     await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId), serverName)
     const cfgs = await syncServerCfgs(userCfgDir(), csgoDir, serverName)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
+    const avatars = await writeServerBots(csgoDir, await readBots(botsFile()), await steamPath(), accounts.map((a) => a.steamId))
+    startedWithAvatars = avatars
+    if (avatars) send(IPC.serverLog, '[cs2prac] bot pictures on (sv_reliableavatardata 1)')
     const stale = await killStaleServers(layout(installDir).cs2Exe)
     if (stale.length) send(IPC.serverLog, `[cs2prac] closed a leftover server process (${stale.join(', ')})`)
-    await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined })
+    await server.start(installDir, opts, { rconPassword: settings.rconPassword, authKey: settings.authKey || undefined, avatars })
     checkHealth(settings.matchzyMode !== 'off').catch((e) => logError('health', e))
   })
   ipcMain.handle(IPC.serverStop, () => server.stop())
@@ -358,6 +367,21 @@ function registerIpc() {
     const saved = await writeServerPrefs(layout(await requireInstallDir()).csgoDir, prefs)
     if (server.getStatus().state === 'running') await server.exec(APPLY_SETTINGS_CMD).catch((e) => logError('server prefs', e))
     return saved
+  })
+  ipcMain.handle(IPC.botsGet, () => readBots(botsFile()))
+  ipcMain.handle(IPC.botsSave, async (_e, bots: BotsConfig) => {
+    const saved = await saveBots(botsFile(), bots)
+    let restartForPictures = false
+    if (server.getStatus().state === 'running') {
+      const { installDir } = await loadSettings()
+      if (installDir) {
+        const accounts = await listSteamAccounts()
+        const avatars = await writeServerBots(layout(installDir).csgoDir, saved, await steamPath(), accounts.map((a) => a.steamId))
+        restartForPictures = avatars && !startedWithAvatars
+        await server.exec('css_prac_bots').catch((e) => logError('bots', e))
+      }
+    }
+    return { bots: saved, restartForPictures }
   })
   ipcMain.handle(IPC.serverConnectInfo, connectInfo)
   ipcMain.handle(IPC.serverGetHealth, getHealth)

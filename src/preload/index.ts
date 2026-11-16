@@ -58,6 +58,10 @@ const api: Api = {
     savePrefs: (prefs) => ipcRenderer.invoke(IPC.serverPrefsSave, prefs),
     onPrefsChanged: (cb) => subscribe<ServerPrefs>(IPC.serverPrefsChanged, cb)
   },
+  bots: {
+    get: () => ipcRenderer.invoke(IPC.botsGet),
+    save: (bots) => ipcRenderer.invoke(IPC.botsSave, bots)
+  },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),
     listSteamAccounts: () => ipcRenderer.invoke(IPC.skinsSteamAccounts)

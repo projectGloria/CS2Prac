@@ -11,7 +11,7 @@ export const GAME_MODES: Record<GameMode, { type: number; mode: number }> = {
 const MAP_NAME = /^[a-z0-9_]+$/i
 const WORKSHOP_ID = /^\d{1,20}$/
 
-export function buildLaunchArgs(opts: StartOptions & { port: number; rconPassword: string; authKey?: string }): string[] {
+export function buildLaunchArgs(opts: StartOptions & { port: number; rconPassword: string; authKey?: string; avatars?: boolean }): string[] {
   const gm = GAME_MODES[opts.mode]
   if (!gm) throw new Error(`Unknown game mode: ${opts.mode}`)
 
@@ -32,6 +32,8 @@ export function buildLaunchArgs(opts: StartOptions & { port: number; rconPasswor
     '+game_type', String(gm.type),
     '+game_mode', String(gm.mode)
   ]
+  // bot pictures: the server reads csgo/avatars/<steamid64>.png (setup/bots.ts); must be on before the map loads
+  if (opts.avatars) args.push('+sv_reliableavatardata', '1')
 
   if (opts.map.kind === 'workshop') {
     if (!WORKSHOP_ID.test(opts.map.id)) throw new Error('Workshop ID must be numeric')

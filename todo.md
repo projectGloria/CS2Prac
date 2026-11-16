@@ -238,18 +238,16 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
   `css_prac_spray [def] [tint]` server test.
 
 ## Phase 10: Custom bot names and pictures (app UI only) (req 4)
-- [ ] Names: a "Bots" panel in the app with a name list per team (+ optional clan tag); the plugin renames bots on
-  join (controller PlayerName + clan, SetStateChanged), for MatchZy `.bot` and `bot_add` bots; the agent-preview
-  stand-in keeps a hidden name.
-- [ ] Pictures **spike**, safe routes only, in this order (pick the first that works; note in CLAUDE.md why the
-  others failed):
-  1. Engine custom avatars: does CS2 still have CS:GO's `sv_reliableavatardata` / `avatars/<id>.rgb`? (`find avatar`
-     in the server console, strings in the server/client dlls.)
-  2. Bot controller SteamID set to a **public** Steam profile picked in the app, so the client loads that avatar
-     (never the user's own id; check scoreboard, kill feed, MatchZy still treats it as a bot).
-  3. A Panorama scoreboard override for bot rows (a client Panorama file, like the skin window) showing an image the
-     app copies from the user's file.
-- [ ] App: avatar picker per bot (image → resized, stored in userData, copied wherever the chosen route needs it).
+- [x] Names: a "Bots" panel in the app (Play page) with a name list per team (+ optional clan tag); the plugin
+  (BotNames.cs) renames bots on team join and spawn (controller PlayerName + clan, SetStateChanged), for MatchZy `.bot`
+  and `bot_add` bots; the agent-preview stand-in is skipped.
+- [x] Pictures **spike**: route 1 works. CS2 still has `sv_reliableavatardata` (server.dll CAvatarOverrideMgr): with
+  it on at launch the server reads `csgo/avatars/<steamid64>.png` at player_connect_full into the
+  ServerAvatarOverrides string table. Each bot with a picture gets a made-up SteamID (account ids from 4,000,000,000:
+  never a real account) and the plugin fires player_connect_full for it. Live-verified server-side on 27115. Routes 2
+  and 3 not needed.
+- [x] App: avatar picker per bot (image → 64×64 PNG, stored in userData/bots.json, written to csgo/avatars on start).
+- [ ] User check in game: scoreboard shows the bot names and pictures; your own Steam picture still shows.
 
 ## Phase 11: Inspect link / !gen import (extra)
 - [ ] Parse `!gen`/`!g` codes and CS2 inspect links (masked `CEconItemPreviewDataBlock` protobuf in the link hex;

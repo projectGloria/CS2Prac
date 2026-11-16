@@ -120,6 +120,20 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   `.pk-img.g<def>` from sticker_kits spray_* `econ/stickers/<sticker_material>_png`). 3 s cooldown, 5 sprays per player.
 - Server test: `css_prac_spray [def] [tint]` (first live bot; aims down if it looks at the horizon; prints every decal).
 
+## Bot names and pictures (Phase 10)
+- App: Play page "Bots" (components/Bots.tsx) → userData/bots.json (src/shared/bots.ts, src/main/setup/bots.ts). Every
+  start and every save writes the plugin's `configs/plugins/PracSkins/bots.json` ({schema 1, t/ct: name, clan,
+  avatar bool}); a save while running sends `css_prac_bots`. plugin/PracSkins/BotNames.cs matches bots of a team to the
+  list in join order (a bot keeps its entry while on the team; stand-ins skipped).
+- Pictures = the engine's server avatar overrides: `+sv_reliableavatardata 1` **at launch** (bool cvar; 2 does nothing;
+  it only takes effect from the next map load). At player_connect_full the server reads `csgo/avatars/<steamid64>.png`
+  into string table `ServerAvatarOverrides` (`dumpstringtable ServerAvatarOverrides sv verbose`). `avatars/default.png`
+  must exist (solidPng). A bot with a picture gets SteamID `76561197960265728 + 4e9 (+100 for CT) + index` (far above
+  any issued account) and we fire `EventPlayerConnectFull` for it. With the cvar on, humans need a file too: the app
+  copies the local accounts' `<steam>/config/avatarcache/<id>.png`. Files written are listed in
+  avatars/cs2prac-avatars.json and removed next time. The cvar is only set when some bot has a picture.
+- Possible issue (untested): MatchZy match mode might treat a bot with a SteamID as an unknown player.
+
 ## Loadout schema 3 (weapons per team)
 - loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
   flat map; the plugin's TeamWeaponsConverter and the app's `perTeamWeapons` (also for old profiles in loadouts.json)

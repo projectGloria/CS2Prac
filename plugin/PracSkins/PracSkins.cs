@@ -65,6 +65,7 @@ public partial class PracSkins : BasePlugin
         InitMovement();
         InitHud(hotReload);
         InitSettings();
+        InitBots();
 
         // A dedicated server has no sound system: `play <sound>` (common in client cfgs and aliases run with
         // !cmd exec) crashes it with an access violation. Swallow the sound commands server-side.
@@ -305,6 +306,7 @@ public partial class PracSkins : BasePlugin
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
         var player = @event.Userid;
+        if (player is { IsValid: true, IsBot: true }) Server.NextFrame(() => { if (player.IsValid) ApplyBotProfile(player); });
         if (IsTarget(player))
             Server.NextFrame(() =>
             {

@@ -12,11 +12,13 @@ import {
   Target,
   Trophy,
   Users,
+  Bot as BotIcon,
   type LucideIcon
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import CopyLine from '../components/CopyLine'
 import ServerSettings from '../components/ServerSettings'
+import Bots from '../components/Bots'
 import splashArt from '../../../../assets/CS2Prac.png'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
@@ -77,6 +79,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [showPrefs, setShowPrefs] = useState(false)
+  const [showBots, setShowBots] = useState(false)
   /** set from the Start click until the start finishes or fails (the prep before cs2.exe runs isn't 'starting' yet) */
   const [launching, setLaunching] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
@@ -269,6 +272,10 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                 <SlidersHorizontal size={15} aria-hidden />
                 Server settings
               </button>
+              <button title="Bot names, clan tags and pictures" onClick={() => setShowBots(true)}>
+                <BotIcon size={15} aria-hidden />
+                Bots
+              </button>
             </div>
           </div>
           {error && <p className="error-text">{error}</p>}
@@ -295,6 +302,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
         </section>
 
         {showPrefs && <ServerSettings onClose={() => setShowPrefs(false)} />}
+        {showBots && <Bots onClose={() => setShowBots(false)} />}
 
         <section className="card mz-help">
           <h2>MatchZy commands</h2>

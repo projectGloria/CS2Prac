@@ -1,5 +1,6 @@
 import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
+import type { BotsConfig } from './bots'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
 
@@ -161,6 +162,12 @@ export interface Api {
     /** the in-game settings window changed server_prefs.json */
     onPrefsChanged(cb: (prefs: ServerPrefs) => void): () => void
   }
+  bots: {
+    get(): Promise<BotsConfig>
+    /** saves the list; while the server runs, names apply at once (pictures after a server restart when it was
+     * started without any) */
+    save(bots: BotsConfig): Promise<{ bots: BotsConfig; restartForPictures: boolean }>
+  }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
     listSteamAccounts(): Promise<SteamAccount[]>
@@ -218,6 +225,8 @@ export const IPC = {
   serverPrefsGet: 'server:prefsGet',
   serverPrefsSave: 'server:prefsSave',
   serverPrefsChanged: 'server:prefsChanged',
+  botsGet: 'bots:get',
+  botsSave: 'bots:save',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

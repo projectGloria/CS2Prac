@@ -48,7 +48,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
     this.emit('status', s)
   }
 
-  async start(installDir: string, opts: StartOptions, secrets: { rconPassword: string; authKey?: string }): Promise<void> {
+  async start(installDir: string, opts: StartOptions, secrets: { rconPassword: string; authKey?: string; avatars?: boolean }): Promise<void> {
     if (this.status.state !== 'stopped') throw new Error(`Server is ${this.status.state}`)
     const { cs2Exe, csgoDir } = layout(installDir)
 
@@ -59,7 +59,7 @@ export class ServerManager extends EventEmitter<ServerManagerEvents> {
       if (!(await portFree(SERVER_PORT))) throw new Error(`Port ${SERVER_PORT} is in use. Is another server running?`)
 
       const password = secrets.rconPassword
-      const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey: secrets.authKey })
+      const args = buildLaunchArgs({ ...opts, port: SERVER_PORT, rconPassword: password, authKey: secrets.authKey, avatars: secrets.avatars })
       this.emit('log', `> cs2.exe ${args.map((a) => (a === password ? '<rcon password>' : a)).join(' ')}`)
       // Output must be read continuously: if the pipe fills up, cs2.exe blocks and the server freezes.
       // On an invisible desktop, so cs2's own console window never shows (see hiddenLaunch.ts).
