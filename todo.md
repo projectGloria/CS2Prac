@@ -98,7 +98,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] The round-1 layout didn't show at all: CS2's client rejected the clickable (Button) backdrop. Bisected with 4 layout variants in game; backdrop is a Panel again (no click-outside close). **User-confirmed:** window shows, mouse-wheel scrolling works.
 - [x] User feedback round 2: weapon icons in the left list (knives too; gloves show a finish); pager hidden while everything fits.
 - [x] **User check in game:** restart CS2 (layout changed), icons in the left list, the gun you click lands in your hands.
-- [ ] Later: stickers and charms in the window; T/CT switch.
+- [ ] Later: stickers and charms in the window; T/CT switch. (Moved to v2 Phase 14.)
 
 ### Phase 5c: Third-person agent preview (user's request "like choosing a fighter")
 - [x] Agents tab: First person / Third person toggle, remembered per SteamID (`configs/plugins/PracSkins/hud_prefs.json`, also pose, zoom, height).
@@ -163,7 +163,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   start keeps its end. Built; not live-tested (needs a player).
 - [x] (marked done by the user; they'll check it later) **User check in game:** restart the server from the app; `.movement end` on the landing spot, gold square shows,
   "Made it!" only on it, back to the start after, misses still put you back, `.next`/`.prev` with two spots.
-- [ ] Maybe later: movement spots in the K menu; E on a green square to go there.
+- [ ] Maybe later: movement spots in the K menu; E on a green square to go there. (Moved to v2 Phase 7, L window.)
 
 ### UI polish (asked for before v1.0)
 - [x] No extra window on server start, not even a flash: cs2.exe runs on an invisible desktop
@@ -185,3 +185,85 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 ## Next
 - [x] User tests Phases 1–6 in game (confirmed 2026-11-16; the movement end point was marked done, the user checks it later).
 - [x] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (released 2026-11-16).
+
+---
+
+# v2 roadmap (planned 2026-11-16)
+
+Same rules as v1: one phase at a time, typecheck + tests, the user tests in game, commit only when asked.
+**Account-safety rule (hard):** nothing may put the user's Steam account at risk. Everything stays on the local
+`-insecure` + `sv_lan 1` server; no client memory, no GC/Steam spoofing with the user's account, and client-folder
+writes are limited to new Panorama/resource files like the skin window's. Risky items start with a **spike**.
+
+## Phase 7: Server settings window (L key) (req 1)
+- [ ] `plugin/PracSkins/SettingsHud.cs`: a second `custom_hud_layout` window reusing the Hud.cs plumbing (HudSent cache,
+  OnCustomHudClicked, input capture, Tab closes). Layout `scripts/hud/cs2prac_settings.xml/.css`, built by
+  `npm run build:hud`, copied by `setup/clientHud.ts`. `css_settings` toggles it (`bind l css_settings`; text-menu
+  fallback while the entity doesn't exist yet).
+- [ ] Toggles: bot glow, spawn markers, bot radio/chatter (`bot_chatter off`), infinite ammo, buy anywhere, grenade
+  trajectory, impacts, no-flash, god mode, bunnyhop/autobhop, friendly fire, fall damage.
+- [ ] Sliders/choices: bot difficulty, round/freeze time, gravity, timescale, bot stop/crouch.
+- [ ] Skybox **spike**: swap the `env_sky` material (precache the sky materials of all official maps in
+  OnServerPrecacheResources; list them from the VPK like build:hud does). Fog/lighting too if cheap.
+- [ ] Map change from the window (official list + recent workshop maps), restart round, kick bots.
+- [ ] Settings persist (global + per map) in `configs/plugins/PracSkins/server_prefs.json`; the Play page shows and
+  edits the same file (watcher like `watchLoadout`).
+- [ ] Pages for the movement spots (v1 "maybe later": go to a spot) and the lineup list (Phase 12).
+
+## Phase 8: Pins and music kits (req 3 + extra)
+- [ ] Data spike: pins (ByMykel collectibles) and music kits with def_index + images; extend `catalog.ts` /
+  `pluginCatalog.ts`, bump CATALOG_VERSION.
+- [ ] Loadout schema 4 (`Loadout.cs` ↔ `loadoutStore.ts`): `pin`, `musicKit` (global, not per team).
+- [ ] Plugin: pin via `InventoryServices.Rank[5]`, music kit via `MusicID` (WeaponPaints technique), applied on
+  connect/spawn and by `css_prac_reload`; `css_prac_status` prints both.
+- [ ] App Loadout page: Pin and Music kit slots. K window: Pins and Music tabs (icons via build:hud classes).
+- [ ] **User check in game:** pin on the scoreboard, music kit at round end / MVP.
+
+## Phase 9: Graffiti (req 2)
+- [ ] **Spike first:** spawn `player_spray_decal` server-side at the aim point (trace from the eye) with the graffiti
+  def and tint; find which fields the client needs to draw it. Check whether the client's spray key reaches the
+  server; otherwise `bind <key> css_spray`.
+- [ ] Catalog: graffiti + tints; loadout `graffiti {defIndex, tint}`.
+- [ ] App Loadout slot + K window Graffiti tab; cooldown like the game; `css_prac_spray` server test.
+
+## Phase 10: Custom bot names and pictures (app UI only) (req 4)
+- [ ] Names: a "Bots" panel in the app with a name list per team (+ optional clan tag); the plugin renames bots on
+  join (controller PlayerName + clan, SetStateChanged), for MatchZy `.bot` and `bot_add` bots; the agent-preview
+  stand-in keeps a hidden name.
+- [ ] Pictures **spike**, safe routes only, in this order (pick the first that works; note in CLAUDE.md why the
+  others failed):
+  1. Engine custom avatars: does CS2 still have CS:GO's `sv_reliableavatardata` / `avatars/<id>.rgb`? (`find avatar`
+     in the server console, strings in the server/client dlls.)
+  2. Bot controller SteamID set to a **public** Steam profile picked in the app, so the client loads that avatar
+     (never the user's own id; check scoreboard, kill feed, MatchZy still treats it as a bot).
+  3. A Panorama scoreboard override for bot rows (a client Panorama file, like the skin window) showing an image the
+     app copies from the user's file.
+- [ ] App: avatar picker per bot (image → resized, stored in userData, copied wherever the chosen route needs it).
+
+## Phase 11: Inspect link / !gen import (extra)
+- [ ] Parse `!gen`/`!g` codes and CS2 inspect links (masked `CEconItemPreviewDataBlock` protobuf in the link hex;
+  decoded locally, no third-party inspect API) → paint, seed, wear, stickers (slot, wear, offset, rotation), charm,
+  name tag. Unit tests with known links.
+- [ ] App: "Import" field on the Loadout page (paste → preview → apply to the selected team/weapon); "Copy !gen" export.
+- [ ] Chat: `!gen <code>` applies to the held weapon.
+
+## Phase 12: Lineup library (extra)
+- [ ] Read MatchZy's saved nades (find its file format and location) into the app: list per map, rename, describe,
+  delete, export/import a share file.
+- [ ] In game: a lineup page in the L window (teleport + angles, like `.spawn`), optional throw replay via MatchZy.
+
+## Phase 13: Workshop map browser (extra)
+- [ ] App: search the Steam Workshop (public web API; or paste an ID/URL), thumbnails, start on a map via
+  `host_workshop_map` (existing `maps.ts`), recent maps list, one-click start.
+- [ ] Remember workshop map names and thumbnails locally.
+
+## Phase 14: 3D skin editor (req 5; largest, last)
+- [ ] **Spike 1 (models):** export weapon models + base textures to glTF with the ValveResourceFormat CLI (MIT),
+  `npm run build:models` like build:hud, shipped in resources or extracted from the local VPK on first run. Decide on
+  size and whether the paint-kit look can be approximated, or only shown live in game.
+- [ ] **Spike 2 (placement):** map a raycast hit on the model to the game's sticker offset x/y + rotation (calibrate
+  per weapon against known offsets in game); charm offset x/y/z too.
+- [ ] three.js viewer in the app: orbit/zoom, drag stickers anywhere, rotate/scale, scrape per sticker, charm
+  position, name tag, wear/seed. Every change is written to loadout.json and pushed with `css_prac_reload`
+  (debounced), so inspecting (F) in game shows the exact result.
+- [ ] In-game counterpart: stickers and charms in the K window + T/CT switch (moved from Phase 5b "Later").

@@ -269,7 +269,9 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
 ## Status
-See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed and user-confirmed
+See `todo.md` for the phased roadmap and the current phase. v1.0.0 is released; v2 is Phases 7–14 in todo.md
+(settings window on L, pins + music kits, graffiti, bot names/pictures, !gen import, lineups, workshop browser, 3D
+skin editor). Hard rule for v2: nothing may put the user's Steam account at risk. M1–M5 are done. Phases 1–6 are committed and user-confirmed
 in game (2026-11-16: markers, glow, stickers/charms/agents, text menu, K window, agent preview, pracGloria, server name,
 offline setup, UI). The movement end point is marked done (the user checks it later; fix if they report problems), sticker scrape untested (they're fine with it),
 and the v1.0.0 release only when they ask. Known: every `css_cmd` echoes
