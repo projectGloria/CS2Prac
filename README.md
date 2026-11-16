@@ -49,7 +49,9 @@ git push origin v0.2.0
 ```
 
 GitHub Actions (`.github/workflows/release.yml`) type-checks, runs the tests, builds the plugin from source and
-publishes the installer plus `latest.yml` (used by auto-update) as a GitHub Release.
+uploads the installer plus `latest.yml` (used by auto-update) to a draft GitHub Release. The draft's notes come from
+`docs/release-notes/<tag>/RELEASE_NOTES.md` when it exists (images next to it; `scripts/release-notes.mjs` makes their
+links absolute). Publish the draft on GitHub (or `gh release edit <tag> --draft=false --latest`) to ship it.
 
 ## Building from source
 

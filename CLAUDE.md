@@ -92,6 +92,10 @@ npm run dist           # build + NSIS installer into dist/ (never publishes)
 **Release:** bump `version` in package.json, commit, `git tag vX.Y.Z && git push origin vX.Y.Z`. `.github/workflows/release.yml`
 (windows-latest) checks the tag matches, type-checks, tests, builds the plugin and runs `npm run release`, which publishes the
 installer + `latest.yml` to GitHub Releases. Installed apps pick it up through auto-update. Only tag when the user asks.
+A workflow step creates the draft release first (electron-builder's parallel uploads each created one: v1.0.0 got two
+drafts), with notes from `docs/release-notes/<tag>/RELEASE_NOTES.md` via scripts/release-notes.mjs (relative image
+paths → raw links pinned to the tag). The release stays a draft until published (`gh release edit <tag> --draft=false
+--latest`). Write release bodies with Node/bash, never PowerShell 5.1 Get-Content: it reads UTF-8 as ANSI (mojibake emoji).
 
 ## Loadout schema 3 (weapons per team)
 - loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
