@@ -134,6 +134,14 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   avatars/cs2prac-avatars.json and removed next time. The cvar is only set when some bot has a picture.
 - Possible issue (untested): MatchZy match mode might treat a bot with a SteamID as an unknown player.
 
+## !gen codes and inspect links (Phase 11)
+- src/shared/itemCode.ts ↔ plugin/PracSkins/ItemCode.cs (same rules). `!gen def paint seed wear [sticker wear]×5 [charm
+  seed]`; inspect hex = CEconItemPreviewDataBlock (3 def, 4 paint, 7 wear float bits, 8 seed, 9/10 kill eater, 11 name,
+  12 stickers {1 slot, 2 id, 3 wear, 4 scale, 5 rotation, 7/8/9 offset, 10 pattern}, 20 keychains), every byte XOR the
+  first, 4-byte checksum at the end (not checked). `encodeInspectData` (key 0) exists for tests; its checksum formula is
+  unverified against the game, so the UI does not offer "copy inspect link".
+- App: Loadout bar "Import" (components/ImportItem.tsx). Plugin: `css_gen` / `!gen` (CLIENT_ONLY, CanEdit).
+
 ## Loadout schema 3 (weapons per team)
 - loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
   flat map; the plugin's TeamWeaponsConverter and the app's `perTeamWeapons` (also for old profiles in loadouts.json)

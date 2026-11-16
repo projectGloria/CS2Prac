@@ -250,11 +250,14 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] User check in game: scoreboard shows the bot names and pictures; your own Steam picture still shows.
 
 ## Phase 11: Inspect link / !gen import (extra)
-- [ ] Parse `!gen`/`!g` codes and CS2 inspect links (masked `CEconItemPreviewDataBlock` protobuf in the link hex;
-  decoded locally, no third-party inspect API) → paint, seed, wear, stickers (slot, wear, offset, rotation), charm,
-  name tag. Unit tests with known links.
-- [ ] App: "Import" field on the Loadout page (paste → preview → apply to the selected team/weapon); "Copy !gen" export.
-- [ ] Chat: `!gen <code>` applies to the held weapon.
+- [x] Parse `!gen`/`!g` codes and CS2 inspect links (masked `CEconItemPreviewDataBlock` protobuf in the link hex;
+  decoded locally, no third-party inspect API) → paint, seed, wear, StatTrak, name tag, stickers (slot, wear, scale,
+  rotation, offset), charm (offset, seed). `S…A…D…` inventory links are refused (they need the game coordinator).
+  Unit tests (round trip through an encoder, masked and unmasked); the C# decoder checked against the same hex.
+- [x] App: "Import" on the Loadout page (paste → preview → apply to T, CT or both); it also shows the selected
+  slot's `!gen` code with a copy button.
+- [x] Chat: `!gen <code or inspect link>` applies it for the player's team; `!gen` alone prints the held weapon's code.
+- [ ] User check: import a real inspect link from the market/inventory (the hex kind) and compare in game.
 
 ## Phase 12: Lineup library (extra)
 - [ ] Read MatchZy's saved nades (find its file format and location) into the app: list per map, rename, describe,

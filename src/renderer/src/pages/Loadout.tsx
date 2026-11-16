@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Layers, Music, Pin, Plus, SprayCan, Trash2, User, Users } from 'lucide-react'
+import { ClipboardPaste, Copy, Layers, Music, Pin, Plus, SprayCan, Trash2, User, Users } from 'lucide-react'
 import type { LoadoutSaveResult } from '@shared/ipc'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
+import ImportItem from '../components/ImportItem'
+import { itemOf } from '@shared/itemCode'
 import {
   emptyKeychain,
   emptyProfile,
@@ -54,6 +56,7 @@ export default function Loadout() {
   const [slot, setSlot] = useState<Slot>({ kind: 'knife' })
   const [team, setTeam] = useState<Team>('ct')
   const [save, setSave] = useState<SaveState>({ state: 'idle' })
+  const [showImport, setShowImport] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const latest = useRef<LoadoutStore | null>(null)
   const dirty = useRef(false)
@@ -169,6 +172,22 @@ export default function Loadout() {
     )
   }
 
+  const currentItem = (() => {
+    if (slot.kind === 'weapon') {
+      const it = itemOf(profile, team, 'weapon', slot.defIndex)
+      return it ? { label: index.weaponByDef.get(slot.defIndex)?.name ?? 'this weapon', item: it } : null
+    }
+    if (slot.kind === 'knife') {
+      const it = itemOf(profile, team, 'knife', 0)
+      return it ? { label: knifeLabel(profile.knife[team]), item: it } : null
+    }
+    if (slot.kind === 'gloves') {
+      const it = itemOf(profile, team, 'glove', 0)
+      return it ? { label: gloveLabel(profile.gloves[team]), item: it } : null
+    }
+    return null
+  })()
+
   const ownerOptions: DropdownOption<string>[] = [
     ...accounts.map((a) => ({ value: a.steamId, label: a.personaName, icon: User })),
     ...(store.owner && !accounts.some((a) => a.steamId === store.owner) ? [{ value: store.owner, label: store.owner, icon: User }] : []),
@@ -177,6 +196,19 @@ export default function Loadout() {
 
   return (
     <div className="loadout">
+      {showImport && (
+        <ImportItem
+          catalog={catalog}
+          profile={profile}
+          team={team}
+          current={currentItem}
+          onApply={(fn, def, kind) => {
+            updateProfile(fn)
+            setSlot(kind === 'weapon' ? { kind: 'weapon', defIndex: def } : { kind: kind === 'knife' ? 'knife' : 'gloves' })
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
       <div className="card loadout-bar">
         <div title="Active profile: this one is sent to the server">
           <Dropdown
@@ -231,6 +263,10 @@ export default function Loadout() {
         >
           <Trash2 size={14} aria-hidden />
           Delete
+        </button>
+        <button className="icon-text" title="Import a !gen code or an inspect link" onClick={() => setShowImport(true)}>
+          <ClipboardPaste size={14} aria-hidden />
+          Import
         </button>
 
         <span className="spacer" />

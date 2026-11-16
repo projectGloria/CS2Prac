@@ -72,7 +72,7 @@ button.primary { background: var(--accent); color: #111; border-color: var(--acc
 .small { font-size: 12px; }
 h2 { margin: 0 0 14px; font-size: 16px; }
 h3 { margin: 20px 0 10px; font-size: 14px; }
-input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font: inherit; }
+input, select, textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font: inherit; }
 .row input { flex: 1; }
 /* Play: maps left, server + MatchZy commands right; both columns fill the page height and scroll inside */
 .play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 20px; height: 100%; min-height: 560px; }
@@ -297,3 +297,7 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .bot-name { flex: 1; min-width: 0; }
 .bot-clan { width: 110px; }
 .bot-add { margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; }
+
+.import-text { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--mono, monospace); font-size: 12px; }
+.import-preview { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
+.import-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
