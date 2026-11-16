@@ -11,6 +11,8 @@
 //   .pk-img.b<def>            base weapon icon (econ/weapons/base_weapons/<item>_png)
 //   .pk-img.s<def>_<paint>    skin icon (after the base rules, so it wins when both classes are set)
 //   .pk-bar.s<def>_<paint>    rarity colour
+//   .pk-img.p<def>            pin/coin/medal (items' image_inventory econ/status_icons/…)
+//   .pk-img.m<def>            music kit (music_definitions' image_inventory econ/music_kits/…)
 //   .pk-img.a<def>            agent portrait (econ/characters/customplayer_<model>[_square]_png)
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -134,7 +136,7 @@ function buildImageCss(cs2) {
     for (const [def, body] of section) {
       if (!Array.isArray(body) || !/^\d+$/.test(def)) continue
       const name = get(body, 'name')
-      if (name) items.set(Number(def), { name, model: get(body, 'model_player') })
+      if (name) items.set(Number(def), { name, model: get(body, 'model_player'), image: get(body, 'image_inventory') })
     }
   const paints = new Map() // codename -> index
   for (const section of all(game, 'paint_kits'))
@@ -148,6 +150,7 @@ function buildImageCss(cs2) {
   const base = []
   const skins = []
   const agents = []
+  const extras = []
   const itemByName = new Map([...items].map(([def, it]) => [it.name, def]))
 
   for (const [def, it] of items) {
@@ -160,7 +163,15 @@ function buildImageCss(cs2) {
       const img = has(sq) ? sq : has(full) ? full : null
       if (img) agents.push(`.pk-img.a${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
     }
+    const pin = `panorama/images/${it.image}_png.vtex`
+    if (it.image?.startsWith('econ/status_icons/') && has(pin)) extras.push(`.pk-img.p${def}\n{\n\tbackground-image: url("s2r://${pin}");\n}`)
   }
+  for (const section of all(game, 'music_definitions'))
+    for (const [def, body] of section) {
+      const image = Array.isArray(body) ? get(body, 'image_inventory') : null
+      const img = image && `panorama/images/${image}_png.vtex`
+      if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.m${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
+    }
 
   // default_generated/<item>_<codename>_light_png: split at the longest item name that leaves a known codename
   const names = [...itemByName.keys()].sort((a, b) => b.length - a.length)
@@ -188,9 +199,9 @@ function buildImageCss(cs2) {
     }
     if (!done) unmatched++
   }
-  console.log(`images: ${base.length} base weapons, ${skins.length} skins, ${agents.length} agents (${unmatched} icons unmatched)`)
+  console.log(`images: ${base.length} base weapons, ${skins.length} skins, ${agents.length} agents, ${extras.length} pins/music kits (${unmatched} icons unmatched)`)
   // base first: a tile carries b<def> and s<def>_<paint>; the skin rule comes later and wins when it exists
-  return [...base, ...agents, ...skins].join('\n\n') + '\n'
+  return [...base, ...agents, ...extras, ...skins].join('\n\n') + '\n'
 }
 
 const cs2 = findCs2()

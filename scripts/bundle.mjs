@@ -36,7 +36,7 @@ const zips = {
   matchzy: `https://github.com/shobhit-pathak/MatchZy/releases/download/${versions.matchzy}/MatchZy-${versions.matchzy}.zip`
 }
 const CATALOG_API = 'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/'
-const CATALOG_FILES = ['skins.json', 'base_weapons.json', 'agents.json', 'stickers.json', 'keychains.json']
+const CATALOG_FILES = ['skins.json', 'base_weapons.json', 'agents.json', 'stickers.json', 'keychains.json', 'collectibles.json', 'music_kits.json']
 const licenses = {
   'Metamod-Source-LICENSE.txt': 'https://raw.githubusercontent.com/alliedmodders/metamod-source/master/LICENSE.txt',
   'CounterStrikeSharp-LICENSE.txt': `https://raw.githubusercontent.com/roflmuffin/CounterStrikeSharp/${versions.counterstrikesharp}/LICENSE`,

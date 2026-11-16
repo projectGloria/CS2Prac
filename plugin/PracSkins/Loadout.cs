@@ -130,10 +130,14 @@ public class LoadoutFile
     public PerTeam<KnifePaint> Knife { get; set; } = new();
     public PerTeam<GlovePaint> Gloves { get; set; } = new();
     public PerTeam<AgentPaint> Agents { get; set; } = new();
+    /// <summary>Profile display item (scoreboard pin/coin) def index, 0 = none. Schema 4.</summary>
+    public int Pin { get; set; }
+    /// <summary>Music kit def index, 0 = none. Schema 4.</summary>
+    public int MusicKit { get; set; }
     /// <summary>Every agent model, precached at map load so agents can be switched without a map change.</summary>
     public List<string> Precache { get; set; } = new();
 
-    public const int CurrentSchema = 3;
+    public const int CurrentSchema = 4;
 
     public static readonly LoadoutFile Empty = new() { Schema = CurrentSchema };
 
@@ -158,8 +162,9 @@ public class LoadoutFile
     {
         if (!File.Exists(path)) return Empty;
         var file = JsonSerializer.Deserialize<LoadoutFile>(File.ReadAllText(path), Json) ?? Empty;
-        // 1 = before stickers/keychains/agents (those are empty then); 1 and 2 have one weapon map for both teams
-        if (file.Schema is not (1 or 2 or 3)) throw new InvalidDataException($"Unsupported loadout schema {file.Schema}");
+        // 1 = before stickers/keychains/agents (those are empty then); 1 and 2 have one weapon map for both teams;
+        // 4 added pin and musicKit (0 before)
+        if (file.Schema is not (1 or 2 or 3 or 4)) throw new InvalidDataException($"Unsupported loadout schema {file.Schema}");
         return file;
     }
 

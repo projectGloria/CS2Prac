@@ -97,6 +97,16 @@ drafts), with notes from `docs/release-notes/<tag>/RELEASE_NOTES.md` via scripts
 paths → raw links pinned to the tag). The release stays a draft until published (`gh release edit <tag> --draft=false
 --latest`). Write release bodies with Node/bash, never PowerShell 5.1 Get-Content: it reads UTF-8 as ANSI (mojibake emoji).
 
+## Pins and music kits (Phase 8, loadout schema 4)
+- Catalog `pins` (ByMykel collectibles.json: every collectible, `type` = Pin/Service Medal/coins …) and `musicKits`
+  (music_kits.json, `_st` StatTrak copies skipped); both optional in the bundle/download (empty when missing).
+- loadout.json `pin` / `musicKit` (def index, 0 = none), one per loadout for both teams. ApplyProfileItems (PracSkins.cs):
+  `InventoryServices.Rank[5] = (MedalRank_t)pin`, `InventoryServices.MusicID` + controller `MusicKitID`, SetStateChanged
+  on `m_pInventoryServices` / `m_iMusicKitID`; on spawn and css_prac_reload; reset to 0 only for slots we set.
+- K window tabs `pins`/`music` (tiles, side list hidden; images `.pk-img.p<def>` from items' image_inventory
+  econ/status_icons/…, `.pk-img.m<def>` from music_definitions). Text menu: `!pin`, `!music` and root entries.
+  Live-tested on 27115 (status shows pin/music per player, survives mp_restartgame).
+
 ## Loadout schema 3 (weapons per team)
 - loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
   flat map; the plugin's TeamWeaponsConverter and the app's `perTeamWeapons` (also for old profiles in loadouts.json)

@@ -16,6 +16,8 @@ export interface PluginCatalog {
   agents: { def: number; name: string; team: 't' | 'ct'; model: string }[]
   stickers: { def: number; name: string }[]
   keychains: { def: number; name: string }[]
+  pins: { def: number; name: string }[]
+  musicKits: { def: number; name: string }[]
 }
 
 export function toPluginCatalog(c: Catalog): PluginCatalog {
@@ -28,7 +30,9 @@ export function toPluginCatalog(c: Catalog): PluginCatalog {
     skins,
     agents: (c.agents ?? []).map((a) => ({ def: a.defIndex, name: a.name, team: a.team, model: a.model })),
     stickers: (c.stickers ?? []).map((s) => ({ def: s.defIndex, name: s.event && !s.name.includes(s.event) ? `${s.name} (${s.event})` : s.name })),
-    keychains: (c.keychains ?? []).map((k) => ({ def: k.defIndex, name: k.name }))
+    keychains: (c.keychains ?? []).map((k) => ({ def: k.defIndex, name: k.name })),
+    pins: (c.pins ?? []).map((p) => ({ def: p.defIndex, name: p.name })),
+    musicKits: (c.musicKits ?? []).map((m) => ({ def: m.defIndex, name: m.name }))
   }
 }
 

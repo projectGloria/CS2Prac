@@ -8,6 +8,8 @@ import {
   type Catalog,
   type CatalogAgent,
   type CatalogKeychain,
+  type CatalogMusicKit,
+  type CatalogPin,
   type CatalogSkin,
   type CatalogSticker,
   type CatalogWeapon,
@@ -67,10 +69,28 @@ export interface ApiKeychain {
   rarity?: { color: string } | null
 }
 
+export interface ApiCollectible {
+  name: string
+  def_index: string | number
+  type?: string | null
+  image: string
+  rarity?: { color: string } | null
+}
+
+export interface ApiMusicKit {
+  id: string
+  name: string
+  def_index: string | number
+  image: string
+  rarity?: { color: string } | null
+}
+
 export interface ApiExtras {
   agents: ApiAgent[]
   stickers: ApiSticker[]
   keychains: ApiKeychain[]
+  collectibles?: ApiCollectible[]
+  musicKits?: ApiMusicKit[]
 }
 
 const defOf = (v: string | number) => {
@@ -113,6 +133,31 @@ export function buildKeychains(raw: ApiKeychain[]): CatalogKeychain[] {
     const defIndex = defOf(k.def_index)
     if (!defIndex || !k.image) continue
     out.push({ defIndex, name: k.name.replace(/^Charm \| /, ''), image: k.image, rarityColor: k.rarity?.color ?? GREY })
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function buildPins(raw: ApiCollectible[]): CatalogPin[] {
+  const out: CatalogPin[] = []
+  const seen = new Set<number>()
+  for (const c of raw) {
+    const defIndex = defOf(c.def_index)
+    if (!defIndex || !c.image || seen.has(defIndex)) continue
+    seen.add(defIndex)
+    out.push({ defIndex, name: c.name, image: c.image, rarityColor: c.rarity?.color ?? GREY, type: c.type ?? 'Other' })
+  }
+  return out.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
+}
+
+/** StatTrak copies ("…_st") share the def index of the plain kit and are skipped. */
+export function buildMusicKits(raw: ApiMusicKit[]): CatalogMusicKit[] {
+  const out: CatalogMusicKit[] = []
+  const seen = new Set<number>()
+  for (const m of raw) {
+    const defIndex = defOf(m.def_index)
+    if (!defIndex || m.id.endsWith('_st') || seen.has(defIndex)) continue
+    seen.add(defIndex)
+    out.push({ defIndex, name: m.name.replace(/^Music Kit \| /, ''), image: m.image, rarityColor: m.rarity?.color ?? GREY })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -187,7 +232,9 @@ export function buildCatalog(
     skins,
     agents: buildAgents(extras.agents),
     stickers: buildStickers(extras.stickers),
-    keychains: buildKeychains(extras.keychains)
+    keychains: buildKeychains(extras.keychains),
+    pins: buildPins(extras.collectibles ?? []),
+    musicKits: buildMusicKits(extras.musicKits ?? [])
   }
 }
 
@@ -228,7 +275,12 @@ export async function getCatalog(refresh = false): Promise<Catalog> {
       fetchJson<ApiSticker[]>('stickers.json'),
       fetchJson<ApiKeychain[]>('keychains.json')
     ])
-    memo = buildCatalog(skins, base, Date.now(), { agents, stickers, keychains })
+    // newer extras: a failed download leaves them empty instead of failing the whole catalog
+    const [collectibles, musicKits] = await Promise.all([
+      fetchJson<ApiCollectible[]>('collectibles.json').catch(() => []),
+      fetchJson<ApiMusicKit[]>('music_kits.json').catch(() => [])
+    ])
+    memo = buildCatalog(skins, base, Date.now(), { agents, stickers, keychains, collectibles, musicKits })
     await writeFile(cacheFile(), JSON.stringify(memo))
     return memo
   } catch (e) {
@@ -251,7 +303,18 @@ async function bundledCatalog(): Promise<Catalog | null> {
     const [skins, base, agents, stickers, keychains] = await Promise.all(
       files.map(async (f) => JSON.parse(gunzipSync(await readFile(f!)).toString('utf8')))
     )
-    const c = buildCatalog(skins, base, Date.now() - CACHE_TTL_MS + 60 * 60 * 1000, { agents, stickers, keychains })
+    const optional = async (name: string) => {
+      const f = bundledCatalogFile(name)
+      return f ? JSON.parse(gunzipSync(await readFile(f)).toString('utf8')) : []
+    }
+    const [collectibles, musicKits] = await Promise.all([optional('collectibles.json'), optional('music_kits.json')])
+    const c = buildCatalog(skins, base, Date.now() - CACHE_TTL_MS + 60 * 60 * 1000, {
+      agents,
+      stickers,
+      keychains,
+      collectibles,
+      musicKits
+    })
     await writeFile(cacheFile(), JSON.stringify(c))
     return c
   } catch {

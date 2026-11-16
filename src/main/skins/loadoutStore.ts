@@ -49,13 +49,17 @@ export async function saveStore(s: LoadoutStore): Promise<void> {
 
 /** The file the C# plugin reads. Keep in sync with plugin/PracSkins. */
 export interface LoadoutFile {
-  /** 3: weapons per team. 2 (read only): one weapon map for both teams. */
-  schema: 3
+  /** 4: + pin, musicKit. 3 (read only): weapons per team. 2 (read only): one weapon map for both teams. */
+  schema: 4
   owner: string | null
   weapons: Record<Team, Record<string, WeaponOut>>
   knife: Record<Team, (PaintOut & { defIndex: number; className: string }) | null>
   gloves: Record<Team, GloveOut | null>
   agents: Record<Team, AgentSel | null>
+  /** profile display item def index (0 = none), for every team */
+  pin: number
+  /** music kit def index (0 = none) */
+  musicKit: number
   /** every agent model, precached by the plugin at map load */
   precache: string[]
 }
@@ -145,15 +149,19 @@ export function toLoadoutFile(profile: Profile, owner: string | null, precache: 
       if (w) weapons[team][def] = w
     }
   return {
-    schema: 3,
+    schema: 4,
     owner: owner && /^\d{17}$/.test(owner) ? owner : null,
     weapons,
     knife: { t: knife(profile.knife.t), ct: knife(profile.knife.ct) },
     gloves: { t: glove(profile.gloves.t), ct: glove(profile.gloves.ct) },
     agents: { t: agent(profile.agents?.t), ct: agent(profile.agents?.ct) },
+    pin: defOrZero(profile.pin),
+    musicKit: defOrZero(profile.musicKit),
     precache: [...new Set(precache.filter((m) => MODEL.test(m)))]
   }
 }
+
+const defOrZero = (n: unknown) => (typeof n === 'number' && Number.isInteger(n) && n > 0 && n < 1_000_000 ? n : 0)
 
 export const pluginConfigDir = (csgoDir: string) =>
   join(csgoDir, 'addons', 'counterstrikesharp', 'configs', 'plugins', 'PracSkins')
@@ -195,14 +203,16 @@ export function fromLoadoutFile(f: LoadoutFile, profile: Profile): Profile {
     weapons,
     knife: { t: knifeIn(f.knife?.t ?? null), ct: knifeIn(f.knife?.ct ?? null) },
     gloves: { t: f.gloves?.t ?? null, ct: f.gloves?.ct ?? null },
-    agents: { t: f.agents?.t ?? null, ct: f.agents?.ct ?? null }
+    agents: { t: f.agents?.t ?? null, ct: f.agents?.ct ?? null },
+    pin: (f.schema as number) >= 4 ? defOrZero(f.pin) : (profile.pin ?? 0),
+    musicKit: (f.schema as number) >= 4 ? defOrZero(f.musicKit) : (profile.musicKit ?? 0)
   }
 }
 
 /** Reads loadout.json and merges it into the active profile. Returns the new store, or null if nothing changed. */
 export async function importLoadoutFile(csgoDir: string, store: LoadoutStore): Promise<LoadoutStore | null> {
   const f = JSON.parse(await readFile(join(pluginConfigDir(csgoDir), 'loadout.json'), 'utf8')) as LoadoutFile
-  if ((f.schema as number) !== 2 && f.schema !== 3) return null
+  if (![2, 3, 4].includes(f.schema as number)) return null
   const active = store.profiles.find((p) => p.id === store.activeId) ?? store.profiles[0]
   const next = fromLoadoutFile(f, active)
   if (JSON.stringify(toLoadoutFile(next, store.owner)) === JSON.stringify(toLoadoutFile(active, store.owner))) return null

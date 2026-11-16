@@ -45,6 +45,8 @@ public class PluginCatalog
     public List<CatalogAgent> Agents { get; set; } = new();
     public List<CatalogNamed> Stickers { get; set; } = new();
     public List<CatalogNamed> Keychains { get; set; } = new();
+    public List<CatalogNamed> Pins { get; set; } = new();
+    public List<CatalogNamed> MusicKits { get; set; } = new();
 
     public static readonly PluginCatalog Empty = new();
 

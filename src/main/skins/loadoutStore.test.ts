@@ -99,7 +99,7 @@ describe('per-team weapons', () => {
     p.weapons.t['7'] = { paintKit: 282, wear: 0.1, seed: 0, statTrak: null, nameTag: '' }
     p.weapons.ct['7'] = { paintKit: 44, wear: 0.1, seed: 0, statTrak: null, nameTag: '' }
     const f = toLoadoutFile(p, null)
-    expect(f.schema).toBe(3)
+    expect(f.schema).toBe(4)
     expect(f.weapons.t['7'].paintKit).toBe(282)
     expect(f.weapons.ct['7'].paintKit).toBe(44)
   })
@@ -111,5 +111,16 @@ describe('per-team weapons', () => {
     const back = fromLoadoutFile(v2 as never, emptyProfile('id', 'x'))
     expect(back.weapons.t['7'].paintKit).toBe(282)
     expect(back.weapons.ct['7'].paintKit).toBe(282)
+  })
+
+  it('exports and imports pin and music kit (schema 4), keeps them for older files', async () => {
+    const { fromLoadoutFile } = await import('./loadoutStore')
+    const p = { ...emptyProfile('id', 'x'), pin: 6034, musicKit: 3 }
+    const f = toLoadoutFile(p, null)
+    expect([f.pin, f.musicKit]).toEqual([6034, 3])
+    expect(fromLoadoutFile({ ...f, pin: 0 }, p).pin).toBe(0)
+    const v3 = { ...f, schema: 3, pin: undefined, musicKit: undefined }
+    expect(fromLoadoutFile(v3 as never, p).musicKit).toBe(3)
+    expect(toLoadoutFile({ ...p, pin: -5 }, null).pin).toBe(0)
   })
 })

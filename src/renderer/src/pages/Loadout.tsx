@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Copy, Layers, Plus, Trash2, User, Users } from 'lucide-react'
+import { Copy, Layers, Music, Pin, Plus, Trash2, User, Users } from 'lucide-react'
 import type { LoadoutSaveResult } from '@shared/ipc'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
@@ -30,7 +30,7 @@ import {
   type Team
 } from '@shared/skins'
 
-type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent' }
+type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent' | 'pin' | 'music' }
 type SaveState = { state: 'idle' | 'saving' | 'error'; result?: LoadoutSaveResult; error?: string }
 
 const TEAM_LABEL: Record<Team, string> = { t: 'T', ct: 'CT' }
@@ -138,6 +138,8 @@ export default function Loadout() {
   }
   const gloveLabel = (g: GloveSel | null) =>
     g ? `${index.weaponByDef.get(g.defIndex)?.name ?? 'Gloves'} | ${index.skin(g.defIndex, g.paintKit)?.name ?? g.paintKit}` : 'Default'
+  const pinItem = profile.pin ? catalog.pins?.find((x) => x.defIndex === profile.pin) : undefined
+  const musicItem = profile.musicKit ? catalog.musicKits?.find((x) => x.defIndex === profile.musicKit) : undefined
   const agentLabel = (a: AgentSel | null) =>
     a ? (catalog.agents.find((x) => x.defIndex === a.defIndex)?.name.split(' | ')[0] ?? `Agent ${a.defIndex}`) : 'Default'
   const weaponLabel = (defIndex: number, sel: SkinSel | undefined) => {
@@ -279,6 +281,27 @@ export default function Loadout() {
             />
             {weapons.filter((w) => w.className === ZEUS).map(weaponSlot)}
           </div>
+          <h4>Pin & music kit (both teams)</h4>
+          <div className="slot-grid">
+            <SlotButton
+              active={slot.kind === 'pin'}
+              icon={pinItem ? <img className="slot-item-img" src={pinItem.image} alt="" draggable={false} /> : <Pin size={22} aria-hidden />}
+              title="Pin"
+              sub={pinItem?.name ?? (profile.pin ? `Item ${profile.pin}` : 'None')}
+              set={!!profile.pin}
+              color={pinItem?.rarityColor}
+              onClick={() => setSlot({ kind: 'pin' })}
+            />
+            <SlotButton
+              active={slot.kind === 'music'}
+              icon={musicItem ? <img className="slot-item-img" src={musicItem.image} alt="" draggable={false} /> : <Music size={22} aria-hidden />}
+              title="Music kit"
+              sub={musicItem?.name ?? (profile.musicKit ? `Kit ${profile.musicKit}` : 'Default')}
+              set={!!profile.musicKit}
+              color={musicItem?.rarityColor}
+              onClick={() => setSlot({ kind: 'music' })}
+            />
+          </div>
           {WEAPON_CATEGORIES.map((cat) => {
             const list = weapons.filter((w) => w.category === cat && w.className !== ZEUS)
             if (!list.length) return null
@@ -341,6 +364,27 @@ export default function Loadout() {
                 const other: Team = team === 't' ? 'ct' : 't'
                 updateProfile((p) => ({ ...p, knife: { ...p.knife, [other]: structuredClone(p.knife[team]) } }))
               }}
+            />
+          )}
+          {slot.kind === 'pin' && (
+            <ItemPanel
+              title="Pin"
+              hint="Shown next to your name on the scoreboard, for both teams. Coins, medals and trophies work too."
+              none="No pin"
+              items={catalog.pins ?? []}
+              group
+              value={profile.pin}
+              onChange={(pin) => updateProfile((p) => ({ ...p, pin }))}
+            />
+          )}
+          {slot.kind === 'music' && (
+            <ItemPanel
+              title="Music kit"
+              hint="Plays at round start, round end and when you are MVP, for both teams."
+              none="Default music"
+              items={catalog.musicKits ?? []}
+              value={profile.musicKit}
+              onChange={(musicKit) => updateProfile((p) => ({ ...p, musicKit }))}
             />
           )}
           {slot.kind === 'agent' && (
@@ -796,6 +840,53 @@ function KeychainEditor(props: {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function ItemPanel(props: {
+  title: string
+  hint: string
+  none: string
+  items: { defIndex: number; name: string; image: string; rarityColor: string; type?: string }[]
+  /** show the item type (Pin, Service Medal …) as a filter */
+  group?: boolean
+  value: number
+  onChange: (def: number) => void
+}) {
+  const { title, hint, none, items, group, value, onChange } = props
+  const types = useMemo(() => (group ? [...new Set(items.map((i) => i.type ?? 'Other'))].sort() : []), [items, group])
+  const [type, setType] = useState(group && types.includes('Pin') ? 'Pin' : '')
+  const tiles: Tile[] = [
+    { key: 'none', name: none, image: null, selected: !value, onClick: () => onChange(0) },
+    ...items
+      .filter((i) => !type || i.type === type || i.defIndex === value)
+      .map((i) => ({
+        key: String(i.defIndex),
+        name: i.name,
+        image: i.image,
+        color: i.rarityColor,
+        selected: value === i.defIndex,
+        onClick: () => onChange(i.defIndex)
+      }))
+  ]
+  return (
+    <div className="panel-split">
+      <div className="panel-main">
+        <div className="panel-head">
+          <h2>{title}</h2>
+          {group && types.length > 1 && (
+            <Dropdown
+              value={type}
+              align="right"
+              onChange={setType}
+              options={[{ value: '', label: 'All types' }, ...types.map((t) => ({ value: t, label: t }))]}
+            />
+          )}
+        </div>
+        <p className="muted small">{hint}</p>
+        <SkinGrid tiles={tiles} search />
       </div>
     </div>
   )

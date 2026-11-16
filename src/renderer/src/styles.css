@@ -153,6 +153,7 @@ button.icon-text { display: inline-flex; align-items: center; gap: 6px; }
 .slot.set .equip-icon { background: var(--rarity, var(--text)); }
 .slot.active .equip-icon { background: var(--accent); }
 .slot .team-logo { height: 34px; width: 34px; object-fit: contain; }
+.slot .slot-item-img { height: 34px; width: 34px; object-fit: contain; }
 .slot-team { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; object-fit: contain; opacity: 0.9; }
 .slot-title { font-size: 13px; font-weight: 600; }
 .slot-sub { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

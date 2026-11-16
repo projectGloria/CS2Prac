@@ -58,7 +58,25 @@ export interface CatalogKeychain {
   rarityColor: string
 }
 
-export const CATALOG_VERSION = 3
+/** a profile display item: pins, coins, medals, trophies (InventoryServices.Rank[5]) */
+export interface CatalogPin {
+  defIndex: number
+  name: string
+  image: string
+  rarityColor: string
+  /** Pin, Service Medal, Operation Coin … */
+  type: string
+}
+
+export interface CatalogMusicKit {
+  defIndex: number
+  /** "Artist, Title" without the "Music Kit | " prefix */
+  name: string
+  image: string
+  rarityColor: string
+}
+
+export const CATALOG_VERSION = 4
 
 export interface Catalog {
   version: number
@@ -68,6 +86,8 @@ export interface Catalog {
   agents: CatalogAgent[]
   stickers: CatalogSticker[]
   keychains: CatalogKeychain[]
+  pins: CatalogPin[]
+  musicKits: CatalogMusicKit[]
 }
 
 // ---------- loadout (what the user picks) ----------
@@ -138,6 +158,10 @@ export interface Profile {
   knife: Record<Team, KnifeSel | null>
   gloves: Record<Team, GloveSel | null>
   agents: Record<Team, AgentSel | null>
+  /** profile display item def index (scoreboard pin/coin), 0 = none */
+  pin: number
+  /** music kit def index, 0 = none */
+  musicKit: number
 }
 
 export interface LoadoutStore {
@@ -169,7 +193,7 @@ export const MAX_SEED = 1000
 export const MAX_NAMETAG = 20
 
 export function emptyProfile(id: string, name: string): Profile {
-  return { id, name, weapons: { t: {}, ct: {} }, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null } }
+  return { id, name, weapons: { t: {}, ct: {} }, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null }, pin: 0, musicKit: 0 }
 }
 
 /**
@@ -186,7 +210,13 @@ export function perTeamWeapons(w: unknown): Record<Team, Record<string, SkinSel>
 
 /** Fills in fields added after a profile was saved. */
 export function normalizeProfile(p: Profile): Profile {
-  return { ...p, weapons: perTeamWeapons(p.weapons), agents: p.agents ?? { t: null, ct: null } }
+  return {
+    ...p,
+    weapons: perTeamWeapons(p.weapons),
+    agents: p.agents ?? { t: null, ct: null },
+    pin: Number.isInteger(p.pin) && p.pin > 0 ? p.pin : 0,
+    musicKit: Number.isInteger(p.musicKit) && p.musicKit > 0 ? p.musicKit : 0
+  }
 }
 
 export const emptySticker = (defIndex: number): StickerSel => ({ defIndex, wear: 0, scale: 1, rotation: 0, x: 0, y: 0 })

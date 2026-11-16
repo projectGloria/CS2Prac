@@ -154,6 +154,22 @@ public partial class PracSkins
         OpenMenu(player!, AgentPage(player!, command.ArgString));
     }
 
+    [ConsoleCommand("css_pin", "Pick a scoreboard pin/coin: !pin [text]")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnPinSearch(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!CanEdit(player, command)) return;
+        OpenMenu(player!, PinPage(command.ArgString));
+    }
+
+    [ConsoleCommand("css_music", "Pick a music kit: !music [text]")]
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnMusicSearch(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!CanEdit(player, command)) return;
+        OpenMenu(player!, MusicPage(command.ArgString));
+    }
+
     [ConsoleCommand("css_sticker", "Search stickers for the weapon in your hand: !sticker <text>")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnStickerSearch(CCSPlayerController? player, CommandInfo command)
@@ -284,6 +300,8 @@ public partial class PracSkins
                     }));
             }
             else items.Add(new("(hold a gun for its skin, stickers and charm)", Color: "#8a93a3"));
+            items.Add(new($"Pin: {PinLabel()}", pl => PushPage(pl, PinPage(""))));
+            items.Add(new($"Music kit: {MusicLabel()}", pl => PushPage(pl, MusicPage(""))));
             items.Add(new("Close", CloseMenu));
             return items;
         }
@@ -537,6 +555,50 @@ public partial class PracSkins
                     ApplyAgent(pl);
                     Flash(pl, $"{a.Name.Split(" | ")[0]} applied");
                 }, Current: cur?.DefIndex == a.Def));
+            return items;
+        }
+    };
+
+    private string PinLabel() =>
+        _loadout.Pin <= 0 ? "None" : _catalog.Pins.FirstOrDefault(p => p.Def == _loadout.Pin)?.Name ?? $"Item {_loadout.Pin}";
+
+    private string MusicLabel() =>
+        _loadout.MusicKit <= 0 ? "Default" : _catalog.MusicKits.FirstOrDefault(m => m.Def == _loadout.MusicKit)?.Name ?? $"Kit {_loadout.MusicKit}";
+
+    /// <summary>Pin and music kit are one per loadout (not per team) and live on the controller: applied to every target.</summary>
+    private void CommitProfileItems(CCSPlayerController player, string flash)
+    {
+        SaveLoadout();
+        foreach (var p in Utilities.GetPlayers().Where(IsTarget)) ApplyProfileItems(p);
+        Flash(player, flash);
+    }
+
+    private MenuPage PinPage(string query) => new()
+    {
+        Title = "Pin",
+        Build = () =>
+        {
+            var items = new List<MenuItem>
+            {
+                new("No pin", pl => { _loadout.Pin = 0; CommitProfileItems(pl, "Pin removed"); }, Current: _loadout.Pin <= 0)
+            };
+            foreach (var p in _catalog.Pins.Where(p => Matches(p.Name, query)))
+                items.Add(new(p.Name, pl => { _loadout.Pin = p.Def; CommitProfileItems(pl, $"{p.Name} applied"); }, Current: _loadout.Pin == p.Def));
+            return items;
+        }
+    };
+
+    private MenuPage MusicPage(string query) => new()
+    {
+        Title = "Music kit",
+        Build = () =>
+        {
+            var items = new List<MenuItem>
+            {
+                new("Default music", pl => { _loadout.MusicKit = 0; CommitProfileItems(pl, "Default music"); }, Current: _loadout.MusicKit <= 0)
+            };
+            foreach (var m in _catalog.MusicKits.Where(m => Matches(m.Name, query)))
+                items.Add(new(m.Name, pl => { _loadout.MusicKit = m.Def; CommitProfileItems(pl, $"{m.Name} applied"); }, Current: _loadout.MusicKit == m.Def));
             return items;
         }
     };

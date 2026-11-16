@@ -77,3 +77,20 @@ describe('catalog extras', () => {
     expect(c.keychains[0]).toMatchObject({ defIndex: 1, name: "Lil' Ava" })
   })
 })
+
+describe('pins and music kits', () => {
+  it('keeps one entry per def index and skips StatTrak music kits', async () => {
+    const { buildPins, buildMusicKits } = await import('./catalog')
+    const kits = buildMusicKits([
+      { id: 'music_kit-3', name: 'Music Kit | Daniel Sadowski, Crimson Assault', def_index: '3', image: 'a' },
+      { id: 'music_kit-3_st', name: 'StatTrak™ Music Kit | Daniel Sadowski, Crimson Assault', def_index: '3', image: 'b' }
+    ])
+    expect(kits).toEqual([{ defIndex: 3, name: 'Daniel Sadowski, Crimson Assault', image: 'a', rarityColor: '#b0c3d9' }])
+    const pins = buildPins([
+      { name: 'Alyx Pin', def_index: '6034', type: 'Pin', image: 'x', rarity: { color: '#fff' } },
+      { name: 'Coin', def_index: '874', type: null, image: 'y' },
+      { name: 'No image', def_index: '875', image: '' }
+    ])
+    expect(pins.map((p) => [p.defIndex, p.type])).toEqual([[874, 'Other'], [6034, 'Pin']])
+  })
+})

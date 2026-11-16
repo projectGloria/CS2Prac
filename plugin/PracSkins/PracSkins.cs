@@ -191,12 +191,14 @@ public partial class PracSkins : BasePlugin
             $"[PracSkins] owner {_loadout.Owner ?? "everyone"}, {_loadout.Weapons.Count} weapon skins, " +
             $"knife T {_loadout.Knife.T?.DefIndex ?? 0}/CT {_loadout.Knife.Ct?.DefIndex ?? 0}, " +
             $"gloves T {_loadout.Gloves.T?.DefIndex ?? 0}/CT {_loadout.Gloves.Ct?.DefIndex ?? 0}, " +
+            $"pin {_loadout.Pin}, music kit {_loadout.MusicKit}, " +
             $"attribute function {(_setAttribute == null ? "MISSING" : "ok")}"
         };
         foreach (var p in Utilities.GetPlayers())
         {
             var pawn = p.PlayerPawn.Value;
             lines.Add($"  {p.PlayerName} steamid {p.SteamID} team {p.TeamNum} bot {p.IsBot} target {IsTarget(p)} alive {p.PawnIsAlive}" +
+                      $" pin {(p.InventoryServices is { } iv ? (int)iv.Rank[5] : -1)} music {p.MusicKitID}" +
                       (pawn is { IsValid: true }
                           ? $" gloves def {pawn.EconGloves.ItemDefinitionIndex} model {pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName}"
                           : ""));
@@ -306,6 +308,7 @@ public partial class PracSkins : BasePlugin
         if (IsTarget(player))
             Server.NextFrame(() =>
             {
+                ApplyProfileItems(player!);
                 ApplyAgent(player!);
                 ApplyGloves(player!);
             });
@@ -453,6 +456,7 @@ public partial class PracSkins : BasePlugin
     /// </summary>
     private void RefreshPlayer(CCSPlayerController player)
     {
+        ApplyProfileItems(player);
         var pawn = player.PlayerPawn.Value;
         var services = pawn?.WeaponServices;
         if (pawn is not { IsValid: true } || services == null || !player.PawnIsAlive) return;
@@ -491,6 +495,34 @@ public partial class PracSkins : BasePlugin
             ApplyAgent(player);
             ApplyGloves(player);
         }, TimerFlags.STOP_ON_MAPCHANGE);
+    }
+
+    /// <summary>Slots whose pin/music kit we set, so clearing them in the loadout resets them (and nothing else).</summary>
+    private readonly HashSet<int> _profileItemsSet = new();
+
+    /// <summary>
+    /// Pin (profile display item, InventoryServices.Rank[5]) and music kit (MusicID + the controller's MusicKitID), the
+    /// WeaponPaints technique. They live on the controller, so they work dead or alive and for both teams.
+    /// </summary>
+    private void ApplyProfileItems(CCSPlayerController player)
+    {
+        if (!player.IsValid || player.InventoryServices is not { } inv) return;
+        int pin = _loadout.Pin, kit = _loadout.MusicKit;
+        if (pin <= 0 && kit <= 0 && !_profileItemsSet.Contains(player.Slot)) return;
+        try
+        {
+            inv.Rank[5] = (MedalRank_t)Math.Max(pin, 0);
+            inv.MusicID = (ushort)Math.Max(kit, 0);
+            Utilities.SetStateChanged(player, "CCSPlayerController", "m_pInventoryServices");
+            player.MusicKitID = Math.Max(kit, 0);
+            Utilities.SetStateChanged(player, "CCSPlayerController", "m_iMusicKitID");
+            if (pin > 0 || kit > 0) _profileItemsSet.Add(player.Slot);
+            else _profileItemsSet.Remove(player.Slot);
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning("ApplyProfileItems: {Error}", e.Message);
+        }
     }
 
     private void ApplyGloves(CCSPlayerController player)

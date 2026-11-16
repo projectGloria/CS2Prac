@@ -217,12 +217,12 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] **User check:** restart CS2 (new layout), `bind l css_settings`, every tab and setting, This map vs Every map.
 
 ## Phase 8: Pins and music kits (req 3 + extra)
-- [ ] Data spike: pins (ByMykel collectibles) and music kits with def_index + images; extend `catalog.ts` /
-  `pluginCatalog.ts`, bump CATALOG_VERSION.
-- [ ] Loadout schema 4 (`Loadout.cs` ↔ `loadoutStore.ts`): `pin`, `musicKit` (global, not per team).
-- [ ] Plugin: pin via `InventoryServices.Rank[5]`, music kit via `MusicID` (WeaponPaints technique), applied on
+- [x] Data spike: pins (ByMykel collectibles) and music kits with def_index + images; extend `catalog.ts` /
+  `pluginCatalog.ts`, bump CATALOG_VERSION (4; all 667 collectibles incl. coins/medals as pins, 95 music kits, `_st` copies skipped).
+- [x] Loadout schema 4 (`Loadout.cs` ↔ `loadoutStore.ts`): `pin`, `musicKit` (global, not per team).
+- [x] Plugin: pin via `InventoryServices.Rank[5]`, music kit via `MusicID` (WeaponPaints technique), applied on
   connect/spawn and by `css_prac_reload`; `css_prac_status` prints both.
-- [ ] App Loadout page: Pin and Music kit slots. K window: Pins and Music tabs (icons via build:hud classes).
+- [x] App Loadout page: Pin and Music kit slots. K window: Pins and Music tabs (icons via build:hud classes `p<def>`/`m<def>`). Text menu: root entries + `!pin` / `!music`.
 - [ ] **User check in game:** pin on the scoreboard, music kit at round end / MVP.
 
 ## Phase 9: Graffiti (req 2)

@@ -58,7 +58,7 @@ public partial class PracSkins
     // CBasePlayerPawn.m_iHideHUD bits hidden while the window is open: weapon selection, crosshair, radar.
     private const uint HudHideBits = (1u << 0) | (1u << 8) | (1u << 12);
 
-    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents"];
+    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music"];
 
     private CCSCustomHudLayout? _hud;
     private bool _hudWorldReady;
@@ -500,6 +500,40 @@ public partial class PracSkins
                     }));
                 break;
             }
+            case "pins":
+            {
+                s.Tiles.Add(new HudTile("No pin", "", "", _loadout.Pin <= 0, pl =>
+                {
+                    _loadout.Pin = 0;
+                    CommitProfileItems(pl, "Pin removed");
+                    HudStatus(pl, s, "Pin removed");
+                }));
+                foreach (var p in _catalog.Pins)
+                    s.Tiles.Add(new HudTile(p.Name, $"p{p.Def}", "", _loadout.Pin == p.Def, pl =>
+                    {
+                        _loadout.Pin = p.Def;
+                        CommitProfileItems(pl, $"{p.Name} applied");
+                        HudStatus(pl, s, $"{p.Name}: shows on the scoreboard");
+                    }));
+                break;
+            }
+            case "music":
+            {
+                s.Tiles.Add(new HudTile("Default music", "", "", _loadout.MusicKit <= 0, pl =>
+                {
+                    _loadout.MusicKit = 0;
+                    CommitProfileItems(pl, "Default music");
+                    HudStatus(pl, s, "Default music");
+                }));
+                foreach (var m in _catalog.MusicKits)
+                    s.Tiles.Add(new HudTile(m.Name, $"m{m.Def}", "", _loadout.MusicKit == m.Def, pl =>
+                    {
+                        _loadout.MusicKit = m.Def;
+                        CommitProfileItems(pl, $"{m.Name} applied");
+                        HudStatus(pl, s, $"{m.Name}: plays from the next round");
+                    }));
+                break;
+            }
         }
         s.SidePage = Math.Clamp(s.SidePage, 0, Math.Max(0, (s.Side.Count - 1) / SideRows));
         s.GridPage = Math.Clamp(s.GridPage, 0, Math.Max(0, (s.Tiles.Count - 1) / GridTiles));
@@ -550,7 +584,7 @@ public partial class PracSkins
         }
 
         // left list
-        HudFlag(player, "pk_side", "gone", s.Tab == "agents");
+        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" or "music");
         var sideStart = s.SidePage * SideRows;
         for (var i = 0; i < SideRows; i++)
         {
@@ -569,6 +603,8 @@ public partial class PracSkins
             "weapons" => _catalog.WeaponName(s.Selected),
             "knives" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Knife",
             "gloves" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Gloves",
+            "pins" => "Pin (both teams)",
+            "music" => "Music kit (both teams)",
             _ => $"Agents ({(team == 2 ? "T" : "CT")})"
         });
         var empty = s.Tiles.Count > 0 ? "" : s.Tab switch
