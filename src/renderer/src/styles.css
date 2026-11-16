@@ -85,7 +85,7 @@ input, select, textarea { background: var(--bg); color: var(--text); border: 1px
 .play-maps .map-tile .map-icon { width: 72px; height: 72px; }
 .play-maps .map-tile .map-name { font-size: 18px; }
 .play-maps .map-tile .map-text .small { font-size: 13px; }
-.play-maps .workshop-row { margin: 16px 0 0; }
+
 .play-side { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
 .play-side > .card { max-width: none; }
 .server-card { flex: none; }
@@ -318,3 +318,21 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .lineup-types { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 3px 10px; font-size: 12px; border-radius: 999px; }
 .chip.picked { border-color: var(--accent); color: var(--accent); }
+
+/* Play: workshop map browser (Map card, Workshop pool) */
+.ws-browser { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; }
+.ws-search { gap: 8px; align-items: center; }
+.ws-search button { display: inline-flex; align-items: center; gap: 6px; }
+.ws-browser .error-text { margin: 8px 0 0; }
+.ws-head { margin: 18px 0 10px; color: var(--muted); font-weight: 600; }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.ws-tile { position: relative; min-width: 0; }
+.ws-pick { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 0 0 8px; text-align: left; overflow: hidden; border-radius: 8px; }
+.ws-pick img, .ws-pick .ws-noimg { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #0b0c0f; display: block; }
+.ws-pick > span { padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-title { font-weight: 600; }
+.ws-tile.selected .ws-pick { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ws-forget { position: absolute; top: 6px; right: 6px; background: rgba(0, 0, 0, 0.6); color: var(--text); opacity: 0; }
+.ws-tile:hover .ws-forget, .ws-forget:focus-visible { opacity: 1; }
+.ws-more { align-self: center; margin: 14px 0 4px; }
+.selected-map .map-icon.ws-icon { width: 78px; object-fit: cover; border-radius: 4px; }

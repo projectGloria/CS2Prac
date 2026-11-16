@@ -313,6 +313,17 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Plugin: Lineups.cs, L window tab `nades` (type filter chips, Go = teleport + give/select the grenade; no practice
   check). Server test: `css_prac_lineups [index]` (first human, else bot; with an index it loads that lineup).
 
+## Workshop maps (Phase 13)
+- Anonymous and read-only, no Steam account or API key: ids are scraped from the public browse page
+  `steamcommunity.com/workshop/browse/?appid=730&browsesort=trend|mostrecent|totaluniquesubscribers|textsearch
+  &section=readytouseitems&requiredtags[]=Cs2&requiredtags[]=Map&p=N(&searchtext=…)` (React page: ids sit in escaped
+  JSON `publishedfileid\":\"<id>`, 30 per page), details from POST `ISteamRemoteStorage/GetPublishedFileDetails/v1/`
+  (itemcount + publishedfileids[i]; no key needed). Thumbnails: preview_url + `?imw=320&imh=180&ima=fit&impolicy=Letterbox…`.
+- src/shared/workshop.ts (parse/URL helpers), src/main/server/workshop.ts `WorkshopStore`: cache
+  userData/workshop-maps.json (300 entries, 24 h refresh, placeholders offline), `keepThumb` stores a started map's
+  thumbnail as a data URL. maps.json for the L window now carries the titles. The server still downloads the map itself.
+- Play page: Map card pool "Workshop" (components/WorkshopBrowser.tsx); recent maps = settings.recentWorkshop (× forgets).
+
 ## Movement mode (plugin/PracSkins/Movement.cs)
 - `.movement` (say listener, like `.spawns`) / `css_movement <sub>`; `.next`/`.prev`/`.reset` only react while the
   player is in the mode (MatchZy has no such commands, but keep them gated). Spots: `configs/plugins/PracSkins/movement/<map>.json`

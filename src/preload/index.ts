@@ -69,6 +69,12 @@ const api: Api = {
     exportFile: (lineups, fileName) => ipcRenderer.invoke(IPC.lineupsExport, lineups, fileName),
     importFile: (map) => ipcRenderer.invoke(IPC.lineupsImport, map)
   },
+  workshop: {
+    search: (query, page, sort) => ipcRenderer.invoke(IPC.workshopSearch, query, page, sort),
+    details: (ids, refresh) => ipcRenderer.invoke(IPC.workshopDetails, ids, refresh ?? false),
+    recent: () => ipcRenderer.invoke(IPC.workshopRecent),
+    forget: (id) => ipcRenderer.invoke(IPC.workshopForget, id)
+  },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),
     listSteamAccounts: () => ipcRenderer.invoke(IPC.skinsSteamAccounts)

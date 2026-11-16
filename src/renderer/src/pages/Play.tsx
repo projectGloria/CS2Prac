@@ -14,6 +14,7 @@ import {
   Users,
   Bot as BotIcon,
   Bomb,
+  Globe,
   type LucideIcon
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
@@ -21,6 +22,8 @@ import CopyLine from '../components/CopyLine'
 import ServerSettings from '../components/ServerSettings'
 import Bots from '../components/Bots'
 import Lineups from '../components/Lineups'
+import WorkshopBrowser from '../components/WorkshopBrowser'
+import { thumbUrl, type WorkshopMap } from '@shared/workshop'
 import splashArt from '../../../../assets/CS2Prac.png'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
@@ -59,7 +62,6 @@ const MZ_COMMANDS: [string, string][] = [
   ['!cmd <command>', 'run any server command (CS2Prac)']
 ]
 
-const mapLabel = (m: MapChoice) => (m.kind === 'official' ? m.name : `Workshop ${m.id}`)
 /** map badges from assets/map-icons/<map>.png, keyed by map name */
 const MAP_ICONS: Record<string, string> = Object.fromEntries(
   Object.entries(import.meta.glob('../../../../assets/map-icons/*.png', { eager: true, query: '?url', import: 'default' })).map(
@@ -68,14 +70,15 @@ const MAP_ICONS: Record<string, string> = Object.fromEntries(
 )
 /** the active-duty style pool shown first, in this order; everything else goes under "Others" */
 const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anubis', 'de_overpass', 'de_nuke', 'de_train', 'de_vertigo', 'de_cache']
-type MapPool = 'comp' | 'others'
+type MapPool = 'comp' | 'others' | 'workshop'
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
 
 export default function Play({ status, lastLog }: { status: ServerStatus; lastLog?: string }) {
   const [maps, setMaps] = useState<string[]>([])
   const [selected, setSelected] = useState<MapChoice>({ kind: 'official', name: 'de_mirage' })
   const [pool, setPool] = useState<MapPool>('comp')
-  const [workshopId, setWorkshopId] = useState('')
+  /** workshop maps the page has seen (title, thumbnail) */
+  const [wsInfo, setWsInfo] = useState<Record<string, WorkshopMap>>({})
   const [mode, setMode] = useState<GameMode>('competitive')
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,6 +94,13 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
   useEffect(() => {
     window.api.server.getHealth().then(setHealth)
     return window.api.server.onHealth(setHealth)
+  }, [])
+
+  useEffect(() => {
+    window.api.workshop
+      .recent()
+      .then((list) => setWsInfo((i) => ({ ...Object.fromEntries(list.map((m) => [m.id, m])), ...i })))
+      .catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -114,11 +124,21 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
     }
   }
 
-  function pickWorkshop() {
-    const id = workshopId.trim().match(/\d{5,20}/)?.[0] // accepts a raw id or a workshop URL
-    if (!id) return setError('Enter a workshop ID or a steamcommunity.com workshop link')
-    setError(null)
-    setSelected({ kind: 'workshop', id })
+  const mapLabel = (m: MapChoice) => (m.kind === 'official' ? prettyMap(m.name) : (wsInfo[m.id]?.title ?? `Workshop ${m.id}`))
+  const mapIcon = (m: MapChoice) =>
+    m.kind === 'official' ? MAP_ICONS[m.name] : wsInfo[m.id] && (wsInfo[m.id].thumb ?? thumbUrl(wsInfo[m.id].preview))
+
+  function pickWorkshop(m: WorkshopMap) {
+    setWsInfo((i) => ({ ...i, [m.id]: m }))
+    setSelected({ kind: 'workshop', id: m.id })
+  }
+
+  /** Start the server on `map`, or switch the running one to it. */
+  function playMap(map: MapChoice) {
+    if (stopped) {
+      setLaunching(true)
+      run(() => window.api.server.start({ map, mode })).finally(() => setLaunching(false))
+    } else if (running) run(() => window.api.server.changeMap(map))
   }
 
   const updateSettings = async (patch: Partial<Settings>) => setSettings(await window.api.settings.update(patch))
@@ -134,7 +154,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
           <img src={splashArt} alt="" />
           <div className="spinner" />
           <strong>Server starting</strong>
-          <span className="muted">{shownMap.kind === 'official' ? prettyMap(shownMap.name) : mapLabel(shownMap)}</span>
+          <span className="muted">{mapLabel(shownMap)}</span>
           <span className="muted small starting-log">{lastLog ?? ' '}</span>
           {status.state === 'starting' && (
             <button className="danger" onClick={() => run(() => window.api.server.stop())}>
@@ -175,10 +195,22 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
             align="right"
             options={[
               { value: 'comp', label: 'Comp pool', icon: Trophy, hint: `${COMP_POOL.filter((n) => maps.includes(n)).length} maps` },
-              { value: 'others', label: 'Others', icon: LayoutGrid, hint: `${maps.filter((n) => !COMP_POOL.includes(n)).length} maps` }
+              { value: 'others', label: 'Others', icon: LayoutGrid, hint: `${maps.filter((n) => !COMP_POOL.includes(n)).length} maps` },
+              { value: 'workshop', label: 'Workshop', icon: Globe, hint: 'search Steam Workshop maps' }
             ]}
           />
         </div>
+        {pool === 'workshop' ? (
+          <WorkshopBrowser
+            selectedId={selected.kind === 'workshop' ? selected.id : null}
+            onSelect={pickWorkshop}
+            onStart={(m) => {
+              pickWorkshop(m)
+              playMap({ kind: 'workshop', id: m.id })
+            }}
+            startDisabled={busy || !(stopped || running)}
+          />
+        ) : (
         <div className="map-grid">
           {(pool === 'comp' ? COMP_POOL.filter((n) => maps.includes(n)) : maps.filter((n) => !COMP_POOL.includes(n))).map((name) => {
             const m: MapChoice = { kind: 'official', name }
@@ -193,15 +225,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
             )
           })}
         </div>
-        <div className="row workshop-row">
-          <input
-            placeholder="Workshop map ID or link"
-            value={workshopId}
-            onChange={(e) => setWorkshopId(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && pickWorkshop()}
-          />
-          <button onClick={pickWorkshop}>Use workshop map</button>
-        </div>
+        )}
       </section>
 
       <div className="play-side">
@@ -234,14 +258,14 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
 
           <div className="server-launch">
             <div className="selected-map">
-              {shownMap.kind === 'official' && MAP_ICONS[shownMap.name] ? (
-                <img className="map-icon" src={MAP_ICONS[shownMap.name]} alt="" />
+              {mapIcon(shownMap) ? (
+                <img className={`map-icon${shownMap.kind === 'workshop' ? ' ws-icon' : ''}`} src={mapIcon(shownMap)} alt="" />
               ) : (
                 <span className="map-icon" />
               )}
               <span className="map-text">
                 <span className="muted small">{stopped ? 'Selected map' : 'Running map'}</span>
-                <strong>{shownMap.kind === 'official' ? prettyMap(shownMap.name) : mapLabel(shownMap)}</strong>
+                <strong>{mapLabel(shownMap)}</strong>
               </span>
             </div>
             <div className="server-actions">
@@ -249,10 +273,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                 <button
                   className="primary big"
                   disabled={busy}
-                  onClick={() => {
-                    setLaunching(true)
-                    run(() => window.api.server.start({ map: selected, mode })).finally(() => setLaunching(false))
-                  }}
+                  onClick={() => playMap(selected)}
                 >
                   <PlayIcon size={16} aria-hidden />
                   Start server
@@ -260,7 +281,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
               )}
               {status.state === 'starting' && <button disabled>Starting… (see Console)</button>}
               {running && !isSelected(status.map) && (
-                <button disabled={busy} onClick={() => run(() => window.api.server.changeMap(selected))}>
+                <button disabled={busy} onClick={() => playMap(selected)}>
                   <RefreshCw size={15} aria-hidden />
                   Change to {mapLabel(selected)}
                 </button>

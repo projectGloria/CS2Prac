@@ -2,6 +2,7 @@ import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
 import type { Lineup } from './lineups'
+import type { WorkshopMap, WorkshopSearchResult, WorkshopSort } from './workshop'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
 
@@ -179,6 +180,16 @@ export interface Api {
     /** open dialog; adds the file's lineups as global ones (`map` for .importnade codes, which carry none) */
     importFile(map: string): Promise<LineupImportResult | null>
   }
+  /** Steam Workshop maps (anonymous public API; cached for offline names/thumbnails) */
+  workshop: {
+    /** one page (30) of CS2 maps: matching `query`, or by `sort` when the query is empty */
+    search(query: string, page: number, sort: WorkshopSort): Promise<WorkshopSearchResult>
+    details(ids: string[], refresh?: boolean): Promise<WorkshopMap[]>
+    /** the recently started maps (settings.recentWorkshop), newest first */
+    recent(): Promise<WorkshopMap[]>
+    /** removes a map from the recent list; resolves to the new list */
+    forget(id: string): Promise<WorkshopMap[]>
+  }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
     listSteamAccounts(): Promise<SteamAccount[]>
@@ -245,6 +256,10 @@ export const IPC = {
   lineupsRemove: 'lineups:remove',
   lineupsExport: 'lineups:export',
   lineupsImport: 'lineups:import',
+  workshopSearch: 'workshop:search',
+  workshopDetails: 'workshop:details',
+  workshopRecent: 'workshop:recent',
+  workshopForget: 'workshop:forget',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

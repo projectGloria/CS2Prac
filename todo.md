@@ -270,9 +270,12 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] **User check:** `.savenade` in practice, the Lineups panel in the app, the Nades tab (restart CS2: new layout).
 
 ## Phase 13: Workshop map browser (extra)
-- [ ] App: search the Steam Workshop (public web API; or paste an ID/URL), thumbnails, start on a map via
-  `host_workshop_map` (existing `maps.ts`), recent maps list, one-click start.
-- [ ] Remember workshop map names and thumbnails locally.
+- [x] App: search the Steam Workshop (public web API; or paste an ID/URL), thumbnails, start on a map via
+  `host_workshop_map` (existing `maps.ts`), recent maps list, one-click start. Map card pool "Workshop"
+  (components/WorkshopBrowser.tsx): Popular/Newest/Most subscribed, text search, More pages, paste ID/link;
+  click selects, double-click starts or changes the map. Live-checked against Steam; the UI still needs a user look.
+- [x] Remember workshop map names and thumbnails locally (userData/workshop-maps.json; the L window's Map tab
+  shows titles too).
 
 ## Phase 14: 3D skin editor (req 5; largest, last)
 - [ ] **Spike 1 (models):** export weapon models + base textures to glTF with the ValveResourceFormat CLI (MIT),

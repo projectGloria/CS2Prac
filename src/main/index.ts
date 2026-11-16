@@ -37,6 +37,8 @@ import { readBots, saveBots, writeServerBots } from './setup/bots'
 import type { BotsConfig } from '@shared/bots'
 import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
 import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
+import { WorkshopStore } from './server/workshop'
+import type { WorkshopSort } from '@shared/workshop'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
 import type { LoadoutStore } from '@shared/skins'
@@ -51,7 +53,18 @@ async function rememberWorkshop(map: MapChoice) {
   if (map.kind !== 'workshop') return
   const settings = await loadSettings()
   await saveSettings({ ...settings, recentWorkshop: addRecentWorkshop(settings.recentWorkshop, map.id) })
+  await workshop().keepThumb(map.id).catch((e) => logError('workshop', e))
 }
+
+/** maps.json (L window Map tab) with the recent workshop maps and their titles */
+async function writeRecentWorkshop(csgoDir: string) {
+  const ids = (await loadSettings()).recentWorkshop ?? []
+  await writeWorkshopMaps(csgoDir, ids, await workshop().titles(ids))
+}
+
+let workshopStore: WorkshopStore | null = null
+/** workshop map details and thumbnails, cached in userData/workshop-maps.json */
+const workshop = () => (workshopStore ??= new WorkshopStore(join(app.getPath('userData'), 'workshop-maps.json')))
 
 let win: BrowserWindow | null = null
 const server = new ServerManager()
@@ -333,7 +346,7 @@ function registerIpc() {
     await exportMenuCatalog(csgoDir)
     await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
     await rememberWorkshop(opts.map)
-    await writeWorkshopMaps(csgoDir, (await loadSettings()).recentWorkshop ?? [])
+    await writeRecentWorkshop(csgoDir)
     watchLoadout(csgoDir)
     // Every Steam account that has logged in on this PC is a root admin on the server.
     const accounts = await listSteamAccounts()
@@ -357,8 +370,8 @@ function registerIpc() {
   ipcMain.handle(IPC.serverStop, () => server.stop())
   ipcMain.handle(IPC.serverChangeMap, async (_e, map: MapChoice) => {
     await rememberWorkshop(map)
-    const { installDir, recentWorkshop } = await loadSettings()
-    if (installDir) await writeWorkshopMaps(layout(installDir).csgoDir, recentWorkshop ?? []).catch((e) => logError('maps', e))
+    const { installDir } = await loadSettings()
+    if (installDir) await writeRecentWorkshop(layout(installDir).csgoDir).catch((e) => logError('maps', e))
     return server.changeMap(map)
   })
   ipcMain.handle(IPC.serverPrefsGet, async () => {
@@ -369,6 +382,20 @@ function registerIpc() {
     const saved = await writeServerPrefs(layout(await requireInstallDir()).csgoDir, prefs)
     if (server.getStatus().state === 'running') await server.exec(APPLY_SETTINGS_CMD).catch((e) => logError('server prefs', e))
     return saved
+  })
+  ipcMain.handle(IPC.workshopSearch, (_e, query: string, page: number, sort: WorkshopSort) =>
+    workshop().search(String(query ?? ''), Math.max(1, Math.floor(Number(page) || 1)), sort)
+  )
+  ipcMain.handle(IPC.workshopDetails, (_e, ids: string[], refresh?: boolean) =>
+    workshop().details((Array.isArray(ids) ? ids : []).filter((id) => /^\d{5,20}$/.test(id)), !!refresh)
+  )
+  ipcMain.handle(IPC.workshopRecent, async () => workshop().details((await loadSettings()).recentWorkshop ?? []))
+  ipcMain.handle(IPC.workshopForget, async (_e, id: string) => {
+    const settings = await loadSettings()
+    const recentWorkshop = (settings.recentWorkshop ?? []).filter((x) => x !== id)
+    await saveSettings({ ...settings, recentWorkshop })
+    if (settings.installDir) await writeRecentWorkshop(layout(settings.installDir).csgoDir).catch((e) => logError('maps', e))
+    return workshop().details(recentWorkshop)
   })
   ipcMain.handle(IPC.botsGet, () => readBots(botsFile()))
   ipcMain.handle(IPC.botsSave, async (_e, bots: BotsConfig) => {

@@ -37,9 +37,10 @@ export function addRecentWorkshop(list: string[] | undefined, id: string): strin
   return [id, ...(list ?? []).filter((x) => x !== id)].slice(0, RECENT_WORKSHOP)
 }
 
-export async function writeWorkshopMaps(csgoDir: string, ids: string[]) {
+/** maps.json for the L window's Map tab; `titles` = names from the workshop cache (else "Workshop <id>"). */
+export async function writeWorkshopMaps(csgoDir: string, ids: string[], titles: Record<string, string> = {}) {
   const dir = pluginConfigDir(csgoDir)
   await mkdir(dir, { recursive: true })
-  const maps = ids.filter((id) => /^\d{5,20}$/.test(id)).map((id) => ({ id, name: `Workshop ${id}` }))
+  const maps = ids.filter((id) => /^\d{5,20}$/.test(id)).map((id) => ({ id, name: titles[id] || `Workshop ${id}` }))
   await writeAtomic(join(dir, WORKSHOP_MAPS_FILE), JSON.stringify(maps, null, 2))
 }
