@@ -62,7 +62,7 @@ const MAP_ICONS: Record<string, string> = Object.fromEntries(
   )
 )
 /** the active-duty style pool shown first, in this order; everything else goes under "Others" */
-const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anubis', 'de_overpass', 'de_train', 'de_vertigo', 'de_cache']
+const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anubis', 'de_overpass', 'de_nuke', 'de_train', 'de_vertigo', 'de_cache']
 type MapPool = 'comp' | 'others'
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
 
