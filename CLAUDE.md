@@ -141,7 +141,8 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - **The client validates the layout and silently drops a rejected one** ("Layout xml did not pass CustomHud
   validation" in the CLIENT console only): the server still freezes the player and hides HUD bits, but nothing draws.
   The compiler checks nothing (made-up CSS properties compile fine). Known rejection: a full-screen self-closing
-  `<Button id="pk_dim" />` backdrop (so no click-outside-to-close; ESC never reaches the server either). To bisect,
+  `<Button id="pk_dim" />` backdrop (so no click-outside-to-close; ESC never reaches the server either, so a fresh Tab press,
+  IN_SCORE in OnHudTick, closes the window besides K and the close button). To bisect,
   build variants (`HUD_VARIANT=x` + HUD_XML/HUD_CSS/HUD_SIDE_ROWS/HUD_GRID_ROWS env in build-hud.mjs), copy them into
   the client's panorama folders, restart CS2 once and switch the entity's StrLayout per variant.
 - `css_prac_hud` also counts the class/text entries sent per slot; `css_prac_hudopen` / `css_prac_hudclick <id>` drive

@@ -230,6 +230,7 @@ public partial class PracSkins : BasePlugin
 
             var pawn = itemServices?.Pawn.Value;
             var player = pawn is { IsValid: true } ? pawn.Controller.Value?.As<CCSPlayerController>() : null;
+            FixVariant(weapon, hook.GetParam<string>(1));
             if (IsTarget(player)) ApplyWeapon(player!, weapon);
         }
         catch (Exception e)
@@ -238,6 +239,34 @@ public partial class PracSkins : BasePlugin
         }
         return HookResult.Continue;
     }
+
+    /// <summary>
+    /// Item def per give name for guns that share an entity class with another gun (M4A1-S is a weapon_m4a1, USP-S a
+    /// weapon_hkp2000, …). GiveNamedItem picks the item from the player's team loadout, so a T asking for
+    /// weapon_m4a1_silencer gets an M4A4 and a CT asking for weapon_m4a1 may get an M4A1-S.
+    /// </summary>
+    private static readonly Dictionary<string, int> VariantDefs = new()
+    {
+        ["weapon_m4a1"] = 16, ["weapon_m4a1_silencer"] = 60,
+        ["weapon_hkp2000"] = 32, ["weapon_usp_silencer"] = 61,
+        ["weapon_p250"] = 36, ["weapon_cz75a"] = 63,
+        ["weapon_deagle"] = 1, ["weapon_revolver"] = 64,
+        ["weapon_mp7"] = 33, ["weapon_mp5sd"] = 23,
+    };
+
+    /// <summary>Turns a given gun into the one that was asked for (knife technique: ChangeSubclass + item def).</summary>
+    private static void FixVariant(CBasePlayerWeapon weapon, string? asked)
+    {
+        if (asked == null || !VariantDefs.TryGetValue(asked, out var def)) return;
+        var item = weapon.AttributeManager.Item;
+        if (item.ItemDefinitionIndex == def) return;
+        weapon.AcceptInput("ChangeSubclass", value: def.ToString());
+        item.ItemDefinitionIndex = (ushort)def;
+    }
+
+    /// <summary>The give name for a carried gun: its DesignerName is shared (weapon_m4a1 for the M4A1-S too).</summary>
+    private static string GiveName(CBasePlayerWeapon w) =>
+        VariantDefs.FirstOrDefault(kv => kv.Value == w.AttributeManager.Item.ItemDefinitionIndex).Key ?? w.DesignerName;
 
     /// <summary>Catches weapons the GiveNamedItem hook misses (e.g. picked up or spawned by the game).</summary>
     private void OnEntitySpawned(CEntityInstance entity)
@@ -433,7 +462,7 @@ public partial class PracSkins : BasePlugin
             if (h.Value is not { IsValid: true } w || w.DesignerName is not { } name) continue;
             if (NotRefreshed.Any(name.Contains)) continue;
             var knife = IsKnife(w);
-            held.Add((knife ? (player.TeamNum == 2 ? "weapon_knife_t" : "weapon_knife") : name, w.Clip1, w.ReserveAmmo[0], knife));
+            held.Add((knife ? (player.TeamNum == 2 ? "weapon_knife_t" : "weapon_knife") : GiveName(w), w.Clip1, w.ReserveAmmo[0], knife));
             remove.Add(w);
         }
 

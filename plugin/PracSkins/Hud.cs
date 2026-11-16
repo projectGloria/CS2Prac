@@ -24,6 +24,8 @@ public class HudSession
     public float StatusUntil { get; set; }
     public MoveType_t PreviousMoveType { get; set; } = MoveType_t.MOVETYPE_WALK;
     public uint HudBitsAdded { get; set; }
+    /// <summary>Buttons held last tick; Tab closes the window on a fresh press (ESC never reaches the server).</summary>
+    public ulong LastButtons { get; set; }
     public List<HudSide> Side { get; set; } = new();
     public List<HudTile> Tiles { get; set; } = new();
 }
@@ -209,7 +211,7 @@ public partial class PracSkins
 
     private void OpenHud(CCSPlayerController player)
     {
-        var s = new HudSession { Tab = "weapons" };
+        var s = new HudSession { Tab = "weapons", LastButtons = (ulong)player.Buttons };
         _hudSessions[player.Slot] = s;
         SelectTab(player, s, "weapons");
 
@@ -268,9 +270,18 @@ public partial class PracSkins
         var now = Server.CurrentTime;
         foreach (var (slot, s) in _hudSessions.ToList())
         {
+            if (Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } p) continue;
+            var buttons = (ulong)p.Buttons;
+            var pressed = buttons & ~s.LastButtons;
+            s.LastButtons = buttons;
+            if ((pressed & (ulong)PlayerButtons.Scoreboard) != 0)
+            {
+                CloseHud(p);
+                continue;
+            }
             if (s.Status.Length == 0 || now < s.StatusUntil) continue;
             s.Status = "";
-            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p) HudText(p, "pk_status", "");
+            HudText(p, "pk_status", "");
         }
     }
 
@@ -329,7 +340,7 @@ public partial class PracSkins
         s.Selected = tab switch
         {
             "weapons" => HeldWeapon(player) is { Kind: "weapon" } held ? held.Def
-                : _catalog.Weapons.FirstOrDefault(w => w.Kind == "weapon")?.Def ?? 0,
+                : SortedGuns().FirstOrDefault()?.Def ?? 0,
             "knives" => _loadout.Knife.For(player.TeamNum)?.DefIndex ?? 0,
             "gloves" => _loadout.Gloves.For(player.TeamNum) is { PaintKit: > 0 } g ? g.DefIndex : 0,
             _ => 0
@@ -356,7 +367,7 @@ public partial class PracSkins
         {
             case "weapons":
             {
-                foreach (var w in _catalog.Weapons.Where(w => w.Kind == "weapon"))
+                foreach (var w in SortedGuns())
                 {
                     var def = w.Def;
                     s.Side.Add(new HudSide(w.Name, SkinName(def, _loadout.WeaponPaint(def, team)?.PaintKit ?? 0), def == s.Selected, pl =>
@@ -624,6 +635,23 @@ public partial class PracSkins
         else if (TryIndex(id, "pk_wear_", out var wear) && wear < WearPresets.Length)
             SetHudWear(player, s, WearPresets[wear]);
     }
+
+    /// <summary>Side-list order for the weapons tab: pistols, SMGs, heavy, rifles, snipers (buy-menu style).</summary>
+    private static readonly string[] GunOrder =
+    [
+        "weapon_glock", "weapon_hkp2000", "weapon_usp_silencer", "weapon_elite", "weapon_p250", "weapon_tec9",
+        "weapon_fiveseven", "weapon_cz75a", "weapon_deagle", "weapon_revolver",
+        "weapon_mac10", "weapon_mp9", "weapon_mp7", "weapon_mp5sd", "weapon_ump45", "weapon_p90", "weapon_bizon",
+        "weapon_nova", "weapon_xm1014", "weapon_sawedoff", "weapon_mag7", "weapon_m249", "weapon_negev",
+        "weapon_galilar", "weapon_famas", "weapon_ak47", "weapon_m4a1", "weapon_m4a1_silencer", "weapon_sg556",
+        "weapon_aug", "weapon_ssg08", "weapon_awp", "weapon_g3sg1", "weapon_scar20"
+    ];
+
+    /// <summary>Catalog guns in GunOrder; anything not listed (new guns, Zeus) keeps catalog order at the end.</summary>
+    private IEnumerable<CatalogWeapon> SortedGuns() => _catalog.Weapons.Where(w => w.Kind == "weapon")
+        .Select((w, i) => (w, i))
+        .OrderBy(x => Array.IndexOf(GunOrder, x.w.Cls) is var o and >= 0 ? o : GunOrder.Length + x.i)
+        .Select(x => x.w);
 
     private static gear_slot_t? GearSlot(CBasePlayerWeapon w) => w.As<CCSWeaponBase>().VData?.GearSlot;
 
