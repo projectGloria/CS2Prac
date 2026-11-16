@@ -33,6 +33,9 @@ public class MoveSession
     public bool Armed { get; set; }
     public bool LeftGround { get; set; }
     public float IgnoreUntil { get; set; }
+    /// <summary>The made/missed banner, re-sent every tick until BannerUntil (a center message alone lasts a moment).</summary>
+    public string? Banner { get; set; }
+    public float BannerUntil { get; set; }
 }
 
 /// <summary>
@@ -405,6 +408,12 @@ public partial class PracSkins
         var now = Server.CurrentTime;
         foreach (var (slot, session) in _move)
         {
+            if (session.Banner != null)
+            {
+                var p = Utilities.GetPlayerFromSlot(slot);
+                if (now >= session.BannerUntil || p is not { IsValid: true } || MenuOpen(p)) session.Banner = null;
+                else p.PrintToCenterHtml(session.Banner, 1);
+            }
             if (now < session.IgnoreUntil) continue;
             var player = Utilities.GetPlayerFromSlot(slot);
             if (player is not { IsValid: true } || AlivePawn(player) is not { } pawn) continue;
@@ -456,8 +465,8 @@ public partial class PracSkins
         if (MenuOpen(player)) return; // the menu owns the center of the screen
         var (made, attempts) = session.Counts.GetValueOrDefault(spot.Name);
         var rate = attempts == 0 ? "" : $" ({made * 100 / attempts}%)";
-        player.PrintToCenterHtml(
-            $"<font class='fontSize-l'>{headline}</font><br>{spot.Name} · made {made} / {attempts}{rate}", 2);
+        session.Banner = $"<font class='fontSize-l'>{headline}</font><br>{spot.Name} · made {made} / {attempts}{rate}";
+        session.BannerUntil = Server.CurrentTime + 2f;
     }
 
     // ---- markers ----

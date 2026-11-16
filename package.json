@@ -14,7 +14,8 @@
     "build:plugin": "dotnet build plugin/PracSkins -c Release -o resources/plugin/PracSkins",
     "dist": "npm run build:bundle && npm run build && electron-builder --win --publish never",
     "release": "npm run build:bundle && npm run build && electron-builder --win --publish always",
-    "build:bundle": "node scripts/bundle.mjs"
+    "build:bundle": "node scripts/bundle.mjs",
+    "build:hud": "node scripts/hud/build-hud.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -56,6 +57,10 @@
       {
         "from": "resources/bundle",
         "to": "bundle"
+      },
+      {
+        "from": "resources/hud",
+        "to": "hud"
       }
     ],
     "win": {

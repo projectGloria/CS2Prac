@@ -91,8 +91,8 @@ public partial class PracSkins
         return true;
     }
 
-    [ConsoleCommand("css_menu", "Open or close the CS2Prac skin menu (bind a key: bind k css_menu)")]
-    [ConsoleCommand("css_skins", "Open the CS2Prac skin menu")]
+    // css_menu (K) opens the skin window (Hud.cs); this text menu stays as the fallback.
+    [ConsoleCommand("css_skins", "Open or close the CS2Prac text skin menu")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnMenuCommand(CCSPlayerController? player, CommandInfo command)
     {

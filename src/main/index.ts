@@ -22,6 +22,7 @@ import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
 import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
+import { installClientHud } from './setup/clientHud'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
@@ -79,6 +80,21 @@ async function mirrorClient(installDir: string, report?: (p: SetupProgress) => v
   return syncMirror(client.dir, layout(installDir).serverDir, client.buildId, (done, total) =>
     report?.({ phase: 'server', percent: total ? (done / total) * 100 : null, message: `Linking CS2 game files (${done}/${total})` })
   )
+}
+
+/** Puts the skin window's Panorama files into the player's CS2 (K in game). Never fails a server start. */
+async function installSkinWindow() {
+  try {
+    const client = await findCs2Install()
+    if (!client) return
+    const r = await installClientHud(client.dir)
+    if (r === 'installed')
+      send(IPC.serverLog, '[cs2prac] skin window installed into CS2 – restart CS2 if it is running, then press K in game')
+    else if (r === 'missing') send(IPC.serverLog, '[cs2prac] skin window files missing (npm run build:hud) – K opens the text menu')
+  } catch (e) {
+    logError('skin window install', e)
+    send(IPC.serverLog, `[cs2prac] could not install the skin window: ${e instanceof Error ? e.message : e}`)
+  }
 }
 
 /**
@@ -285,6 +301,7 @@ function registerIpc() {
       if (r.linked || r.removed) send(IPC.serverLog, `[cs2prac] game files updated: ${r.linked} linked, ${r.removed} removed`)
     }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
+    await installSkinWindow()
     await exportMenuCatalog(csgoDir)
     await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
     watchLoadout(csgoDir)

@@ -2,7 +2,7 @@
 
 ## What this is
 CS2Prac is a personal Windows desktop app (Electron + React + TypeScript) that runs a **local CS2 practice server**. The user picks any map, starts the server, connects from their own CS2 client, and is admin there. Skins (weapons, knives, gloves, and later agents, stickers and keychains) are applied **server-side** by our CounterStrikeSharp plugin `PracSkins`. MatchZy provides the practice features.
-The app never touches the game client or its memory. Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
+The app never touches the game client's memory; the only files it adds to the client install are the skin window's two Panorama files (see "Skin window"). Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
 
 ## Working rules
 - **Commit only when the user says so**, then push directly to `main`. No branches, no PRs. During UI work the user watches changes live in `npm run dev` and decides when a section is done; run typecheck + tests, leave the changes uncommitted and wait. Never push a `v*` release tag unless asked.
@@ -106,7 +106,9 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 - `css_prac_status` shows each pawn's model and each weapon's dynamic attribute count (useful to see stickers landed).
 
 ## In-game menu (Phase 5)
-- plugin/PracSkins/Menu.cs: generic center-HTML menu (PrintToCenterHtml, re-sent every second), input read from
+- plugin/PracSkins/Menu.cs: generic center-HTML menu (PrintToCenterHtml re-sent **every tick**: CS2 shows a center
+  message only for a moment whatever the duration, so once a second blinked; the HTML is rebuilt on changes and once
+  a second; the movement banner is re-sent per tick for 2 s the same way), input read from
   `player.Buttons` in OnTick (W/S/A/D/E/R, hold-to-repeat), player frozen with MOVETYPE_NONE while open.
 - plugin/PracSkins/SkinMenu.cs: pages and commands `css_menu`/`css_skins` (toggle), `css_skin|knife|gloves|agent|sticker|charm <text>`,
   `css_prac_save` (server only; writes loadout.json, for tests).
@@ -114,6 +116,40 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   whenever the catalog loads. Menu picks are saved by the plugin to loadout.json (camelCase, atomic) and applied at once;
   the app watches that folder (`watchLoadout` in index.ts) and imports into the active profile (`importLoadoutFile`),
   then sends `loadout:changed` so the Loadout tab updates.
+
+## Skin window (plugin/PracSkins/Hud.cs, scripts/hud)
+- K = `css_menu` opens a real Panorama window (`custom_hud_layout` entity, CSS API extension methods in
+  `CounterStrikeSharp.API.Modules.Extensions`: SetDialogVariableStringForPlayer / SetHasClassForPlayer /
+  SetInputCaptureEnabled, `Listeners.OnCustomHudClicked`). `css_skins` / `!skins` is the old text menu (fallback;
+  css_menu also falls back to it while the entity doesn't exist yet). Technique and pitfalls from nvmxre/cs2-ui-kit
+  (MIT, docs/GOTCHAS.md): root panel without id; only Panel/Label/Image/Button; no inline style; images only as CSS
+  backgrounds; entities only after the first round_start; per-slot state outlives a disconnect (reset on put-in-server).
+- Layout/CSS sources: scripts/hud/cs2prac_skins.xml + .css. `npm run build:hud` (needs CS2 Workshop Tools'
+  resourcecompiler.exe) fills the row/tile markers (counts = SideRows/GridTiles in Hud.cs), appends generated image
+  classes from the game's VPK (scripts/hud/vpk.mjs) + items_game.txt (keyvalues.mjs): `.pk-img.b<def>` base weapon,
+  `.pk-img.s<def>_<paint>` skin icon (econ/default_generated/<item>_<codename>_light_png; listed after the base rules
+  so it wins), `.pk-bar.s<def>_<paint>` rarity colour, `.pk-img.a<def>` agent. Output: resources/hud/*.vxml_c/.vcss_c
+  (committed, shipped as <resources>/hud). Rebuild after layout changes or CS2 updates with new skins.
+- The app (setup/clientHud.ts, every server start) copies them into the CLIENT's game/csgo/panorama/{layout,styles}/
+  custom_game/ (user's choice: local loose files, no Workshop addon/MultiAddonManager). This is the one place the app
+  writes into the game client folder (two new files only). Panorama caches layouts: restart CS2 after a change.
+- Hud.cs sends only changed texts/classes per slot (HudSent cache); tile images are class "variants" (old one removed).
+- Lists scroll (`overflow: squish scroll`, user-confirmed): 36 side rows, 64 tiles (16 rows; empty rows get class
+  gone); the pager only shows (class gone otherwise) if a list ever outgrows 64. Side rows carry an icon panel
+  (`pk_side_<i>_img`, classes pk-img pk-row-img + the b<def> icon; gloves have no base icon, so the worn finish or the
+  type's first finish).
+- **The client validates the layout and silently drops a rejected one** ("Layout xml did not pass CustomHud
+  validation" in the CLIENT console only): the server still freezes the player and hides HUD bits, but nothing draws.
+  The compiler checks nothing (made-up CSS properties compile fine). Known rejection: a full-screen self-closing
+  `<Button id="pk_dim" />` backdrop (so no click-outside-to-close; ESC never reaches the server either). To bisect,
+  build variants (`HUD_VARIANT=x` + HUD_XML/HUD_CSS/HUD_SIDE_ROWS/HUD_GRID_ROWS env in build-hud.mjs), copy them into
+  the client's panorama folders, restart CS2 once and switch the entity's StrLayout per variant.
+- `css_prac_hud` also counts the class/text entries sent per slot; `css_prac_hudopen` / `css_prac_hudclick <id>` drive
+  the window for the first bot (server tests).
+- Clicking a gun equips it (`EquipForHud`): CS2 allows one gun per slot (a second rifle is dropped on the floor) and
+  `use` only switches while something is in hand, so: knife out (if the replaced gun is held), 0.15 s, remove the
+  slot's gun, GiveNamedItem, `use <DesignerName>` (M4A1-S is weapon_m4a1 there). Bots don't follow `use` reliably, so
+  `css_prac_hudequip <def>` (server test on the first bot) only proves the slot swap, not the switch.
 
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:

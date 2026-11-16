@@ -86,6 +86,19 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] Extra chat commands: `!agent`, `!charm`; `css_menu` toggles. Menu pages: finish (+ wear presets), knife model â†’ finish, gloves type â†’ finish, agent, sticker slots (scrape, remove), charm, StatTrak toggle.
 - [x] Verified server-side: plugin loads catalog.json (63 weapons, 63 agents, 11134 stickers, 78 charms); plugin-written loadout.json round-trips through the app's import unchanged (`css_prac_save`).
 - [ ] **User check in game:** `bind k css_menu`, navigation feel (W/S/A/D/E/R, hold to scroll), freeze/unfreeze, every page applies instantly, the app's Loadout tab follows the menu's picks.
+- [x] Fix: the text menu blinked (re-sent once a second; CS2 shows a center message only briefly) → re-sent every tick.
+
+### Phase 5b: Skin window (real Panorama HUD, user's request "bigger, better UI")
+- [x] `custom_hud_layout` window (plugin/PracSkins/Hud.cs): dimmed backdrop, mouse cursor, tabs Weapons/Knives/Gloves/Agents, list on the left, 4×3 tiles with the game's own skin icons, pages, wear presets + StatTrak, status line. K (`css_menu`) opens it; `!skins` keeps the text menu.
+- [x] `npm run build:hud` (scripts/hud): reads CS2's VPK + items_game.txt, generates one CSS image class per skin/agent/base weapon, compiles with the Workshop Tools resource compiler into resources/hud.
+- [x] The app copies the two compiled files into the client's `game/csgo/panorama/.../custom_game/` on every server start (user chose local files over a Workshop addon).
+- [x] Server-side check on 27115: entity created at the first round, kept across restarts, replaced on plugin reload, recreated after a map change; 0 asserts.
+- [x] **User-confirmed** in game: window opens with K, images show, clicks apply ("Impressive!").
+- [x] User feedback round 1: clicking a gun in the list equips it at once (replaces the gun of that slot; slot swap verified on a bot, `css_prac_hudequip`); AWP & co. were on page 2 → list and grid now scroll with the mouse wheel (36 rows / 64 tiles, no paging); click outside the window closes it (ESC can't reach the server).
+- [x] The round-1 layout didn't show at all: CS2's client rejected the clickable (Button) backdrop. Bisected with 4 layout variants in game; backdrop is a Panel again (no click-outside close). **User-confirmed:** window shows, mouse-wheel scrolling works.
+- [x] User feedback round 2: weapon icons in the left list (knives too; gloves show a finish); pager hidden while everything fits.
+- [ ] **User check in game:** restart CS2 (layout changed), icons in the left list, the gun you click lands in your hands.
+- [ ] Later: stickers and charms in the window; T/CT switch.
 
 ## Phase 6: Hardening and v1.0
 - [x] Pin known-good versions of Metamod, CSS and MatchZy. "Check for plugin updates" becomes an explicit button, so a bad upstream release can't break a start.

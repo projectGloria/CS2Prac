@@ -1,0 +1,63 @@
+<!--
+  CS2Prac skin window (custom_hud_layout). Driven by plugin/PracSkins/Hud.cs: texts through {s:text} dialog
+  variables, state and images through classes set per player. Built by scripts/hud/build-hud.mjs (it also writes
+  the tile rows/tiles below from TEMPLATE markers, so the counts match Hud.cs).
+
+  Rules learned elsewhere (cs2-ui-kit GOTCHAS): the root panel has no id; only Panel, Label, Image and Button;
+  no inline style attributes; images only as CSS backgrounds.
+-->
+<root>
+	<styles>
+		<include src="s2r://panorama/styles/custom_game/cs2prac_skins.vcss_c" />
+	</styles>
+
+	<Panel class="pk-screen" hittest="false">
+		<!-- Must stay a Panel: with a full-screen Button here CS2 rejected the whole layout (nothing showed). -->
+		<Panel id="pk_dim" class="pk-dim" hittest="true" />
+
+		<Panel id="pk_win" class="pk-win" hittest="true">
+
+			<Panel class="pk-header" hittest="false">
+				<Label id="pk_title" class="pk-title" text="{s:text}" hittest="false" />
+				<Panel class="pk-tabs" hittest="false">
+					<Button id="pk_tab_weapons" class="pk-tab"><Label class="pk-tab-text" text="Weapons" hittest="false" /></Button>
+					<Button id="pk_tab_knives" class="pk-tab"><Label class="pk-tab-text" text="Knives" hittest="false" /></Button>
+					<Button id="pk_tab_gloves" class="pk-tab"><Label class="pk-tab-text" text="Gloves" hittest="false" /></Button>
+					<Button id="pk_tab_agents" class="pk-tab"><Label class="pk-tab-text" text="Agents" hittest="false" /></Button>
+				</Panel>
+				<Button id="pk_close" class="pk-close"><Label class="pk-close-text" text="&#10005;" hittest="false" /></Button>
+			</Panel>
+
+			<Panel class="pk-body" hittest="false">
+				<!-- Scrolls with the mouse wheel; enough rows for every gun, so no paging. -->
+				<Panel id="pk_side" class="pk-side" hittest="true">
+<!--SIDE_ROWS-->
+				</Panel>
+
+				<Panel class="pk-main" hittest="false">
+					<Label id="pk_heading" class="pk-heading" text="{s:text}" hittest="false" />
+					<Label id="pk_empty" class="pk-empty" text="{s:text}" hittest="false" />
+					<Panel class="pk-grid" hittest="true">
+<!--GRID_ROWS-->
+					</Panel>
+				</Panel>
+			</Panel>
+
+			<Panel class="pk-footer" hittest="false">
+				<Button id="pk_prev" class="pk-pager"><Label class="pk-pager-text" text="&#9664;" hittest="false" /></Button>
+				<Label id="pk_page" class="pk-page" text="{s:text}" hittest="false" />
+				<Button id="pk_next" class="pk-pager"><Label class="pk-pager-text" text="&#9654;" hittest="false" /></Button>
+				<Label id="pk_status" class="pk-status" text="{s:text}" hittest="false" />
+				<Panel id="pk_wears" class="pk-wears" hittest="false">
+					<Button id="pk_wear_0" class="pk-wear"><Label class="pk-wear-text" text="FN" hittest="false" /></Button>
+					<Button id="pk_wear_1" class="pk-wear"><Label class="pk-wear-text" text="MW" hittest="false" /></Button>
+					<Button id="pk_wear_2" class="pk-wear"><Label class="pk-wear-text" text="FT" hittest="false" /></Button>
+					<Button id="pk_wear_3" class="pk-wear"><Label class="pk-wear-text" text="WW" hittest="false" /></Button>
+					<Button id="pk_wear_4" class="pk-wear"><Label class="pk-wear-text" text="BS" hittest="false" /></Button>
+					<Button id="pk_st" class="pk-wear pk-st"><Label class="pk-wear-text" text="StatTrak" hittest="false" /></Button>
+				</Panel>
+			</Panel>
+
+		</Panel>
+	</Panel>
+</root>

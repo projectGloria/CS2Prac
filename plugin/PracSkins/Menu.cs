@@ -169,6 +169,9 @@ public partial class PracSkins
             if (!_menus.ContainsKey(slot)) continue; // closed by the input
 
             if (now >= session.NextRender) RenderMenu(player, session, now);
+            // CS2 keeps a center HTML message up for only a moment whatever duration is asked for, so it is re-sent
+            // every tick (as CS2 menu plugins do); once a second made the menu blink on and off.
+            player.PrintToCenterHtml(session.LastHtml, 1);
         }
     }
 
@@ -237,10 +240,8 @@ public partial class PracSkins
         if (session.Flash != null && now < session.FlashUntil) html.Append($"<font color='#4fbf7a'>{Esc(session.Flash)}</font><br>");
         html.Append("<font class='fontSize-s' color='#8a93a3'>W/S move · A/D page · E select · R back</font>");
 
-        var text = html.ToString();
-        // The HUD message fades after its duration, so it is re-sent periodically even when unchanged.
-        player.PrintToCenterHtml(text, 2);
-        session.LastHtml = text;
+        // Rebuilt on changes and once a second (so a flash line expires); OnMenuTick sends it every tick.
+        session.LastHtml = html.ToString();
         session.NextRender = now + 1.0f;
     }
 }
