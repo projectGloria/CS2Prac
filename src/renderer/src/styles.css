@@ -79,7 +79,12 @@ input, select { background: var(--bg); color: var(--text); border: 1px solid var
 .play:not(:has(.notices)) { grid-template-rows: minmax(0, 1fr); }
 .play > .card { max-width: none; }
 .play-maps { display: flex; flex-direction: column; min-height: 0; }
-.play-maps .map-grid { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 4px; }
+/* rows stretch to fill the card (comp pool), but never below 96px; longer lists (Others) scroll */
+.play-maps .map-grid { flex: 1; min-height: 0; overflow-y: auto; grid-auto-rows: minmax(96px, 1fr); gap: 12px; padding-right: 4px; }
+.play-maps .map-tile { gap: 16px; padding: 12px 18px; border-radius: 8px; }
+.play-maps .map-tile .map-icon { width: 72px; height: 72px; }
+.play-maps .map-tile .map-name { font-size: 18px; }
+.play-maps .map-tile .map-text .small { font-size: 13px; }
 .play-maps .workshop-row { margin: 16px 0 0; }
 .play-side { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
 .play-side > .card { max-width: none; }
