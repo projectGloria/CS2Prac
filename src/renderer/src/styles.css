@@ -76,8 +76,11 @@ input, select { background: var(--bg); color: var(--text); border: 1px solid var
 .row input { flex: 1; }
 .play { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .card.wide, .card.side { max-width: none; }
-.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.map-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 12px; text-align: left; }
+.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.map-tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left; min-width: 0; }
+.map-icon { width: 44px; height: 44px; flex: none; object-fit: contain; }
+.map-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.map-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-tile .map-name { text-transform: capitalize; font-weight: 600; }
 .map-tile.selected { border-color: var(--accent); background: #2b2416; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }

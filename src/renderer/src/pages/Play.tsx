@@ -55,6 +55,12 @@ const MZ_COMMANDS: [string, string][] = [
 ]
 
 const mapLabel = (m: MapChoice) => (m.kind === 'official' ? m.name : `Workshop ${m.id}`)
+/** map badges from assets/map-icons/<map>.png, keyed by map name */
+const MAP_ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob('../../../../assets/map-icons/*.png', { eager: true, query: '?url', import: 'default' })).map(
+    ([path, url]) => [path.slice(path.lastIndexOf('/') + 1, -4), url as string]
+  )
+)
 /** the active-duty style pool shown first, in this order; everything else goes under "Others" */
 const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anubis', 'de_overpass', 'de_train', 'de_vertigo', 'de_cache']
 type MapPool = 'comp' | 'others'
@@ -145,8 +151,11 @@ export default function Play({ status }: { status: ServerStatus }) {
             const m: MapChoice = { kind: 'official', name }
             return (
               <button key={name} className={`map-tile ${isSelected(m) ? 'selected' : ''}`} onClick={() => setSelected(m)}>
-                <span className="map-name">{prettyMap(name)}</span>
-                <span className="muted small">{name}</span>
+                {MAP_ICONS[name] ? <img className="map-icon" src={MAP_ICONS[name]} alt="" /> : <span className="map-icon" />}
+                <span className="map-text">
+                  <span className="map-name">{prettyMap(name)}</span>
+                  <span className="muted small">{name}</span>
+                </span>
               </button>
             )
           })}
