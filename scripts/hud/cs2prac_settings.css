@@ -1,0 +1,114 @@
+/*
+  CS2Prac server settings window (ps_*). Appended after cs2prac_skins.css by build-hud.mjs and reuses its header,
+  tab, chip, close and footer rules; only the window and the setting rows are new.
+*/
+
+.ps-win
+{
+	visibility: collapse;
+	opacity: 0;
+	position: -5000px 0px 0px;
+	width: 1100px;
+	horizontal-align: center;
+	vertical-align: center;
+	flow-children: down;
+	padding: 18px 20px 16px 20px;
+	background-color: #0e1117f5;
+	border: 1px solid #ffffff1f;
+	border-radius: 6px;
+	transition-property: opacity;
+	transition-duration: 0.12s;
+}
+
+.ps-win.shown
+{
+	visibility: visible;
+	opacity: 1;
+	position: 0px 0px 0px;
+}
+
+.ps-title
+{
+	width: 330px;
+	font-size: 19px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ps-list
+{
+	width: 100%;
+	height: 560px;
+	flow-children: down;
+	overflow: squish scroll;
+}
+
+.ps-row
+{
+	width: 920px;
+	height: 52px;
+	margin-bottom: 4px;
+	padding: 0px 10px 0px 14px;
+	flow-children: right;
+	background-color: #161b24;
+	border: 1px solid #ffffff0a;
+	border-radius: 4px;
+}
+
+.ps-row.gone
+{
+	visibility: collapse;
+}
+
+.ps-row-text
+{
+	width: 400px;
+	height: 100%;
+	flow-children: down;
+	vertical-align: center;
+}
+
+.ps-row-name
+{
+	margin-top: 7px;
+	color: #e6eaf0;
+	font-size: 16px;
+	font-weight: bold;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ps-row-sub
+{
+	color: #8a93a3;
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ps-chips
+{
+	horizontal-align: right;
+	vertical-align: center;
+	flow-children: right;
+}
+
+.ps-chip.gone
+{
+	visibility: collapse;
+}
+
+.ps-savelabel
+{
+	width: 80px;
+}
+
+.ps-reset
+{
+	margin-left: 14px;
+}
+
+.ps-reset:hover
+{
+	background-color: #8a2f2a;
+}

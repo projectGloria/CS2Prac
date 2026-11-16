@@ -196,19 +196,25 @@ Same rules as v1: one phase at a time, typecheck + tests, the user tests in game
 writes are limited to new Panorama/resource files like the skin window's. Risky items start with a **spike**.
 
 ## Phase 7: Server settings window (L key) (req 1)
-- [ ] `plugin/PracSkins/SettingsHud.cs`: a second `custom_hud_layout` window reusing the Hud.cs plumbing (HudSent cache,
-  OnCustomHudClicked, input capture, Tab closes). Layout `scripts/hud/cs2prac_settings.xml/.css`, built by
-  `npm run build:hud`, copied by `setup/clientHud.ts`. `css_settings` toggles it (`bind l css_settings`; text-menu
-  fallback while the entity doesn't exist yet).
-- [ ] Toggles: bot glow, spawn markers, bot radio/chatter (`bot_chatter off`), infinite ammo, buy anywhere, grenade
-  trajectory, impacts, no-flash, god mode, bunnyhop/autobhop, friendly fire, fall damage.
-- [ ] Sliders/choices: bot difficulty, round/freeze time, gravity, timescale, bot stop/crouch.
-- [ ] Skybox **spike**: swap the `env_sky` material (precache the sky materials of all official maps in
-  OnServerPrecacheResources; list them from the VPK like build:hud does). Fog/lighting too if cheap.
-- [ ] Map change from the window (official list + recent workshop maps), restart round, kick bots.
-- [ ] Settings persist (global + per map) in `configs/plugins/PracSkins/server_prefs.json`; the Play page shows and
-  edits the same file (watcher like `watchLoadout`).
-- [ ] Pages for the movement spots (v1 "maybe later": go to a spot) and the lineup list (Phase 12).
+- [x] `plugin/PracSkins/SettingsHud.cs`: the settings window (`ps_win`) lives in the same `custom_hud_layout` as the
+  skin window (one entity, one input capture; `ps_` click ids are routed to it, opening one closes the other). Layout
+  fragment `scripts/hud/cs2prac_settings.xml/.css`, merged by `npm run build:hud` at `<!--SETTINGS_WINDOW-->`.
+  `css_settings` / `.settings` toggles it (`bind l css_settings`; text-menu fallback while the entity doesn't exist
+  yet). Tab closes it, as do death and K.
+- [x] Toggles: bot glow, spawn markers, bot radio (`bot_chatter`), infinite ammo, buy anywhere, grenade trajectory,
+  impacts, no-flash, god mode, auto bunnyhop, friendly fire, fall damage.
+- [x] Choices: bot difficulty, bots shoot, round/freeze time, gravity, timescale, bot stop/crouch.
+- [x] Skybox: our own `env_sky` with the picked material, the map's skies disabled; 22 sky materials precached in
+  OnServerPrecacheResources. Verified on a test server (entity state); **user check:** the sky looks right in game.
+  Fog/lighting not done (later if wanted).
+- [x] Map tab: official maps (csgo/maps/*.vpk) + the app's recent workshop maps (maps.json), restart round; Bots tab:
+  place a bot (`css_bot`), kick bots.
+- [x] Settings persist in `configs/plugins/PracSkins/server_prefs.json` (global + per map, "Every map"/"This map"
+  chips, reset); applied 2.5 s after map start and on practice start (prac_override.cfg). Play page "Server settings"
+  edits the global values and clears per-map ones; changes made in game show up live (watcher).
+- [x] Spots tab: movement mode on/off and "Go" per movement spot of the map (v1 "maybe later"). The lineup page
+  comes with Phase 12.
+- [ ] **User check:** restart CS2 (new layout), `bind l css_settings`, every tab and setting, This map vs Every map.
 
 ## Phase 8: Pins and music kits (req 3 + extra)
 - [ ] Data spike: pins (ByMykel collectibles) and music kits with def_index + images; extend `catalog.ts` /

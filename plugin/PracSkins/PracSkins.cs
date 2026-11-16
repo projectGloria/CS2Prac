@@ -64,6 +64,7 @@ public partial class PracSkins : BasePlugin
         InitPractice();
         InitMovement();
         InitHud(hotReload);
+        InitSettings();
 
         // A dedicated server has no sound system: `play <sound>` (common in client cfgs and aliases run with
         // !cmd exec) crashes it with an access violation. Swallow the sound commands server-side.
@@ -98,6 +99,7 @@ public partial class PracSkins : BasePlugin
             if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p) CloseMenu(p);
         UnloadPractice();
         UnloadMovement();
+        UnloadSettings();
         UnloadHud();
     }
 

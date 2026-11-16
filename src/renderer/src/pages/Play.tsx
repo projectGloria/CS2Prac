@@ -6,6 +6,7 @@ import {
   Play as PlayIcon,
   Power,
   RefreshCw,
+  SlidersHorizontal,
   Skull,
   Swords,
   Target,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import CopyLine from '../components/CopyLine'
+import ServerSettings from '../components/ServerSettings'
 import splashArt from '../../../../assets/CS2Prac.png'
 import type { ConnectInfo, GameMode, MapChoice, MatchZyMode, ServerHealth, ServerStatus, Settings } from '@shared/ipc'
 
@@ -74,6 +76,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showPrefs, setShowPrefs] = useState(false)
   /** set from the Start click until the start finishes or fails (the prep before cs2.exe runs isn't 'starting' yet) */
   const [launching, setLaunching] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
@@ -262,6 +265,10 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                   {status.state === 'stopping' ? 'Stopping…' : 'Stop server'}
                 </button>
               )}
+              <button title="Settings of the in-game L window" onClick={() => setShowPrefs(true)}>
+                <SlidersHorizontal size={15} aria-hidden />
+                Server settings
+              </button>
             </div>
           </div>
           {error && <p className="error-text">{error}</p>}
@@ -286,6 +293,8 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
             </div>
           )}
         </section>
+
+        {showPrefs && <ServerSettings onClose={() => setShowPrefs(false)} />}
 
         <section className="card mz-help">
           <h2>MatchZy commands</h2>

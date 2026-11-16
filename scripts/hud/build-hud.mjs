@@ -33,6 +33,11 @@ const ADDON = 'cs2prac'
 const SIDE_ROWS = Number(process.env.HUD_SIDE_ROWS ?? 36)
 const GRID_COLS = 4
 const GRID_ROWS = Number(process.env.HUD_GRID_ROWS ?? 16)
+// Keep in sync with plugin/PracSkins/SettingsHud.cs (SetRows, RowChips).
+const SET_ROWS = 32
+const SET_CHIPS = 6
+const SET_XML_SRC = join(here, 'cs2prac_settings.xml')
+const SET_CSS_SRC = join(here, 'cs2prac_settings.css')
 
 function findCs2() {
   if (process.env.CS2_DIR) return process.env.CS2_DIR
@@ -88,8 +93,33 @@ function buildLayout() {
     grid.push(`${t5}\t</Panel>`)
   }
   xml = xml.replace('<!--SIDE_ROWS-->', rows.join('\n')).replace('<!--GRID_ROWS-->', grid.join('\n'))
-  if (xml.includes('<!--SIDE_ROWS-->') || xml.includes('<!--GRID_ROWS-->')) throw new Error('layout markers missing')
+  xml = xml.replace('<!--SETTINGS_WINDOW-->', buildSettings())
+  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS)-->/.test(xml)) throw new Error('layout markers missing')
   return xml
+}
+
+// The server settings window (L): its own source, inside the same layout (one entity, one input capture).
+function buildSettings() {
+  const t = '\t\t\t\t'
+  const rows = []
+  for (let i = 0; i < SET_ROWS; i++) {
+    const chips = []
+    for (let j = 0; j < SET_CHIPS; j++)
+      chips.push(
+        `${t}\t\t\t<Button id="ps_row_${i}_opt_${j}" class="pk-chip ps-chip">` +
+          `<Label id="ps_row_${i}_opt_${j}_text" class="pk-chip-text" text="{s:text}" hittest="false" /></Button>`
+      )
+    rows.push(
+      `${t}<Panel id="ps_row_${i}" class="ps-row" hittest="false">\n` +
+        `${t}\t<Panel class="ps-row-text" hittest="false">\n` +
+        `${t}\t\t<Label id="ps_row_${i}_name" class="ps-row-name" text="{s:text}" hittest="false" />\n` +
+        `${t}\t\t<Label id="ps_row_${i}_sub" class="ps-row-sub" text="{s:text}" hittest="false" />\n` +
+        `${t}\t</Panel>\n` +
+        `${t}\t<Panel class="ps-chips" hittest="false">\n${chips.join('\n')}\n${t}\t</Panel>\n` +
+        `${t}</Panel>`
+    )
+  }
+  return readFileSync(SET_XML_SRC, 'utf8').replace('<!--PS_ROWS-->', rows.join('\n'))
 }
 
 function buildImageCss(cs2) {
@@ -176,7 +206,7 @@ const styleSrc = join(content, 'styles', 'custom_game', `${NAME}.css`)
 mkdirSync(dirname(layoutSrc), { recursive: true })
 mkdirSync(dirname(styleSrc), { recursive: true })
 writeFileSync(layoutSrc, buildLayout())
-let css = readFileSync(CSS_SRC, 'utf8')
+let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8')
 writeFileSync(styleSrc, css + '\n' + buildImageCss(cs2))
 
 for (const src of [layoutSrc, styleSrc]) {

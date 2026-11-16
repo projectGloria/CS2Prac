@@ -1,4 +1,5 @@
 import type { Catalog, LoadoutStore, SteamAccount } from './skins'
+import type { ServerPrefs } from './serverSettings'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
 
@@ -50,6 +51,8 @@ export interface Settings {
   matchzyMode: MatchZyMode
   /** Shown as the server name and as the chat prefix of MatchZy and PracSkins messages, e.g. [Nihil Prac Server]. */
   serverName: string
+  /** workshop map ids started recently, newest first (offered in the in-game settings window's Map tab) */
+  recentWorkshop?: string[]
 }
 
 export const DEFAULT_SERVER_NAME = 'Nihil Prac Server'
@@ -151,6 +154,12 @@ export interface Api {
     exec(command: string): Promise<string>
     onStatus(cb: (s: ServerStatus) => void): () => void
     onLog(cb: (line: string) => void): () => void
+    /** server_prefs.json (in-game L window settings) */
+    getPrefs(): Promise<ServerPrefs>
+    /** saves server_prefs.json and applies it on the running server */
+    savePrefs(prefs: ServerPrefs): Promise<ServerPrefs>
+    /** the in-game settings window changed server_prefs.json */
+    onPrefsChanged(cb: (prefs: ServerPrefs) => void): () => void
   }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
@@ -206,6 +215,9 @@ export const IPC = {
   serverExec: 'server:exec',
   serverStatus: 'server:status',
   serverLog: 'server:log',
+  serverPrefsGet: 'server:prefsGet',
+  serverPrefsSave: 'server:prefsSave',
+  serverPrefsChanged: 'server:prefsChanged',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

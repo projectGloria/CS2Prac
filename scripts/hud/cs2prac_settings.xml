@@ -1,0 +1,32 @@
+<!--
+  CS2Prac server settings window (L = css_settings), driven by plugin/PracSkins/SettingsHud.cs. Not a layout of
+  its own: build-hud.mjs puts this fragment into cs2prac_skins.xml at SETTINGS_WINDOW (same custom_hud_layout
+  entity, so the two windows never fight over input capture) and fills PS_ROWS (counts = SetRows/RowChips).
+  Same rules as the skin window: only Panel/Label/Button, no inline style, no ids on wrappers that don't need one.
+-->
+		<Panel id="ps_win" class="ps-win" hittest="true">
+			<Panel class="pk-header" hittest="false">
+				<Label id="ps_title" class="pk-title ps-title" text="{s:text}" hittest="false" />
+				<Panel class="pk-tabs" hittest="false">
+					<Button id="ps_tab_practice" class="pk-tab"><Label class="pk-tab-text" text="Practice" hittest="false" /></Button>
+					<Button id="ps_tab_server" class="pk-tab"><Label class="pk-tab-text" text="Server" hittest="false" /></Button>
+					<Button id="ps_tab_bots" class="pk-tab"><Label class="pk-tab-text" text="Bots" hittest="false" /></Button>
+					<Button id="ps_tab_sky" class="pk-tab"><Label class="pk-tab-text" text="Sky" hittest="false" /></Button>
+					<Button id="ps_tab_map" class="pk-tab"><Label class="pk-tab-text" text="Map" hittest="false" /></Button>
+					<Button id="ps_tab_spots" class="pk-tab"><Label class="pk-tab-text" text="Spots" hittest="false" /></Button>
+				</Panel>
+				<Button id="ps_close" class="pk-close"><Label class="pk-close-text" text="&#10005;" hittest="false" /></Button>
+			</Panel>
+
+			<Panel class="ps-list" hittest="true">
+<!--PS_ROWS-->
+			</Panel>
+
+			<Panel class="pk-footer" hittest="false">
+				<Label class="pk-barlabel ps-savelabel" text="Save for" hittest="false" />
+				<Button id="ps_scope_global" class="pk-chip"><Label class="pk-chip-text" text="Every map" hittest="false" /></Button>
+				<Button id="ps_scope_map" class="pk-chip"><Label class="pk-chip-text" text="This map" hittest="false" /></Button>
+				<Button id="ps_reset" class="pk-chip ps-reset"><Label class="pk-chip-text" text="Reset" hittest="false" /></Button>
+				<Label id="ps_status" class="pk-status" text="{s:text}" hittest="false" />
+			</Panel>
+		</Panel>

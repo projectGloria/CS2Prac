@@ -146,6 +146,7 @@ public partial class PracSkins
         }
         if (MenuOpen(player)) CloseMenu(player);
         if (!CanEdit(player, command)) return;
+        if (_setSessions.ContainsKey(player.Slot)) CloseSettings(player);
         if (!HudReady)
         {
             // first moments of a map, before the world is ready: the text menu works everywhere
@@ -263,6 +264,7 @@ public partial class PracSkins
                 if (cls.Length > 0) _hud!.SetHasClassForPlayer(player, key.Split('|')[0], cls, false);
         _hud!.SetHasClassForPlayer(player, "pk_dim", "shown", false);
         _hud!.SetHasClassForPlayer(player, "pk_win", "shown", false);
+        _hud!.SetHasClassForPlayer(player, "ps_win", "shown", false);
         _hud!.SetInputCaptureEnabled(player, false);
     }
 
@@ -618,6 +620,11 @@ public partial class PracSkins
     private void OnHudClicked(CCSPlayerController player, CCSCustomHudLayout layout, string id)
     {
         if (!player.IsValid || !HudReady || layout.Index != _hud!.Index) return;
+        if (id.StartsWith("ps_")) // the settings window lives in the same layout (SettingsHud.cs)
+        {
+            OnSettingsClicked(player, id);
+            return;
+        }
         if (!_hudSessions.TryGetValue(player.Slot, out var s)) return;
         try
         {

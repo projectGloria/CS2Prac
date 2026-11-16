@@ -30,6 +30,8 @@ import { killStaleServers, parseHealth } from './server/health'
 import { cachedCatalog, getCatalog } from './skins/catalog'
 import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore } from './skins/loadoutStore'
 import { exportPluginCatalog } from './skins/pluginCatalog'
+import { SERVER_PREFS_FILE, addRecentWorkshop, readServerPrefs, writeServerPrefs, writeWorkshopMaps } from './server/serverPrefs'
+import type { ServerPrefs } from '@shared/serverSettings'
 import { listSteamAccounts } from './steam/accounts'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
@@ -37,6 +39,15 @@ import type { LoadoutStore } from '@shared/skins'
 
 /** Plugin command that re-reads loadout.json (implemented by plugin/PracSkins). */
 const RELOAD_SKINS_CMD = 'css_prac_reload'
+/** Plugin command that re-reads server_prefs.json and applies it (SettingsHud.cs). */
+const APPLY_SETTINGS_CMD = 'css_prac_settings_apply'
+
+/** Workshop maps started from the app are offered in the in-game settings window's Map tab. */
+async function rememberWorkshop(map: MapChoice) {
+  if (map.kind !== 'workshop') return
+  const settings = await loadSettings()
+  await saveSettings({ ...settings, recentWorkshop: addRecentWorkshop(settings.recentWorkshop, map.id) })
+}
 
 let win: BrowserWindow | null = null
 const server = new ServerManager()
@@ -130,7 +141,16 @@ function watchLoadout(csgoDir: string) {
   const dir = pluginConfigDir(csgoDir)
   if (!existsSync(dir)) return
   let pending: ReturnType<typeof setTimeout> | undefined
+  let prefsPending: ReturnType<typeof setTimeout> | undefined
   loadoutWatcher = watch(dir, (_event, name) => {
+    if (name === SERVER_PREFS_FILE) {
+      // the in-game settings window (L) saved; our own saves just send the same prefs again
+      clearTimeout(prefsPending)
+      prefsPending = setTimeout(() => {
+        readServerPrefs(csgoDir).then((p) => send(IPC.serverPrefsChanged, p), (e) => logError('server prefs', e))
+      }, 300)
+      return
+    }
     if (name !== 'loadout.json') return
     clearTimeout(pending)
     pending = setTimeout(async () => {
@@ -304,6 +324,8 @@ function registerIpc() {
     await installSkinWindow()
     await exportMenuCatalog(csgoDir)
     await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
+    await rememberWorkshop(opts.map)
+    await writeWorkshopMaps(csgoDir, (await loadSettings()).recentWorkshop ?? [])
     watchLoadout(csgoDir)
     // Every Steam account that has logged in on this PC is a root admin on the server.
     const accounts = await listSteamAccounts()
@@ -322,7 +344,21 @@ function registerIpc() {
     checkHealth(settings.matchzyMode !== 'off').catch((e) => logError('health', e))
   })
   ipcMain.handle(IPC.serverStop, () => server.stop())
-  ipcMain.handle(IPC.serverChangeMap, (_e, map: MapChoice) => server.changeMap(map))
+  ipcMain.handle(IPC.serverChangeMap, async (_e, map: MapChoice) => {
+    await rememberWorkshop(map)
+    const { installDir, recentWorkshop } = await loadSettings()
+    if (installDir) await writeWorkshopMaps(layout(installDir).csgoDir, recentWorkshop ?? []).catch((e) => logError('maps', e))
+    return server.changeMap(map)
+  })
+  ipcMain.handle(IPC.serverPrefsGet, async () => {
+    const { installDir } = await loadSettings()
+    return installDir ? readServerPrefs(layout(installDir).csgoDir) : { global: {}, maps: {} }
+  })
+  ipcMain.handle(IPC.serverPrefsSave, async (_e, prefs: ServerPrefs) => {
+    const saved = await writeServerPrefs(layout(await requireInstallDir()).csgoDir, prefs)
+    if (server.getStatus().state === 'running') await server.exec(APPLY_SETTINGS_CMD).catch((e) => logError('server prefs', e))
+    return saved
+  })
   ipcMain.handle(IPC.serverConnectInfo, connectInfo)
   ipcMain.handle(IPC.serverGetHealth, getHealth)
   ipcMain.handle(IPC.serverOpenCfg, async () => {

@@ -156,6 +156,20 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   slot's gun, GiveNamedItem, `use <DesignerName>` (M4A1-S is weapon_m4a1 there). Bots don't follow `use` reliably, so
   `css_prac_hudequip <def>` (server test on the first bot) only proves the slot swap, not the switch.
 
+## Server settings window (plugin/PracSkins/SettingsHud.cs, Phase 7)
+- L = `css_settings` (`.settings` in chat, @css/root). The window `ps_win` is part of the skin window's layout (one
+  `custom_hud_layout`, one input capture): Hud.cs routes click ids starting `ps_` to OnSettingsClicked; opening one
+  window closes the other. Source fragment scripts/hud/cs2prac_settings.xml/.css, inserted by build-hud.mjs at
+  `<!--SETTINGS_WINDOW-->` (rows/chips counts = SetRows/RowChips).
+- SetDefs (C#) ↔ `src/shared/serverSettings.ts` SETTINGS: same ids, tabs and option values; keep them in sync.
+- `configs/plugins/PracSkins/server_prefs.json` `{global:{id:value}, maps:{map:{id:value}}}` (map over global), edited
+  by the window (scope chips) and the app's Play page "Server settings" (global only + clear a map). Applied 2.5 s
+  after map start, by `css_prac_settings_apply` (prac_override.cfg; the app after saving). The app's loadout watcher
+  also watches this file (`server:prefsChanged`). `maps.json` (written by the app) = recent workshop maps for the Map tab.
+- Sky: a new `env_sky` with the material (CEntityKeyValues), the map's own skies get `Disable`; materials precached.
+- Server tests: `css_prac_settings` (live values, saved values, env_skies), `css_prac_set <id> <value>`,
+  `css_prac_setopen` (first bot), `css_prac_hudclick ps_…`. Verified live on 27115 (2026-11-16).
+
 ## Third-person agent preview (plugin/PracSkins/AgentView.cs)
 - Agents tab "Third person" (pref per SteamID in configs/plugins/PracSkins/hud_prefs.json; the app's loadout watcher only
   reacts to loadout.json). A model-less, transparent prop_dynamic becomes `pawn.CameraServices.ViewEntity` (restore with

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC, type Api, type ServerHealth, type ServerStatus, type SetupProgress, type UpdateStatus } from '@shared/ipc'
 import type { LoadoutStore } from '@shared/skins'
+import type { ServerPrefs } from '@shared/serverSettings'
 
 function subscribe<T>(channel: string, cb: (v: T) => void): () => void {
   const h = (_: unknown, v: T) => cb(v)
@@ -52,7 +53,10 @@ const api: Api = {
     openCfgFolder: () => ipcRenderer.invoke(IPC.serverOpenCfg),
     exec: (cmd) => ipcRenderer.invoke(IPC.serverExec, cmd),
     onStatus: (cb) => subscribe<ServerStatus>(IPC.serverStatus, cb),
-    onLog: (cb) => subscribe<string>(IPC.serverLog, cb)
+    onLog: (cb) => subscribe<string>(IPC.serverLog, cb),
+    getPrefs: () => ipcRenderer.invoke(IPC.serverPrefsGet),
+    savePrefs: (prefs) => ipcRenderer.invoke(IPC.serverPrefsSave, prefs),
+    onPrefsChanged: (cb) => subscribe<ServerPrefs>(IPC.serverPrefsChanged, cb)
   },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),

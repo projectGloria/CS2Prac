@@ -54,6 +54,8 @@ sv_cheats 1
 sv_hibernate_when_empty 0
 // PracSkins spawn markers (squares + numbers; look at one and press E). .spawns in chat toggles them.
 css_prac_spawns 1
+// Server settings saved in the in-game window (L) or the app, applied again over MatchZy's practice values.
+css_prac_settings_apply
 `
 
 /**
