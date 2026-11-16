@@ -5,7 +5,7 @@ CS2Prac is a personal Windows desktop app (Electron + React + TypeScript) that r
 The app never touches the game client or its memory. Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
 
 ## Working rules
-- **Commit and push directly to `main`.** No branches, no PRs. When a todo.md step is done (typecheck + tests green), commit and push it right away without waiting for approval; the user tests in game afterwards. Never push a `v*` release tag unless asked.
+- **Commit only when the user says so**, then push directly to `main`. No branches, no PRs. During UI work the user watches changes live in `npm run dev` and decides when a section is done; run typecheck + tests, leave the changes uncommitted and wait. Never push a `v*` release tag unless asked.
 - Work **phase by phase from `todo.md`**. Tick boxes as items land and keep the file current, since it is the source of truth for what's left.
 - The user tests each phase in game later and reports problems; fix them as they come in.
 - Keep `plugin/PracSkins/Loadout.cs` and `src/main/skins/loadoutStore.ts` (the loadout.json schema) in sync. Bump the schema number when the shape changes.
@@ -92,8 +92,11 @@ npm run dist           # build + NSIS installer into dist/ (never publishes)
 (windows-latest) checks the tag matches, type-checks, tests, builds the plugin and runs `npm run release`, which publishes the
 installer + `latest.yml` to GitHub Releases. Installed apps pick it up through auto-update. Only tag when the user asks.
 
-## Loadout schema 2 (Phase 4)
-- loadout.json `schema: 2`: per weapon `stickers[5]` ({defIndex, wear, scale, rotation, x, y} or null) and `keychain`
+## Loadout schema 3 (weapons per team)
+- loadout.json `schema: 3`: `weapons.{t,ct}` = { "<defIndex>": paint } (a skin can differ per faction). Schema 1/2 had one
+  flat map; the plugin's TeamWeaponsConverter and the app's `perTeamWeapons` (also for old profiles in loadouts.json)
+  copy it to both teams. The menu's weapon pages take the player's team (`FinishPage(team, def)` …).
+- Since schema 2: per weapon `stickers[5]` ({defIndex, wear, scale, rotation, x, y} or null) and `keychain`
   ({defIndex, x, y, z, seed}); `agents.{t,ct}` ({defIndex, model}); `precache` = every agent model. The plugin
   precaches those in OnServerPrecacheResources so agents can change without a map change. Schema 1 still loads.
 - Sticker/keychain ids and keychain seed go through `BitsAsFloat`; they're written to NetworkedDynamicAttributes only.

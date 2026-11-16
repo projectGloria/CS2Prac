@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Copy, Layers, Plus, Trash2, User, Users } from 'lucide-react'
 import type { LoadoutSaveResult } from '@shared/ipc'
+import Dropdown, { type DropdownOption } from '../components/Dropdown'
+import Modal from '../components/Modal'
 import {
   emptyKeychain,
   emptyProfile,
@@ -27,12 +30,14 @@ import {
   type Team
 } from '@shared/skins'
 
-type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent'; team: Team }
+type Slot = { kind: 'weapon'; defIndex: number } | { kind: 'knife' | 'gloves' | 'agent' }
 type SaveState = { state: 'idle' | 'saving' | 'error'; result?: LoadoutSaveResult; error?: string }
 
 const TEAM_LABEL: Record<Team, string> = { t: 'T', ct: 'CT' }
 const WEAPON_CATEGORIES = ['Pistols', 'SMGs', 'Rifles', 'Heavy', 'Equipment']
 const SAVE_DEBOUNCE_MS = 400
+/** shown with agent, knife and gloves instead of under Equipment */
+const ZEUS = 'weapon_taser'
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 const defaultWear = (s?: CatalogSkin) => clamp(0.01, s?.minFloat ?? 0, s?.maxFloat ?? 1)
@@ -44,7 +49,8 @@ export default function Loadout() {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [store, setStore] = useState<LoadoutStore | null>(null)
   const [accounts, setAccounts] = useState<SteamAccount[]>([])
-  const [slot, setSlot] = useState<Slot>({ kind: 'knife', team: 't' })
+  const [slot, setSlot] = useState<Slot>({ kind: 'knife' })
+  const [team, setTeam] = useState<Team>('ct')
   const [save, setSave] = useState<SaveState>({ state: 'idle' })
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const latest = useRef<LoadoutStore | null>(null)
@@ -141,20 +147,38 @@ export default function Loadout() {
     return finish + (n ? ` · ${n} sticker${n > 1 ? 's' : ''}` : '') + (sel.keychain ? ' · charm' : '')
   }
 
+  const weaponSlot = (w: CatalogWeapon) => {
+    const sel = profile.weapons[team][w.defIndex]
+    return (
+      <SlotButton
+        key={w.defIndex}
+        active={sameSlot(slot, { kind: 'weapon', defIndex: w.defIndex })}
+        icon={<EquipIcon name={w.className.replace(/^weapon_/, '')} />}
+        title={w.name}
+        sub={weaponLabel(w.defIndex, sel)}
+        color={sel ? index.skin(w.defIndex, sel.paintKit)?.rarityColor : undefined}
+        set={!!sel}
+        onClick={() => setSlot({ kind: 'weapon', defIndex: w.defIndex })}
+      />
+    )
+  }
+
+  const ownerOptions: DropdownOption<string>[] = [
+    ...accounts.map((a) => ({ value: a.steamId, label: a.personaName, icon: User })),
+    ...(store.owner && !accounts.some((a) => a.steamId === store.owner) ? [{ value: store.owner, label: store.owner, icon: User }] : []),
+    { value: '', label: 'Everyone (bots too)', icon: Users }
+  ]
+
   return (
     <div className="loadout">
-      <div className="loadout-bar">
-        <select
-          value={profile.id}
-          onChange={(e) => update((s) => ({ ...s, activeId: e.target.value }))}
-          title="Active profile — this one is sent to the server"
-        >
-          {store.profiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name || 'Untitled'}
-            </option>
-          ))}
-        </select>
+      <div className="card loadout-bar">
+        <div title="Active profile: this one is sent to the server">
+          <Dropdown
+            value={profile.id}
+            onChange={(id) => update((s) => ({ ...s, activeId: id }))}
+            options={store.profiles.map((p) => ({ value: p.id, label: p.name || 'Untitled', icon: Layers }))}
+          />
+        </div>
         <input
           className="profile-name"
           value={profile.name}
@@ -163,6 +187,8 @@ export default function Loadout() {
           aria-label="Profile name"
         />
         <button
+          className="icon-text"
+          title="Duplicate this profile"
           onClick={() =>
             update((s) => {
               const p = { ...structuredClone(profile), id: crypto.randomUUID(), name: `${profile.name} copy` }
@@ -170,9 +196,12 @@ export default function Loadout() {
             })
           }
         >
+          <Copy size={14} aria-hidden />
           Duplicate
         </button>
         <button
+          className="icon-text"
+          title="New empty profile"
           onClick={() =>
             update((s) => {
               const p = emptyProfile(crypto.randomUUID(), `Profile ${s.profiles.length + 1}`)
@@ -180,10 +209,12 @@ export default function Loadout() {
             })
           }
         >
+          <Plus size={14} aria-hidden />
           New
         </button>
         <button
-          className="danger"
+          className="icon-text danger"
+          title="Delete this profile"
           disabled={store.profiles.length < 2}
           onClick={() =>
             update((s) => {
@@ -192,84 +223,69 @@ export default function Loadout() {
             })
           }
         >
+          <Trash2 size={14} aria-hidden />
           Delete
         </button>
 
         <span className="spacer" />
-        <label className="inline-field">
-          Skins for
-          <select
-            value={store.owner ?? ''}
-            onChange={(e) => update((s) => ({ ...s, owner: e.target.value || null }))}
-          >
-            {accounts.map((a) => (
-              <option key={a.steamId} value={a.steamId}>
-                {a.personaName}
-              </option>
-            ))}
-            {store.owner && !accounts.some((a) => a.steamId === store.owner) && (
-              <option value={store.owner}>{store.owner}</option>
-            )}
-            <option value="">Everyone (bots too)</option>
-          </select>
-        </label>
         <SaveIndicator save={save} />
+        <div className="inline-field">
+          Skins for
+          <Dropdown value={store.owner ?? ''} onChange={(v) => update((s) => ({ ...s, owner: v || null }))} align="right" options={ownerOptions} />
+        </div>
       </div>
 
-      <div className="loadout-body">
-        <nav className="slot-list">
-          <h4>Knife & gloves</h4>
-          {(['t', 'ct'] as Team[]).map((team) => (
-            <SlotButton
-              key={`k${team}`}
-              active={sameSlot(slot, { kind: 'knife', team })}
-              title={`Knife (${TEAM_LABEL[team]})`}
-              sub={knifeLabel(profile.knife[team])}
-              set={!!profile.knife[team]}
-              onClick={() => setSlot({ kind: 'knife', team })}
+      <div className="loadout-cols">
+        <nav className="card slot-list">
+          <div className="slot-list-head">
+            <h2>Loadout</h2>
+            <Dropdown
+              value={team}
+              onChange={setTeam}
+              align="right"
+              options={[
+                { value: 'ct', label: 'Counter-Terrorist', image: CS_ICONS.ct_logo },
+                { value: 't', label: 'Terrorist', image: CS_ICONS.t_logo }
+              ]}
             />
-          ))}
-          {(['t', 'ct'] as Team[]).map((team) => (
+          </div>
+          <h4>Agent, knife, gloves & Zeus</h4>
+          <div className="slot-grid">
             <SlotButton
-              key={`g${team}`}
-              active={sameSlot(slot, { kind: 'gloves', team })}
-              title={`Gloves (${TEAM_LABEL[team]})`}
-              sub={gloveLabel(profile.gloves[team])}
-              set={!!profile.gloves[team]}
-              onClick={() => setSlot({ kind: 'gloves', team })}
-            />
-          ))}
-          <h4>Agents</h4>
-          {(['t', 'ct'] as Team[]).map((team) => (
-            <SlotButton
-              key={`a${team}`}
-              active={sameSlot(slot, { kind: 'agent', team })}
-              title={`Agent (${TEAM_LABEL[team]})`}
+              active={slot.kind === 'agent'}
+              icon={<img className="team-logo" src={CS_ICONS[`${team}_logo`]} alt="" draggable={false} />}
+              title="Agent"
               sub={agentLabel(profile.agents[team])}
               set={!!profile.agents[team]}
-              onClick={() => setSlot({ kind: 'agent', team })}
+              onClick={() => setSlot({ kind: 'agent' })}
             />
-          ))}
+            <SlotButton
+              active={slot.kind === 'knife'}
+              icon={<EquipIcon name={knifeIcon(team, profile.knife[team])} />}
+              title="Knife"
+              sub={knifeLabel(profile.knife[team])}
+              set={!!profile.knife[team]}
+              color={profile.knife[team]?.paintKit ? index.skin(profile.knife[team]!.defIndex, profile.knife[team]!.paintKit)?.rarityColor : undefined}
+              onClick={() => setSlot({ kind: 'knife' })}
+            />
+            <SlotButton
+              active={slot.kind === 'gloves'}
+              icon={<EquipIcon name="clothing_hands" />}
+              title="Gloves"
+              sub={gloveLabel(profile.gloves[team])}
+              set={!!profile.gloves[team]}
+              color={profile.gloves[team] ? index.skin(profile.gloves[team]!.defIndex, profile.gloves[team]!.paintKit)?.rarityColor : undefined}
+              onClick={() => setSlot({ kind: 'gloves' })}
+            />
+            {weapons.filter((w) => w.className === ZEUS).map(weaponSlot)}
+          </div>
           {WEAPON_CATEGORIES.map((cat) => {
-            const list = weapons.filter((w) => w.category === cat)
+            const list = weapons.filter((w) => w.category === cat && w.className !== ZEUS)
             if (!list.length) return null
             return (
               <div key={cat}>
                 <h4>{cat}</h4>
-                {list.map((w) => {
-                  const sel = profile.weapons[w.defIndex]
-                  return (
-                    <SlotButton
-                      key={w.defIndex}
-                      active={sameSlot(slot, { kind: 'weapon', defIndex: w.defIndex })}
-                      title={w.name}
-                      sub={weaponLabel(w.defIndex, sel)}
-                      color={sel ? index.skin(w.defIndex, sel.paintKit)?.rarityColor : undefined}
-                      set={!!sel}
-                      onClick={() => setSlot({ kind: 'weapon', defIndex: w.defIndex })}
-                    />
-                  )
-                })}
+                <div className="slot-grid">{list.map(weaponSlot)}</div>
               </div>
             )
           })}
@@ -281,60 +297,72 @@ export default function Loadout() {
           </p>
         </nav>
 
-        <section className="slot-panel">
+        <section className="card slot-panel">
           {slot.kind === 'weapon' && index.weaponByDef.get(slot.defIndex) && (
             <WeaponPanel
+              key={`${slot.defIndex}-${team}`}
+              team={team}
               weapon={index.weaponByDef.get(slot.defIndex)!}
               skins={index.byDef.get(slot.defIndex) ?? []}
-              sel={profile.weapons[slot.defIndex] ?? null}
+              sel={profile.weapons[team][slot.defIndex] ?? null}
               stickers={catalog.stickers}
               keychains={catalog.keychains}
               stickerByDef={index.stickerByDef}
               keychainByDef={index.keychainByDef}
               onChange={(sel) =>
                 updateProfile((p) => {
-                  const weaponsNext = { ...p.weapons }
-                  if (sel && !isEmptySel(sel)) weaponsNext[slot.defIndex] = sel
-                  else delete weaponsNext[slot.defIndex]
-                  return { ...p, weapons: weaponsNext }
+                  const map = { ...p.weapons[team] }
+                  if (sel && !isEmptySel(sel)) map[slot.defIndex] = sel
+                  else delete map[slot.defIndex]
+                  return { ...p, weapons: { ...p.weapons, [team]: map } }
                 })
               }
+              onCopy={() => {
+                const other: Team = team === 't' ? 'ct' : 't'
+                updateProfile((p) => {
+                  const map = { ...p.weapons[other] }
+                  const sel = p.weapons[team][slot.defIndex]
+                  if (sel) map[slot.defIndex] = structuredClone(sel)
+                  else delete map[slot.defIndex]
+                  return { ...p, weapons: { ...p.weapons, [other]: map } }
+                })
+              }}
             />
           )}
           {slot.kind === 'knife' && (
             <KnifePanel
-              key={`knife-${slot.team}`}
-              team={slot.team}
+              key={`knife-${team}`}
+              team={team}
               knives={knives}
               byDef={index.byDef}
-              sel={profile.knife[slot.team]}
-              onChange={(sel) => updateProfile((p) => ({ ...p, knife: { ...p.knife, [slot.team]: sel } }))}
+              sel={profile.knife[team]}
+              onChange={(sel) => updateProfile((p) => ({ ...p, knife: { ...p.knife, [team]: sel } }))}
               onCopy={() => {
-                const other: Team = slot.team === 't' ? 'ct' : 't'
-                updateProfile((p) => ({ ...p, knife: { ...p.knife, [other]: structuredClone(p.knife[slot.team]) } }))
+                const other: Team = team === 't' ? 'ct' : 't'
+                updateProfile((p) => ({ ...p, knife: { ...p.knife, [other]: structuredClone(p.knife[team]) } }))
               }}
             />
           )}
           {slot.kind === 'agent' && (
             <AgentPanel
-              key={`agent-${slot.team}`}
-              team={slot.team}
-              agents={catalog.agents.filter((a) => a.team === slot.team)}
-              sel={profile.agents[slot.team]}
-              onChange={(sel) => updateProfile((p) => ({ ...p, agents: { ...p.agents, [slot.team]: sel } }))}
+              key={`agent-${team}`}
+              team={team}
+              agents={catalog.agents.filter((a) => a.team === team)}
+              sel={profile.agents[team]}
+              onChange={(sel) => updateProfile((p) => ({ ...p, agents: { ...p.agents, [team]: sel } }))}
             />
           )}
           {slot.kind === 'gloves' && (
             <GlovePanel
-              key={`gloves-${slot.team}`}
-              team={slot.team}
+              key={`gloves-${team}`}
+              team={team}
               gloveTypes={gloveTypes}
               byDef={index.byDef}
-              sel={profile.gloves[slot.team]}
-              onChange={(sel) => updateProfile((p) => ({ ...p, gloves: { ...p.gloves, [slot.team]: sel } }))}
+              sel={profile.gloves[team]}
+              onChange={(sel) => updateProfile((p) => ({ ...p, gloves: { ...p.gloves, [team]: sel } }))}
               onCopy={() => {
-                const other: Team = slot.team === 't' ? 'ct' : 't'
-                updateProfile((p) => ({ ...p, gloves: { ...p.gloves, [other]: structuredClone(p.gloves[slot.team]) } }))
+                const other: Team = team === 't' ? 'ct' : 't'
+                updateProfile((p) => ({ ...p, gloves: { ...p.gloves, [other]: structuredClone(p.gloves[team]) } }))
               }}
             />
           )}
@@ -359,13 +387,42 @@ function SaveIndicator({ save }: { save: SaveState }) {
   )
 }
 
-function SlotButton(props: { title: string; sub: string; active: boolean; set: boolean; color?: string; onClick: () => void }) {
+/** Official CS2 icons (assets/cs-icons, from the game's panorama images), keyed by file name. */
+const CS_ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob('../../../../assets/cs-icons/*.svg', { eager: true, query: '?url', import: 'default' })).map(
+    ([path, url]) => [path.slice(path.lastIndexOf('/') + 1, -4), url as string]
+  )
+)
+
+/** White game silhouette drawn as a mask, so CSS decides its colour. */
+function EquipIcon({ name }: { name: string }) {
+  const url = CS_ICONS[name]
+  if (!url) return <span className="equip-icon" />
+  return <span className="equip-icon" style={{ maskImage: `url("${url}")`, WebkitMaskImage: `url("${url}")` }} />
+}
+
+const knifeIcon = (team: Team, k: KnifeSel | null) => (k ? k.className.replace(/^weapon_/, '') : team === 't' ? 'knife_t' : 'knife')
+
+function SlotButton(props: {
+  title: string
+  sub: string
+  icon: React.ReactNode
+  team?: Team
+  active: boolean
+  set: boolean
+  color?: string
+  onClick: () => void
+}) {
   return (
-    <button className={`slot ${props.active ? 'active' : ''}`} onClick={props.onClick}>
+    <button
+      className={`slot ${props.active ? 'active' : ''} ${props.set ? 'set' : ''}`}
+      style={props.color ? ({ '--rarity': props.color } as React.CSSProperties) : undefined}
+      onClick={props.onClick}
+    >
+      {props.team && <img className="slot-team" src={CS_ICONS[`${props.team}_logo`]} alt={TEAM_LABEL[props.team]} draggable={false} />}
+      <span className="slot-icon">{props.icon}</span>
       <span className="slot-title">{props.title}</span>
-      <span className={`slot-sub ${props.set ? '' : 'muted'}`} style={props.color ? { color: props.color } : undefined}>
-        {props.sub}
-      </span>
+      <span className={`slot-sub ${props.set ? '' : 'muted'}`}>{props.sub}</span>
     </button>
   )
 }
@@ -377,9 +434,11 @@ interface Tile {
   color?: string
   selected: boolean
   onClick: () => void
+  /** right-click selects the tile (if needed) and opens the editor pop-up */
+  editable?: boolean
 }
 
-function SkinGrid({ tiles, search }: { tiles: Tile[]; search?: boolean }) {
+function SkinGrid({ tiles, search, onEdit }: { tiles: Tile[]; search?: boolean; onEdit?: () => void }) {
   const [q, setQ] = useState('')
   const shown = q ? tiles.filter((t) => t.name.toLowerCase().includes(q.toLowerCase())) : tiles
   return (
@@ -394,7 +453,13 @@ function SkinGrid({ tiles, search }: { tiles: Tile[]; search?: boolean }) {
             className={`skin-tile ${t.selected ? 'selected' : ''}`}
             style={t.color ? { borderBottomColor: t.color } : undefined}
             onClick={t.onClick}
-            title={t.name}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              if (!onEdit || !t.editable) return
+              if (!t.selected) t.onClick()
+              onEdit()
+            }}
+            title={onEdit && t.editable ? `${t.name}\nRight-click to edit wear, pattern …` : t.name}
           >
             {t.image ? <img src={t.image} alt="" loading="lazy" draggable={false} /> : <div className="img-placeholder" />}
             <span>{t.name}</span>
@@ -480,6 +545,8 @@ function PaintEditor(props: {
 const blankSel = (): SkinSel => ({ paintKit: 0, wear: 0.01, seed: 0, statTrak: null, nameTag: '' })
 
 function WeaponPanel(props: {
+  team: Team
+  onCopy: () => void
   weapon: CatalogWeapon
   skins: CatalogSkin[]
   sel: SkinSel | null
@@ -519,31 +586,42 @@ function WeaponPanel(props: {
         })
     }))
   ]
+  const [editing, setEditing] = useState(false)
   const base = sel ?? blankSel()
   return (
     <div className="panel-split">
       <div className="panel-main">
-        <h2>{weapon.name}</h2>
-        <SkinGrid key={weapon.defIndex} tiles={tiles} search />
+        <div className="panel-head">
+          <h2>
+            {weapon.name} ({TEAM_LABEL[props.team]})
+          </h2>
+          <button onClick={props.onCopy}>Copy to {TEAM_LABEL[props.team === 't' ? 'ct' : 't']}</button>
+        </div>
+        <p className="muted small edit-hint">Right-click a skin for wear, pattern, StatTrak, name tag, stickers and charm.</p>
+        <SkinGrid key={weapon.defIndex} tiles={tiles.map((t) => ({ ...t, editable: true }))} search onEdit={() => setEditing(true)} />
       </div>
-      <aside className="panel-side">
-        <h3>{current?.name ?? 'Default finish'}</h3>
-        {sel && sel.paintKit > 0 && (
-          <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
-        )}
-        <StickerEditor
-          stickers={base.stickers ?? []}
-          catalog={props.stickers}
-          byDef={props.stickerByDef}
-          onChange={(stickers) => onChange({ ...base, stickers })}
-        />
-        <KeychainEditor
-          keychain={base.keychain ?? null}
-          catalog={props.keychains}
-          byDef={props.keychainByDef}
-          onChange={(keychain) => onChange({ ...base, keychain })}
-        />
-      </aside>
+      {editing && (
+        <Modal
+          title={`${weapon.name} | ${current?.name ?? 'Default'} (${TEAM_LABEL[props.team]})`}
+          onClose={() => setEditing(false)}
+        >
+          {sel && sel.paintKit > 0 && (
+            <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
+          )}
+          <StickerEditor
+            stickers={base.stickers ?? []}
+            catalog={props.stickers}
+            byDef={props.stickerByDef}
+            onChange={(stickers) => onChange({ ...base, stickers })}
+          />
+          <KeychainEditor
+            keychain={base.keychain ?? null}
+            catalog={props.keychains}
+            byDef={props.keychainByDef}
+            onChange={(keychain) => onChange({ ...base, keychain })}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -755,6 +833,7 @@ function KnifePanel(props: {
   onCopy: () => void
 }) {
   const { team, knives, byDef, sel, onChange, onCopy } = props
+  const [editing, setEditing] = useState(false)
   const model = sel ? knives.find((k) => k.defIndex === sel.defIndex) : undefined
   const finishes = model ? (byDef.get(model.defIndex) ?? []) : []
   const current = sel?.paintKit ? finishes.find((s) => s.paintKit === sel.paintKit) : undefined
@@ -813,21 +892,20 @@ function KnifePanel(props: {
         {model && (
           <>
             <h3>Finish</h3>
-            <SkinGrid key={model.defIndex} tiles={finishTiles} search />
+            <p className="muted small edit-hint">Right-click a finish for wear, pattern, StatTrak and name tag.</p>
+            <SkinGrid
+              key={model.defIndex}
+              tiles={finishTiles.map((t) => ({ ...t, editable: t.key !== 'vanilla' }))}
+              search
+              onEdit={() => setEditing(true)}
+            />
           </>
         )}
       </div>
-      {sel && (
-        <aside className="panel-side">
-          <h3>
-            {model?.name.replace(/^★\s*/, '')} {current ? `| ${current.name}` : '(vanilla)'}
-          </h3>
-          {sel.paintKit > 0 ? (
-            <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
-          ) : (
-            <p className="muted small">Vanilla knives have no wear or pattern. Pick a finish to customise it.</p>
-          )}
-        </aside>
+      {editing && sel && sel.paintKit > 0 && (
+        <Modal title={`${model?.name.replace(/^★\s*/, '')} | ${current?.name ?? sel.paintKit} (${TEAM_LABEL[team]})`} onClose={() => setEditing(false)}>
+          <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
+        </Modal>
       )}
     </div>
   )
@@ -843,6 +921,7 @@ function GlovePanel(props: {
 }) {
   const { team, gloveTypes, byDef, sel, onChange, onCopy } = props
   const [typeFilter, setTypeFilter] = useState<number | 'all'>(sel?.defIndex ?? 'all')
+  const [editing, setEditing] = useState(false)
   const types = typeFilter === 'all' ? gloveTypes : gloveTypes.filter((g) => g.defIndex === typeFilter)
   const current = sel ? byDef.get(sel.defIndex)?.find((s) => s.paintKit === sel.paintKit) : undefined
 
@@ -881,13 +960,21 @@ function GlovePanel(props: {
           </select>
           <button onClick={onCopy}>Copy to {TEAM_LABEL[team === 't' ? 'ct' : 't']}</button>
         </div>
-        <SkinGrid key={String(typeFilter)} tiles={tiles} search />
+        <p className="muted small edit-hint">Right-click a pair for wear and pattern.</p>
+        <SkinGrid
+          key={String(typeFilter)}
+          tiles={tiles.map((t) => ({ ...t, editable: t.key !== 'default' }))}
+          search
+          onEdit={() => setEditing(true)}
+        />
       </div>
-      {sel && (
-        <aside className="panel-side">
-          <h3>{current?.name ?? `Paint kit ${sel.paintKit}`}</h3>
+      {editing && sel && (
+        <Modal
+          title={`${gloveTypes.find((g) => g.defIndex === sel.defIndex)?.name.replace(/^★\s*/, '') ?? 'Gloves'} | ${current?.name ?? sel.paintKit} (${TEAM_LABEL[team]})`}
+          onClose={() => setEditing(false)}
+        >
           <PaintEditor value={sel} skin={current} showExtras={false} onChange={(patch) => onChange({ ...sel, ...patch })} />
-        </aside>
+        </Modal>
       )}
     </div>
   )

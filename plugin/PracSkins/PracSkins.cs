@@ -306,7 +306,7 @@ public partial class PracSkins : BasePlugin
     private Paint? PaintFor(CCSPlayerController player, CBasePlayerWeapon weapon) =>
         IsKnife(weapon)
             ? _loadout.Knife.For(player.TeamNum)
-            : _loadout.WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex);
+            : _loadout.WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex, player.TeamNum);
 
     private void ApplyToCurrentWeapons(CCSPlayerController player)
     {
@@ -334,7 +334,7 @@ public partial class PracSkins : BasePlugin
         }
         else
         {
-            paint = _loadout.WeaponPaint(item.ItemDefinitionIndex);
+            paint = _loadout.WeaponPaint(item.ItemDefinitionIndex, player.TeamNum);
             if (paint == null) return;
             item.EntityQuality = paint.StatTrak >= 0 ? 9 : 0;
         }

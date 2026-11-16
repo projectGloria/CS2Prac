@@ -127,6 +127,15 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
   double-click to maximize). Thin overlay scrollbars that only show on hover instead of the classic Windows ones.
 - [ ] **User check:** start the server and see no window at all; the icons look right; the title bar and scrollbars feel right.
 
+### Loadout page (asked for before v1.0)
+- [x] Two columns like Play: slots left as cards with official CS2 icons (assets/cs-icons, weapon silhouettes from the
+  game's panorama images), skin picker right. Profile and owner pickers are app-style dropdowns.
+- [x] Counter-Terrorist / Terrorist dropdown: every slot, weapons included, is per faction (loadout schema 3; old files
+  and profiles copy their weapon skins to both teams). "Copy to CT/T" per weapon. The K menu saves to the player's team.
+- [x] Top row order: Agent, Knife, Gloves, Zeus.
+- [x] Wear, pattern, StatTrak, name tag, stickers and charm open as a pop-up on right-click; a left click only selects.
+- [x] **User-confirmed** in game: per-faction skins, stickers and charms.
+
 ## Next
 - [ ] User tests Phases 1–6 in game and reports issues. Done so far: Phase 1, Phase 2, Phase 3 (glow pending). Pending too: pracGloria (own cfg on the server). Next: Phase 4 (stickers, charms, agents, live refresh), then Phase 5 (K menu), then Phase 6 notices.
 - [ ] When happy: bump `version` to 1.0.0, commit, and push tag `v1.0.0` (the user asks for it; it publishes a public release).

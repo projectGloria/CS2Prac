@@ -133,8 +133,8 @@ export type Team = 't' | 'ct'
 export interface Profile {
   id: string
   name: string
-  /** keyed by weapon def index */
-  weapons: Record<string, SkinSel>
+  /** per team, keyed by weapon def index (a skin can differ between T and CT) */
+  weapons: Record<Team, Record<string, SkinSel>>
   knife: Record<Team, KnifeSel | null>
   gloves: Record<Team, GloveSel | null>
   agents: Record<Team, AgentSel | null>
@@ -169,12 +169,24 @@ export const MAX_SEED = 1000
 export const MAX_NAMETAG = 20
 
 export function emptyProfile(id: string, name: string): Profile {
-  return { id, name, weapons: {}, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null } }
+  return { id, name, weapons: { t: {}, ct: {} }, knife: { t: null, ct: null }, gloves: { t: null, ct: null }, agents: { t: null, ct: null } }
+}
+
+/**
+ * Old profiles kept one weapon map for both teams ({ "7": sel }); it now lives per team. A flat map is copied to
+ * both teams, so nothing changes in game until one side is edited.
+ */
+export function perTeamWeapons(w: unknown): Record<Team, Record<string, SkinSel>> {
+  const o = (w && typeof w === 'object' ? w : {}) as Record<string, unknown>
+  const isMap = (v: unknown): v is Record<string, SkinSel> => !!v && typeof v === 'object'
+  if ('t' in o || 'ct' in o) return { t: isMap(o.t) ? o.t : {}, ct: isMap(o.ct) ? o.ct : {} }
+  const flat = o as Record<string, SkinSel>
+  return { t: structuredClone(flat), ct: structuredClone(flat) }
 }
 
 /** Fills in fields added after a profile was saved. */
 export function normalizeProfile(p: Profile): Profile {
-  return { ...p, agents: p.agents ?? { t: null, ct: null } }
+  return { ...p, weapons: perTeamWeapons(p.weapons), agents: p.agents ?? { t: null, ct: null } }
 }
 
 export const emptySticker = (defIndex: number): StickerSel => ({ defIndex, wear: 0, scale: 1, rotation: 0, x: 0, y: 0 })

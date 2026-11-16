@@ -8,6 +8,7 @@ import {
   MAX_NAMETAG,
   MAX_SEED,
   normalizeProfile,
+  perTeamWeapons,
   STICKER_SLOTS,
   type AgentSel,
   type GloveSel,
@@ -48,9 +49,10 @@ export async function saveStore(s: LoadoutStore): Promise<void> {
 
 /** The file the C# plugin reads. Keep in sync with plugin/PracSkins. */
 export interface LoadoutFile {
-  schema: 2
+  /** 3: weapons per team. 2 (read only): one weapon map for both teams. */
+  schema: 3
   owner: string | null
-  weapons: Record<string, WeaponOut>
+  weapons: Record<Team, Record<string, WeaponOut>>
   knife: Record<Team, (PaintOut & { defIndex: number; className: string }) | null>
   gloves: Record<Team, GloveOut | null>
   agents: Record<Team, AgentSel | null>
@@ -135,13 +137,15 @@ const glove = (g: GloveSel | null): GloveOut | null =>
 const MODEL = /^[\w/.-]+\.vmdl$/
 
 export function toLoadoutFile(profile: Profile, owner: string | null, precache: string[] = []): LoadoutFile {
-  const weapons: LoadoutFile['weapons'] = {}
-  for (const [def, sel] of Object.entries(profile.weapons)) {
-    const w = /^\d+$/.test(def) ? weapon(sel) : null
-    if (w) weapons[def] = w
-  }
+  const weapons: LoadoutFile['weapons'] = { t: {}, ct: {} }
+  const byTeam = perTeamWeapons(profile.weapons)
+  for (const team of ['t', 'ct'] as Team[])
+    for (const [def, sel] of Object.entries(byTeam[team])) {
+      const w = /^\d+$/.test(def) ? weapon(sel) : null
+      if (w) weapons[team][def] = w
+    }
   return {
-    schema: 2,
+    schema: 3,
     owner: owner && /^\d{17}$/.test(owner) ? owner : null,
     weapons,
     knife: { t: knife(profile.knife.t), ct: knife(profile.knife.ct) },
@@ -179,10 +183,12 @@ export function fromLoadoutFile(f: LoadoutFile, profile: Profile): Profile {
     nameTag: w.nameTag ?? '',
     legacyModel: w.legacyModel
   })
-  const weapons: Profile['weapons'] = {}
-  for (const [def, w] of Object.entries(f.weapons ?? {})) {
-    weapons[def] = { ...sel(w), stickers: w.stickers ?? undefined, keychain: w.keychain ?? null }
-  }
+  const weapons: Profile['weapons'] = { t: {}, ct: {} }
+  const byTeam = perTeamWeapons(f.weapons) as unknown as LoadoutFile['weapons'] // schema 2: same map for both teams
+  for (const team of ['t', 'ct'] as Team[])
+    for (const [def, w] of Object.entries(byTeam[team])) {
+      weapons[team][def] = { ...sel(w), stickers: w.stickers ?? undefined, keychain: w.keychain ?? null }
+    }
   const knifeIn = (k: LoadoutFile['knife']['t']): KnifeSel | null => (k ? { ...sel(k), defIndex: k.defIndex, className: k.className } : null)
   return {
     ...profile,
@@ -196,7 +202,7 @@ export function fromLoadoutFile(f: LoadoutFile, profile: Profile): Profile {
 /** Reads loadout.json and merges it into the active profile. Returns the new store, or null if nothing changed. */
 export async function importLoadoutFile(csgoDir: string, store: LoadoutStore): Promise<LoadoutStore | null> {
   const f = JSON.parse(await readFile(join(pluginConfigDir(csgoDir), 'loadout.json'), 'utf8')) as LoadoutFile
-  if (f.schema !== 2) return null
+  if ((f.schema as number) !== 2 && f.schema !== 3) return null
   const active = store.profiles.find((p) => p.id === store.activeId) ?? store.profiles[0]
   const next = fromLoadoutFile(f, active)
   if (JSON.stringify(toLoadoutFile(next, store.owner)) === JSON.stringify(toLoadoutFile(active, store.owner))) return null

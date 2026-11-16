@@ -5,7 +5,15 @@ export interface DropdownOption<T extends string> {
   value: T
   label: string
   icon?: LucideIcon
+  /** image instead of an icon (e.g. a team logo) */
+  image?: string
   hint?: string
+}
+
+function OptionIcon({ o }: { o: DropdownOption<string> }) {
+  if (o.image) return <img className="dropdown-img" src={o.image} alt="" draggable={false} />
+  const Icon = o.icon
+  return Icon ? <Icon size={15} className="dropdown-icon" aria-hidden /> : null
 }
 
 /** App-style dropdown (replaces the native <select>): icon + label button, floating menu with icons. */
@@ -26,7 +34,6 @@ export default function Dropdown<T extends string>({
   const [focus, setFocus] = useState(0)
   const root = useRef<HTMLDivElement>(null)
   const current = options.find((o) => o.value === value) ?? options[0]
-  const CurrentIcon = current.icon
 
   useEffect(() => {
     if (!open) return
@@ -60,14 +67,13 @@ export default function Dropdown<T extends string>({
   return (
     <div className={`dropdown ${open ? 'open' : ''}`} ref={root} onKeyDown={onKey}>
       <button type="button" className="dropdown-trigger" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
-        {CurrentIcon && <CurrentIcon size={15} className="dropdown-icon" aria-hidden />}
+        <OptionIcon o={current} />
         <span>{current.label}</span>
         <ChevronDown size={15} className="dropdown-chevron" aria-hidden />
       </button>
       {open && (
         <ul className={`dropdown-menu ${align}`} role="listbox">
           {options.map((o, i) => {
-            const Icon = o.icon
             return (
               <li
                 key={o.value}
@@ -77,7 +83,7 @@ export default function Dropdown<T extends string>({
                 onMouseEnter={() => setFocus(i)}
                 onClick={() => pick(o.value)}
               >
-                {Icon && <Icon size={15} className="dropdown-icon" aria-hidden />}
+                <OptionIcon o={o} />
                 <span className="dropdown-label">
                   {o.label}
                   {o.hint && <span className="dropdown-hint">{o.hint}</span>}

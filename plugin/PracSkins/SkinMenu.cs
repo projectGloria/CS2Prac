@@ -127,7 +127,7 @@ public partial class PracSkins
             return;
         }
         var q = command.ArgString;
-        OpenMenu(player!, held.Kind == "knife" ? KnifeSearchPage(player!, q) : FinishPage(held.Def, q));
+        OpenMenu(player!, held.Kind == "knife" ? KnifeSearchPage(player!, q) : FinishPage(player!.TeamNum, held.Def, q));
     }
 
     [ConsoleCommand("css_knife", "Search knives: !knife <text>, e.g. !knife karambit doppler")]
@@ -166,7 +166,7 @@ public partial class PracSkins
             return;
         }
         var q = command.ArgString;
-        OpenMenu(player!, q.Trim().Length == 0 ? StickerSlotsPage(held.Def) : StickerSearchPage(held.Def, null, q));
+        OpenMenu(player!, q.Trim().Length == 0 ? StickerSlotsPage(player!.TeamNum, held.Def) : StickerSearchPage(player!.TeamNum, held.Def, null, q));
     }
 
     [ConsoleCommand("css_charm", "Pick a charm for the weapon in your hand: !charm [text]")]
@@ -180,7 +180,7 @@ public partial class PracSkins
             command.ReplyToCommand($"{Tag} Hold the gun you want to put a charm on.");
             return;
         }
-        OpenMenu(player!, CharmPage(held.Def, command.ArgString));
+        OpenMenu(player!, CharmPage(player!.TeamNum, held.Def, command.ArgString));
     }
 
     // ---------------------------------------------------------------- helpers
@@ -210,8 +210,8 @@ public partial class PracSkins
         return _catalog.Weapon(w.AttributeManager.Item.ItemDefinitionIndex);
     }
 
-    private Paint WeaponPaintOrNew(int def) =>
-        _loadout.Weapons.TryGetValue(def.ToString(), out var p) ? p : new Paint { Wear = 0.01f, StatTrak = -1 };
+    private Paint WeaponPaintOrNew(int team, int def) =>
+        _loadout.Weapons.For(team) is { } map && map.TryGetValue(def.ToString(), out var p) ? p : new Paint { Wear = 0.01f, StatTrak = -1 };
 
     private void SaveLoadout()
     {
@@ -226,11 +226,12 @@ public partial class PracSkins
     }
 
     /// <summary>Stores a weapon's selection (dropping it when nothing is left on it), saves and re-gives weapons.</summary>
-    private void CommitWeapon(CCSPlayerController player, int def, Paint paint)
+    private void CommitWeapon(CCSPlayerController player, int team, int def, Paint paint)
     {
         var key = def.ToString();
-        if (paint.PaintKit <= 0 && !paint.HasExtras && paint.StatTrak < 0 && string.IsNullOrEmpty(paint.NameTag)) _loadout.Weapons.Remove(key);
-        else _loadout.Weapons[key] = paint;
+        if (_loadout.Weapons.For(team) is not { } map) return;
+        if (paint.PaintKit <= 0 && !paint.HasExtras && paint.StatTrak < 0 && string.IsNullOrEmpty(paint.NameTag)) map.Remove(key);
+        else map[key] = paint;
         SaveLoadout();
         RefreshPlayer(player);
     }
@@ -258,8 +259,8 @@ public partial class PracSkins
             var held = HeldWeapon(player);
             if (held is { Kind: "weapon" })
             {
-                var p = _loadout.WeaponPaint(held.Def);
-                items.Add(new($"{held.Name}: {SkinName(held.Def, p?.PaintKit ?? 0)}", pl => PushPage(pl, FinishPage(held.Def))));
+                var p = _loadout.WeaponPaint(held.Def, player.TeamNum);
+                items.Add(new($"{held.Name}: {SkinName(held.Def, p?.PaintKit ?? 0)}", pl => PushPage(pl, FinishPage(player!.TeamNum, held.Def))));
             }
             var knife = _loadout.Knife.For(player.TeamNum);
             items.Add(new($"Knife ({TeamLabel(player)}): {KnifeLabel(knife)}", pl => PushPage(pl, KnifeModelPage(pl))));
@@ -269,16 +270,16 @@ public partial class PracSkins
             items.Add(new($"Agent ({TeamLabel(player)}): {AgentLabel(agent)}", pl => PushPage(pl, AgentPage(pl, ""))));
             if (held is { Kind: "weapon" })
             {
-                var p = _loadout.WeaponPaint(held.Def);
+                var p = _loadout.WeaponPaint(held.Def, player.TeamNum);
                 var n = p?.Stickers.Count(s => s is { DefIndex: > 0 }) ?? 0;
-                items.Add(new($"Stickers on {held.Name} ({n}/5)", pl => PushPage(pl, StickerSlotsPage(held.Def))));
-                items.Add(new($"Charm on {held.Name}: {CharmLabel(p?.Keychain)}", pl => PushPage(pl, CharmPage(held.Def, ""))));
+                items.Add(new($"Stickers on {held.Name} ({n}/5)", pl => PushPage(pl, StickerSlotsPage(player!.TeamNum, held.Def))));
+                items.Add(new($"Charm on {held.Name}: {CharmLabel(p?.Keychain)}", pl => PushPage(pl, CharmPage(player!.TeamNum, held.Def, ""))));
                 if (p is { PaintKit: > 0 })
                     items.Add(new($"StatTrak on {held.Name}: {(p.StatTrak >= 0 ? "on" : "off")}", pl =>
                     {
-                        var cur = WeaponPaintOrNew(held.Def);
+                        var cur = WeaponPaintOrNew(player.TeamNum, held.Def);
                         cur.StatTrak = cur.StatTrak >= 0 ? -1 : 0;
-                        CommitWeapon(pl, held.Def, cur);
+                        CommitWeapon(pl, player.TeamNum, held.Def, cur);
                         Flash(pl, cur.StatTrak >= 0 ? "StatTrak on" : "StatTrak off");
                     }));
             }
@@ -301,38 +302,38 @@ public partial class PracSkins
         k is not { DefIndex: > 0 } ? "None" : _catalog.Keychains.FirstOrDefault(x => x.Def == k.DefIndex)?.Name ?? $"Charm {k.DefIndex}";
 
     /// <summary>Finishes for a gun. Picking one applies it at once; the first line opens the wear presets.</summary>
-    private MenuPage FinishPage(int def, string query = "") => new()
+    private MenuPage FinishPage(int team, int def, string query = "") => new()
     {
         Title = query.Trim().Length > 0 ? $"{_catalog.WeaponName(def)} \"{query.Trim()}\"" : _catalog.WeaponName(def),
         Build = () =>
         {
-            var cur = _loadout.WeaponPaint(def);
+            var cur = _loadout.WeaponPaint(def, team);
             var items = new List<MenuItem>();
             if (cur is { PaintKit: > 0 })
                 items.Add(new($"Wear: {WearName(cur.Wear)} ({cur.Wear:0.00})", pl => PushPage(pl, WearPage(
-                    () => WeaponPaintOrNew(def).Wear,
+                    () => WeaponPaintOrNew(team, def).Wear,
                     (p2, w) =>
                     {
-                        var p = WeaponPaintOrNew(def);
+                        var p = WeaponPaintOrNew(team, def);
                         p.Wear = ClampWear(w, _catalog.SkinsFor(def).FirstOrDefault(s => s.Paint == p.PaintKit));
-                        CommitWeapon(p2, def, p);
+                        CommitWeapon(p2, team, def, p);
                     }))));
             items.Add(new("Default", pl =>
             {
-                var p = WeaponPaintOrNew(def);
+                var p = WeaponPaintOrNew(team, def);
                 p.PaintKit = 0;
                 p.LegacyModel = false;
-                CommitWeapon(pl, def, p);
+                CommitWeapon(pl, team, def, p);
                 Flash(pl, "Default finish");
             }, Current: cur is not { PaintKit: > 0 }));
             foreach (var s in _catalog.SkinsFor(def).Where(s => Matches(s.Name, query)).Take(query.Length > 0 ? SearchLimit : int.MaxValue))
                 items.Add(new(s.Name, pl =>
                 {
-                    var p = WeaponPaintOrNew(def);
+                    var p = WeaponPaintOrNew(team, def);
                     p.Wear = p.PaintKit > 0 ? ClampWear(p.Wear, s) : ClampWear(0.01f, s);
                     p.PaintKit = s.Paint;
                     p.LegacyModel = s.Legacy;
-                    CommitWeapon(pl, def, p);
+                    CommitWeapon(pl, team, def, p);
                     Flash(pl, $"{s.Name} applied");
                 }, Current: cur?.PaintKit == s.Paint));
             return items;
@@ -548,31 +549,31 @@ public partial class PracSkins
         p.Stickers[slot] = s;
     }
 
-    private MenuPage StickerSlotsPage(int def) => new()
+    private MenuPage StickerSlotsPage(int team, int def) => new()
     {
         Title = $"Stickers on {_catalog.WeaponName(def)}",
         Build = () =>
         {
-            var p = WeaponPaintOrNew(def);
+            var p = WeaponPaintOrNew(team, def);
             var items = new List<MenuItem>();
             for (var i = 0; i < 5; i++)
             {
                 var slot = i;
                 var s = SlotOf(p, slot);
                 var name = s is { DefIndex: > 0 } ? _catalog.Stickers.FirstOrDefault(x => x.Def == s.DefIndex)?.Name ?? $"Sticker {s.DefIndex}" : "empty";
-                items.Add(new($"Slot {slot + 1}: {name}", pl => PushPage(pl, StickerSlotPage(def, slot))));
+                items.Add(new($"Slot {slot + 1}: {name}", pl => PushPage(pl, StickerSlotPage(team, def, slot))));
             }
             items.Add(new("Tip: !sticker <name> in chat searches all stickers", Color: "#8a93a3"));
             return items;
         }
     };
 
-    private MenuPage StickerSlotPage(int def, int slot) => new()
+    private MenuPage StickerSlotPage(int team, int def, int slot) => new()
     {
         Title = $"Slot {slot + 1}",
         Build = () =>
         {
-            var s = SlotOf(WeaponPaintOrNew(def), slot);
+            var s = SlotOf(WeaponPaintOrNew(team, def), slot);
             var items = new List<MenuItem>
             {
                 new("Type !sticker <name> in chat to search", Color: "#8a93a3")
@@ -581,16 +582,16 @@ public partial class PracSkins
             {
                 items.Add(new($"Scrape: {s.Wear:0.0} (E to change)", pl =>
                 {
-                    var p = WeaponPaintOrNew(def);
+                    var p = WeaponPaintOrNew(team, def);
                     if (SlotOf(p, slot) is not { } cur) return;
                     cur.Wear = cur.Wear >= 0.95f ? 0 : MathF.Round(cur.Wear + 0.25f, 2);
-                    CommitWeapon(pl, def, p);
+                    CommitWeapon(pl, team, def, p);
                 }));
                 items.Add(new("Remove sticker", pl =>
                 {
-                    var p = WeaponPaintOrNew(def);
+                    var p = WeaponPaintOrNew(team, def);
                     SetSlot(p, slot, null);
-                    CommitWeapon(pl, def, p);
+                    CommitWeapon(pl, team, def, p);
                     Flash(pl, "Sticker removed");
                     PopPage(pl);
                 }));
@@ -600,66 +601,66 @@ public partial class PracSkins
     };
 
     /// <summary>Sticker search results. With a slot, picking applies there; without, it asks for the slot.</summary>
-    private MenuPage StickerSearchPage(int def, int? slot, string query) => new()
+    private MenuPage StickerSearchPage(int team, int def, int? slot, string query) => new()
     {
         Title = $"Stickers \"{query.Trim()}\"",
         Build = () => _catalog.Stickers.Where(s => Matches(s.Name, query)).Take(SearchLimit).Select(s => new MenuItem(s.Name, pl =>
         {
-            if (slot is { } fixedSlot) PutSticker(pl, def, fixedSlot, s);
-            else PushPage(pl, StickerTargetPage(def, s));
+            if (slot is { } fixedSlot) PutSticker(pl, team, def, fixedSlot, s);
+            else PushPage(pl, StickerTargetPage(team, def, s));
         })).ToList()
     };
 
-    private MenuPage StickerTargetPage(int def, CatalogNamed sticker) => new()
+    private MenuPage StickerTargetPage(int team, int def, CatalogNamed sticker) => new()
     {
         Title = "Which slot?",
         Build = () =>
         {
-            var p = WeaponPaintOrNew(def);
+            var p = WeaponPaintOrNew(team, def);
             return Enumerable.Range(0, 5).Select(i =>
             {
                 var s = SlotOf(p, i);
                 var name = s is { DefIndex: > 0 } ? _catalog.Stickers.FirstOrDefault(x => x.Def == s.DefIndex)?.Name ?? "?" : "empty";
                 return new MenuItem($"Slot {i + 1} ({name})", pl =>
                 {
-                    PutSticker(pl, def, i, sticker);
+                    PutSticker(pl, team, def, i, sticker);
                     PopPage(pl);
                 });
             }).ToList();
         }
     };
 
-    private void PutSticker(CCSPlayerController player, int def, int slot, CatalogNamed sticker)
+    private void PutSticker(CCSPlayerController player, int team, int def, int slot, CatalogNamed sticker)
     {
-        var p = WeaponPaintOrNew(def);
+        var p = WeaponPaintOrNew(team, def);
         var old = SlotOf(p, slot);
         SetSlot(p, slot, new StickerPaint { DefIndex = sticker.Def, Wear = old?.Wear ?? 0, Scale = old?.Scale ?? 1, Rotation = old?.Rotation ?? 0, X = old?.X ?? 0, Y = old?.Y ?? 0 });
-        CommitWeapon(player, def, p);
+        CommitWeapon(player, team, def, p);
         Flash(player, $"{sticker.Name} → slot {slot + 1}");
     }
 
-    private MenuPage CharmPage(int def, string query) => new()
+    private MenuPage CharmPage(int team, int def, string query) => new()
     {
         Title = $"Charm on {_catalog.WeaponName(def)}",
         Build = () =>
         {
-            var cur = _loadout.WeaponPaint(def)?.Keychain;
+            var cur = _loadout.WeaponPaint(def, team)?.Keychain;
             var items = new List<MenuItem>
             {
                 new("No charm", pl =>
                 {
-                    var p = WeaponPaintOrNew(def);
+                    var p = WeaponPaintOrNew(team, def);
                     p.Keychain = null;
-                    CommitWeapon(pl, def, p);
+                    CommitWeapon(pl, team, def, p);
                     Flash(pl, "Charm removed");
                 }, Current: cur is not { DefIndex: > 0 })
             };
             foreach (var k in _catalog.Keychains.Where(k => Matches(k.Name, query)))
                 items.Add(new(k.Name, pl =>
                 {
-                    var p = WeaponPaintOrNew(def);
+                    var p = WeaponPaintOrNew(team, def);
                     p.Keychain = new KeychainPaint { DefIndex = k.Def, Seed = p.Keychain?.Seed ?? 0, X = p.Keychain?.X ?? 0, Y = p.Keychain?.Y ?? 0, Z = p.Keychain?.Z ?? 0 };
-                    CommitWeapon(pl, def, p);
+                    CommitWeapon(pl, team, def, p);
                     Flash(pl, $"{k.Name} applied");
                 }, Current: cur?.DefIndex == k.Def));
             return items;
