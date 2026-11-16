@@ -41,7 +41,8 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] `.glow`: bots outlined through walls (red T, blue CT), re-added on respawn.
   - Fixed: the first version dropped the client with NETWORK_DISCONNECT_OVERFLOW (SetModel before spawn → engine assert + minidump stall).
   - Fixed: the second version showed nothing (glow props at 0,0,0, glow never switched on). Server-side verified the props now sit on and follow the bots.
-- [ ] **User check in game:** the floor squares look right everywhere (T spawn slope), `.glow` outline visible through walls and back after a bot respawns, E still opens doors / defuses when not aiming at a square.
+  - Fixed: still nothing on the client with the model as a spawn keyvalue. Now SetModel with the staging flag cleared + transparent bone-merged copy. **User-confirmed** the outline shows through walls.
+- [ ] **User check in game:** the floor squares look right everywhere (T spawn slope), `.glow` back after a bot respawns, E still opens doors / defuses when not aiming at a square.
 
 ## Phase 4: Full item catalog (req 5: all skins, agents, stickers, keychains)
 - [x] **Data spike first.** Find numeric ids for agents (with model paths), stickers and keychains.

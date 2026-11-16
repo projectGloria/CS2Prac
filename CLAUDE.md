@@ -73,9 +73,10 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
   Start test servers on another port (e.g. 27115) and send all commands over one authenticated RCON connection.
 - **`play <sound>` crashes the dedicated server** (access violation 0xC0000005; no sound system). Client cfgs run with
   `!cmd exec` often contain it. PracSkins swallows the sound commands with AddCommandListener (`SoundCommands`).
-- **Never `SetModel` on an entity before `DispatchSpawn`.** It trips an engine assert (EF_IN_STAGING_LIST); the
+- **Never plain `SetModel` on an entity before `DispatchSpawn`.** It trips an engine assert (EF_IN_STAGING_LIST); the
   minidump write stalls the server ~1 s and connected clients drop with NETWORK_DISCONNECT_OVERFLOW (no crash without a
-  client, so test servers miss it). Pass the model as a spawn keyvalue: `DispatchSpawn(new CEntityKeyValues { "model" })`.
+  client, so test servers miss it). Use `SetModelBeforeSpawn` (Practice.cs; clears that flag first). A "model" spawn
+  keyvalue avoids the assert too, but glow props spawned that way never showed on the client.
   Grep the server log for `Assertion Failed` after adding entity code.
 - Signatures (`CAttributeList_SetOrAddAttributeValueByName`) can break after CS2 updates. `css_prac_status` reports whether the function was resolved.
 
@@ -137,9 +138,13 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
   square, a facing arrow and a `point_worldtext` number. E while looking at one teleports onto it. Toggled with `.spawns`
   (say listener) / `css_spawns`; `css_prac_spawns 1` in prac_override.cfg turns them on when practice starts. Redrawn
   on every round start (restarts remove them).
-- Bot glow: `.glow` / `css_glow`; a relay prop_dynamic follows the pawn and a glow prop_dynamic follows the relay
-  (Glow.GlowType 3, GlowTeam -1, Glowing true, plus glowstate/glowcolor spawn keyvalues and StartGlowing). Both props
-  must spawn at the pawn's origin (`origin` keyvalue): FollowEntity alone left them at 0,0,0, so nothing showed. Re-added on bot spawn. Server-side test switches: `css_prac_spawns`, `css_prac_glow`.
+- Bot glow (user-confirmed working): `.glow` / `css_glow`. A relay prop_dynamic (kRenderNone) bone-merges onto the
+  pawn (FollowEntity) and a transparent (Color.Transparent) copy of the bot's model bone-merges onto the relay and
+  carries the glow (GlowType 3, GlowTeam -1, fields set after DispatchSpawn). Models go in with `SetModelBeforeSpawn`
+  (clears identity flag bit 2, EF_IN_STAGING_LIST, as exkludera's glowing-entities does: SetModel before spawn without
+  an assert). With the model as a spawn keyvalue the server state looked identical but the client drew nothing.
+  Re-added on bot spawn. Server-side test switches: `css_prac_spawns`, `css_prac_glow` (also logs each glow prop's
+  model, origin, parent and glow fields).
 
 ## Hardening (Phase 6)
 - Plugin versions: `PINNED` in setup/plugins.ts (Metamod, CSS) and `MATCHZY_VERSION` in setup/matchzy.ts. Setup and
@@ -187,7 +192,7 @@ installer + `latest.yml` to GitHub Releases. Installed apps pick it up through a
 
 ## Status
 See `todo.md` for the phased roadmap and the current phase. M1–M5 are done. Phases 1–6 are committed. The user is testing in game step by step: Phases 1–3 confirmed (plus
-spawn markers); the `.glow` fix (e787dae) and `pracGloria` in their Nihil.cfg await their check. Then Phase 4
+spawn markers and `.glow`); `pracGloria` in their Nihil.cfg awaits their check. Then Phase 4
 (stickers/charms/agents), Phase 5 (K menu; K isn't bound by default, the user adds `bind k css_menu` themselves; `!skins`
 works without it), Phase 6 notices, and the v1.0.0 release only when they ask. Known: every `css_cmd` echoes
 "[CS2Prac] ran: …", so pracGloria prints ~40 lines (make it quiet only if they ask). Live-test recipe for bots: set `matchzy_autostart_mode 0`

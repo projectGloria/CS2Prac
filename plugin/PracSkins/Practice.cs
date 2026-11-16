@@ -117,6 +117,20 @@ public partial class PracSkins
         if (_glowOn) GlowAllBots();
         else foreach (var index in _glows.Keys.ToList()) RemoveGlow(index);
         Logger.LogInformation("bot glow {State}: {Count} bots glowing", _glowOn ? "on" : "off", _glows.Count);
+        foreach (var (pawnIndex, g) in _glows)
+        {
+            var pawn = Utilities.GetEntityFromIndex<CCSPlayerPawn>((int)pawnIndex);
+            foreach (var (name, e) in new[] { ("relay", g.Relay), ("glow", g.Glow) })
+            {
+                if (!e.IsValid) { Logger.LogInformation("  pawn {P} {N}: invalid", pawnIndex, name); continue; }
+                var model = e.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName;
+                var parent = e.CBodyComponent?.SceneNode?.PParent?.Owner?.Index;
+                Logger.LogInformation(
+                    "  pawn {P} at {PO} {N}#{I}: model={M} origin={O} parent={Par} render={R} mode={RM} glowType={GT} glowing={G} color={C} range={GR} team={Team} effects={Fx}",
+                    pawnIndex, pawn?.AbsOrigin, name, e.Index, model, e.AbsOrigin, parent, e.Render, e.RenderMode,
+                    e.Glow.GlowType, e.Glow.Glowing, e.Glow.GlowColorOverride, e.Glow.GlowRange, e.Glow.GlowTeam, e.Effects);
+            }
+        }
     }
 
     private void ToggleSpawns(CCSPlayerController player)
@@ -316,62 +330,57 @@ public partial class PracSkins
     }
 
     /// <summary>
-    /// Outlines a bot through walls: an invisible copy of its model follows the pawn and carries the glow
-    /// (relay → glow prop, the usual CS2 approach since pawns can't glow themselves).
+    /// SetModel on an entity that hasn't spawned yet trips an engine assert (EF_IN_STAGING_LIST) whose minidump write
+    /// stalls the server ~1 s and drops the client (NETWORK_DISCONNECT_OVERFLOW). Clearing that identity flag first
+    /// (bit 2, as exkludera's glowing-entities plugin does) makes it safe.
+    /// </summary>
+    private static void SetModelBeforeSpawn(CBaseModelEntity e, string model)
+    {
+        if (e.Entity is { } identity) identity.Flags &= ~(1u << 2);
+        e.SetModel(model);
+    }
+
+    private static void ApplyGlow(CBaseModelEntity e, Color color)
+    {
+        e.Glow.GlowColorOverride = color;
+        e.Glow.GlowRange = 5000;
+        e.Glow.GlowRangeMin = 0;
+        e.Glow.GlowTeam = -1;
+        e.Glow.GlowType = 3;
+    }
+
+    /// <summary>
+    /// Outlines a bot through walls: a relay prop bone-merges onto the pawn and a transparent copy of the bot's model
+    /// bone-merges onto the relay and carries the glow (pawns can't glow themselves). Confirmed in game. Earlier
+    /// attempts that passed the model as a spawn keyvalue had correct server state but the client drew nothing.
     /// </summary>
     private void GlowBot(CCSPlayerController bot)
     {
         var pawn = bot.PlayerPawn.Value;
         if (pawn is not { IsValid: true, LifeState: (byte)LifeState_t.LIFE_ALIVE }) return;
         RemoveGlow(pawn.Index);
+        var color = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
         var model = pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName;
         if (string.IsNullOrEmpty(model)) return;
 
-        var relay = Utilities.CreateEntityByName<CBaseModelEntity>("prop_dynamic");
-        var glow = Utilities.CreateEntityByName<CBaseModelEntity>("prop_dynamic");
-        if (relay == null || glow == null) return;
+        var glow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
+        if (glow == null) return;
+        glow.Spawnflags = 256u;
+        glow.Render = Color.Transparent;
+        SetModelBeforeSpawn(glow, model);
+        glow.DispatchSpawn();
+        ApplyGlow(glow, color);
 
-        // The model goes in as a spawn keyvalue: SetModel on an entity that hasn't spawned yet trips an engine assert
-        // (EF_IN_STAGING_LIST) whose minidump write stalls the server ~1 s, and the client gets dropped with
-        // NETWORK_DISCONNECT_OVERFLOW.
-        CEntityKeyValues ModelKv()
-        {
-            var kv = new CEntityKeyValues();
-            kv.SetString("model", model);
-            // spawn on the bot: FollowEntity alone left the props at the world origin
-            if (pawn.AbsOrigin is { } at) kv.SetVector("origin", at.X, at.Y, at.Z);
-            if (pawn.AbsRotation is { } rot) kv.SetAngle("angles", rot.X, rot.Y, rot.Z);
-            return kv;
-        }
-
-        var color = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
-
+        var relay = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
+        if (relay == null) { glow.Remove(); return; }
         relay.Spawnflags = 256u;
         relay.RenderMode = RenderMode_t.kRenderNone;
-        relay.DispatchSpawn(ModelKv());
-
-        // The glow goes in at spawn (prop_dynamic's glow keyvalues + the fields), and StartGlowing afterwards: field
-        // writes after spawn alone never reached the client ("glow on" but nothing visible).
-        var glowKv = ModelKv();
-        glowKv.SetInt("glowstate", 3);
-        glowKv.SetColor("glowcolor", color);
-        glowKv.SetInt("glowrange", 5000);
-        glowKv.SetInt("glowrangemin", 0);
-        glowKv.SetInt("glowteam", -1);
-        glow.Spawnflags = 256u;
-        glow.Render = Color.FromArgb(1, 255, 255, 255);
-        glow.Glow.GlowColorOverride = color;
-        glow.Glow.GlowRange = 5000;
-        glow.Glow.GlowRangeMin = 0;
-        glow.Glow.GlowTeam = -1;
-        glow.Glow.GlowType = 3;
-        glow.Glow.Glowing = true;
-        glow.DispatchSpawn(glowKv);
-
+        SetModelBeforeSpawn(relay, model);
+        relay.DispatchSpawn();
+        relay.Teleport(pawn.AbsOrigin, pawn.AbsRotation, new Vector(0, 0, 0));
+        glow.Teleport(pawn.AbsOrigin, pawn.AbsRotation, new Vector(0, 0, 0));
         relay.AcceptInput("FollowEntity", pawn, relay, "!activator");
         glow.AcceptInput("FollowEntity", relay, glow, "!activator");
-        glow.AcceptInput("SetGlowColor", null, null, $"{color.R} {color.G} {color.B}");
-        glow.AcceptInput("StartGlowing");
         _glows[pawn.Index] = (relay, glow);
     }
 
