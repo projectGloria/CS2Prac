@@ -75,6 +75,10 @@ const api: Api = {
     recent: () => ipcRenderer.invoke(IPC.workshopRecent),
     forget: (id) => ipcRenderer.invoke(IPC.workshopForget, id)
   },
+  models: {
+    get: (className) => ipcRenderer.invoke(IPC.modelsGet, className),
+    image: (url) => ipcRenderer.invoke(IPC.modelsImage, url)
+  },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),
     listSteamAccounts: () => ipcRenderer.invoke(IPC.skinsSteamAccounts)

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Weapon model exporter for the Loadout page's 3D editor. Runs on the user's machine against their own CS2 install
+    (the app ships no Valve assets), with the .NET runtime CounterStrikeSharp brings along
+    (addons/counterstrikesharp/dotnet/dotnet.exe, 10.0.x), so it is published framework-dependent.
+    npm run build:modeltool → resources/modeltool.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <UseAppHost>false</UseAppHost>
+    <DebugType>none</DebugType>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 21.x targets net11; CSS ships a net10 runtime. -->
+    <PackageReference Include="ValveResourceFormat" Version="20.1.7467" />
+  </ItemGroup>
+
+</Project>

@@ -65,7 +65,7 @@
 
 .pk-title
 {
-	width: 300px;
+	width: 240px;
 	vertical-align: center;
 	color: #e8a33d;
 	font-size: 22px;
@@ -85,7 +85,7 @@
 {
 	height: 40px;
 	margin-right: 6px;
-	padding: 0px 22px;
+	padding: 0px 14px;
 	background-color: #1a1f29;
 	border: 1px solid #ffffff12;
 	border-radius: 4px;

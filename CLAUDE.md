@@ -349,6 +349,27 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - `css_prac_reload` re-reads loadout.json.
 - App data (settings, loadouts, catalog cache, `logs/main.log`) lives in Electron `userData` = `%APPDATA%\CS2Prac` (in dev `%APPDATA%\cs2prac`, the same folder since Windows paths are case-insensitive). The **Logs** link in the top bar opens it.
 
+## 3D skin editor (Phase 14)
+- tools/ModelExport (C#, ValveResourceFormat, MIT) → `npm run build:modeltool` → resources/modeltool (shipped; the
+  release workflow builds it). `list <csgo>` prints the weapon vmdl_c paths, `export <csgo> <out> <model…>` writes
+  `<name>.glb` (no embedded images), `<name>.jpg` (base colour) and `<name>.json` (ModelMarkup: meshes, sticker
+  anchors, keychain quads). Runs on `<server>/game/csgo/addons/counterstrikesharp/dotnet/dotnet.exe` (so Setup first).
+- src/main/skins/models.ts ModelStore: cache userData/models/<buildId>/ (older builds pruned), one export at a time.
+  Nothing of Valve's ships with the app; models come from the user's own VPK at runtime.
+- Frames: glTF = (srcY, srcZ, srcX) × 0.0254 (`sourceToGltf`/`gltfToSource`, src/shared/models.ts).
+- Stickers live in uv1: centre u = offset[0] + x + 0.5, v = offset[1] + y + 0.5, size = scale / anchor.scale,
+  rot = −rotation. Every slot of a body shares one polygon region (drags clamp to it). On the AK slot 0 sits at the
+  receiver, slot 3 at the handguard, +u towards the stock. Charm x/y/z = absolute Source inches; 0,0,0 = default quad
+  centre. The finish is not rendered.
+- Renderer CSP blocks blob: URLs and fetches: glb bytes, the jpg and sticker/charm images (`models.image`, only
+  steamstatic / raw.githubusercontent) come through main as bytes/data URLs.
+- three.js sanitizes node names (dots/slashes dropped, `_1`/`_2` per primitive): match bodies against markup.meshes,
+  longest first, walking up the parents.
+- K window "stickers" tab (Hud.cs BuildStickerTab): HudSession.Team (T/CT chips `pk_team_t/ct`, weapons + stickers
+  tabs only; HudTeam()), Target (0–4 slot, 5 charm), Query (`css_sticker`/`css_charm` route to HudSearch while the
+  window is open). No sticker images in the window (11k classes); names only. Tiles: 0–4 slots, 5 charm, [clear
+  search], remove, list (server test: `css_prac_hudclick pk_tab_stickers`, `pk_tile_N`).
+
 ## Status
 See `todo.md` for the phased roadmap and the current phase. v1.0.0 is released; v2 is Phases 7–14 in todo.md
 (settings window on L, pins + music kits, graffiti, bot names/pictures, !gen import, lineups, workshop browser, 3D

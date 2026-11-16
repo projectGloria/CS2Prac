@@ -27,6 +27,7 @@
 					<Button id="pk_tab_pins" class="pk-tab"><Label class="pk-tab-text" text="Pins" hittest="false" /></Button>
 					<Button id="pk_tab_music" class="pk-tab"><Label class="pk-tab-text" text="Music" hittest="false" /></Button>
 					<Button id="pk_tab_graffiti" class="pk-tab"><Label class="pk-tab-text" text="Graffiti" hittest="false" /></Button>
+					<Button id="pk_tab_stickers" class="pk-tab"><Label class="pk-tab-text" text="Stickers" hittest="false" /></Button>
 				</Panel>
 				<Button id="pk_close" class="pk-close"><Label class="pk-close-text" text="&#10005;" hittest="false" /></Button>
 			</Panel>
@@ -39,6 +40,15 @@
 
 				<Panel class="pk-main" hittest="false">
 					<Label id="pk_heading" class="pk-heading" text="{s:text}" hittest="false" />
+					<!-- Weapons and stickers tabs: which team's loadout the window edits (Hud.cs HudSession.Team). -->
+					<Panel id="pk_teambar" class="pk-agentbar" hittest="false">
+						<Panel class="pk-barrow" hittest="false">
+							<Label class="pk-barlabel" text="Team" hittest="false" />
+							<Button id="pk_team_t" class="pk-chip"><Label class="pk-chip-text" text="T" hittest="false" /></Button>
+							<Button id="pk_team_ct" class="pk-chip"><Label class="pk-chip-text" text="CT" hittest="false" /></Button>
+							<Label id="pk_teamhint" class="pk-hint" text="{s:text}" hittest="false" />
+						</Panel>
+					</Panel>
 					<!-- Agents tab only: view toggle; in third person also pose and camera buttons (AgentView.cs). -->
 					<Panel id="pk_agentbar" class="pk-agentbar" hittest="false">
 						<Panel class="pk-barrow" hittest="false">

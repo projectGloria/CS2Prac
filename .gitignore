@@ -5,3 +5,6 @@ dist/
 plugin/**/bin/
 plugin/**/obj/
 resources/bundle/
+tools/**/bin/
+tools/**/obj/
+resources/modeltool/

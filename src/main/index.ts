@@ -38,6 +38,7 @@ import type { BotsConfig } from '@shared/bots'
 import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
 import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
 import { WorkshopStore } from './server/workshop'
+import { ModelStore } from './skins/models'
 import type { WorkshopSort } from '@shared/workshop'
 import { log, logError, logsDir } from './logger'
 import { checkForUpdates, getUpdateStatus, initUpdater, installUpdate } from './updater'
@@ -61,6 +62,18 @@ async function writeRecentWorkshop(csgoDir: string) {
   const ids = (await loadSettings()).recentWorkshop ?? []
   await writeWorkshopMaps(csgoDir, ids, await workshop().titles(ids))
 }
+
+let modelStore: ModelStore | null = null
+/** weapon models for the 3D editor, cached in userData/models/<cs2 build> */
+const models = () =>
+  (modelStore ??= new ModelStore(join(app.getPath('userData'), 'models'), async () => {
+    const client = await findCs2Install()
+    const installDir = (await loadSettings()).installDir
+    const serverCsgoDir = installDir ? layout(installDir).csgoDir : null
+    if (client) return { csgoDir: join(client.dir, 'game', 'csgo'), buildId: client.buildId, serverCsgoDir }
+    if (serverCsgoDir && existsSync(join(serverCsgoDir, 'pak01_dir.vpk'))) return { csgoDir: serverCsgoDir, buildId: 'server', serverCsgoDir }
+    throw new Error('CS2 was not found on this PC.')
+  }))
 
 let workshopStore: WorkshopStore | null = null
 /** workshop map details and thumbnails, cached in userData/workshop-maps.json */
@@ -383,6 +396,8 @@ function registerIpc() {
     if (server.getStatus().state === 'running') await server.exec(APPLY_SETTINGS_CMD).catch((e) => logError('server prefs', e))
     return saved
   })
+  ipcMain.handle(IPC.modelsGet, (_e, className: string) => models().get(String(className ?? '')))
+  ipcMain.handle(IPC.modelsImage, (_e, url: string) => models().image(String(url ?? '')))
   ipcMain.handle(IPC.workshopSearch, (_e, query: string, page: number, sort: WorkshopSort) =>
     workshop().search(String(query ?? ''), Math.max(1, Math.floor(Number(page) || 1)), sort)
   )

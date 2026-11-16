@@ -2,6 +2,7 @@ import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
 import type { Lineup } from './lineups'
+import type { ModelResult } from './models'
 import type { WorkshopMap, WorkshopSearchResult, WorkshopSort } from './workshop'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
@@ -190,6 +191,12 @@ export interface Api {
     /** removes a map from the recent list; resolves to the new list */
     forget(id: string): Promise<WorkshopMap[]>
   }
+  /** weapon models for the 3D editor, exported from the local CS2 install on first use */
+  models: {
+    get(className: string): Promise<ModelResult>
+    /** a sticker/charm image (https, Steam CDN) as a data URL, or null */
+    image(url: string): Promise<string | null>
+  }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
     listSteamAccounts(): Promise<SteamAccount[]>
@@ -260,6 +267,8 @@ export const IPC = {
   workshopDetails: 'workshop:details',
   workshopRecent: 'workshop:recent',
   workshopForget: 'workshop:forget',
+  modelsGet: 'models:get',
+  modelsImage: 'models:image',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

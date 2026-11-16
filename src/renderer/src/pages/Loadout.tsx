@@ -3,6 +3,7 @@ import { ClipboardPaste, Copy, Layers, Music, Pin, Plus, SprayCan, Trash2, User,
 import type { LoadoutSaveResult } from '@shared/ipc'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
+import SkinViewer3D from '../components/SkinViewer3D'
 import ImportItem from '../components/ImportItem'
 import { itemOf } from '@shared/itemCode'
 import {
@@ -722,7 +723,20 @@ function WeaponPanel(props: {
         <Modal
           title={`${weapon.name} | ${current?.name ?? 'Default'} (${TEAM_LABEL[props.team]})`}
           onClose={() => setEditing(false)}
+          wide
         >
+          <SkinViewer3D
+            className={weapon.className}
+            legacy={!!base.legacyModel}
+            stickers={Array.from({ length: STICKER_SLOTS }, (_, i) => base.stickers?.[i] ?? null)}
+            keychain={base.keychain ?? null}
+            stickerImage={(d) => props.stickerByDef.get(d)?.image}
+            keychainImage={(d) => props.keychainByDef.get(d)?.image}
+            onSticker={(slot, st) =>
+              onChange({ ...base, stickers: Array.from({ length: STICKER_SLOTS }, (_, i) => (i === slot ? st : (base.stickers?.[i] ?? null))) })
+            }
+            onKeychain={(keychain) => onChange({ ...base, keychain })}
+          />
           {sel && sel.paintKit > 0 && (
             <PaintEditor value={sel} skin={current} showExtras onChange={(patch) => onChange({ ...sel, ...patch })} />
           )}

@@ -98,7 +98,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] The round-1 layout didn't show at all: CS2's client rejected the clickable (Button) backdrop. Bisected with 4 layout variants in game; backdrop is a Panel again (no click-outside close). **User-confirmed:** window shows, mouse-wheel scrolling works.
 - [x] User feedback round 2: weapon icons in the left list (knives too; gloves show a finish); pager hidden while everything fits.
 - [x] **User check in game:** restart CS2 (layout changed), icons in the left list, the gun you click lands in your hands.
-- [ ] Later: stickers and charms in the window; T/CT switch. (Moved to v2 Phase 14.)
+- [x] Later: stickers and charms in the window; T/CT switch. (Done in v2 Phase 14.)
 
 ### Phase 5c: Third-person agent preview (user's request "like choosing a fighter")
 - [x] Agents tab: First person / Third person toggle, remembered per SteamID (`configs/plugins/PracSkins/hud_prefs.json`, also pose, zoom, height).
@@ -278,12 +278,19 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
   shows titles too).
 
 ## Phase 14: 3D skin editor (req 5; largest, last)
-- [ ] **Spike 1 (models):** export weapon models + base textures to glTF with the ValveResourceFormat CLI (MIT),
-  `npm run build:models` like build:hud, shipped in resources or extracted from the local VPK on first run. Decide on
-  size and whether the paint-kit look can be approximated, or only shown live in game.
-- [ ] **Spike 2 (placement):** map a raycast hit on the model to the game's sticker offset x/y + rotation (calibrate
-  per weapon against known offsets in game); charm offset x/y/z too.
-- [ ] three.js viewer in the app: orbit/zoom, drag stickers anywhere, rotate/scale, scrape per sticker, charm
-  position, name tag, wear/seed. Every change is written to loadout.json and pushed with `css_prac_reload`
-  (debounced), so inspecting (F) in game shows the exact result.
-- [ ] In-game counterpart: stickers and charms in the K window + T/CT switch (moved from Phase 5b "Later").
+- [x] **Spike 1 (models):** decided: no build:models and nothing of Valve's shipped. tools/ModelExport (ValveResourceFormat,
+  MIT; `npm run build:modeltool` → resources/modeltool, also in CI) runs on CSS's dotnet.exe and exports a weapon's
+  glb + base colour jpg + markup json from the user's own pak01_dir.vpk on first open (cache userData/models/<build>).
+  The paint kit is **not** rendered (base material only): the finish is checked in game with F.
+- [x] **Spike 2 (placement):** sticker anchors (offset, scale, rotation, polygon region per body) and charm
+  attachment quads come from the model's markup; a hit in uv1 maps to offset x/y (src/shared/models.ts, unit tests);
+  charm offsets are absolute Source inches from the default spot.
+- [x] three.js viewer (components/SkinViewer3D.tsx) in the weapon dialog: orbit/zoom, stickers drawn in their slots,
+  drag a sticker or the charm to move it (clamped to the slot region), default spot, reset view. Rotation/scale/
+  scrape stay on the dialog's sliders. Saved like every Loadout edit (loadout.json + `css_prac_reload`).
+- [x] In-game counterpart: K window "Stickers" tab (guns left; tiles = 5 slots + charm as target, then remove and
+  the stickers/charms; `!sticker <text>` / `!charm <text>` search while the window is open) and a T/CT switch on the
+  Weapons and Stickers tabs. Live-tested on 27115 with a bot (T and CT entries written).
+- [ ] **User check:** open a gun in the Loadout tab (first open exports the model, a few seconds), drag stickers and
+  the charm, then F-inspect in game: does the spot match? Unverified: sticker image orientation, how scale maps,
+  charm spot. In game: restart CS2 (new layout), K → Stickers, T/CT switch.

@@ -183,6 +183,7 @@ public partial class PracSkins
     public void OnStickerSearch(CCSPlayerController? player, CommandInfo command)
     {
         if (!CanEdit(player, command)) return;
+        if (HudSearch(player!, command.ArgString, false)) return;
         var held = HeldWeapon(player!);
         if (held is not { Kind: "weapon" })
         {
@@ -198,6 +199,7 @@ public partial class PracSkins
     public void OnCharmSearch(CCSPlayerController? player, CommandInfo command)
     {
         if (!CanEdit(player, command)) return;
+        if (HudSearch(player!, command.ArgString, true)) return;
         var held = HeldWeapon(player!);
         if (held is not { Kind: "weapon" })
         {

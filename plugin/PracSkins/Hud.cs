@@ -30,6 +30,12 @@ public class HudSession
     public List<HudTile> Tiles { get; set; } = new();
     /// <summary>The third-person agent preview while it runs (AgentView.cs).</summary>
     public AgentView? View { get; set; }
+    /// <summary>Team whose loadout the weapons and stickers tabs edit (2 = T, 3 = CT); starts as the player's.</summary>
+    public int Team { get; set; } = 3;
+    /// <summary>Stickers tab: the slot picks go to (0-4 stickers, 5 = charm).</summary>
+    public int Target { get; set; }
+    /// <summary>Stickers tab: search text from !sticker / !charm while the window is open.</summary>
+    public string Query { get; set; } = "";
 }
 
 /// <summary>What the client was last sent per slot (texts, classes), so a render only sends changes.</summary>
@@ -58,7 +64,7 @@ public partial class PracSkins
     // CBasePlayerPawn.m_iHideHUD bits hidden while the window is open: weapon selection, crosshair, radar.
     private const uint HudHideBits = (1u << 0) | (1u << 8) | (1u << 12);
 
-    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music", "graffiti"];
+    private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music", "graffiti", "stickers"];
 
     private CCSCustomHudLayout? _hud;
     private bool _hudWorldReady;
@@ -214,7 +220,7 @@ public partial class PracSkins
 
     private void OpenHud(CCSPlayerController player)
     {
-        var s = new HudSession { Tab = "weapons", LastButtons = (ulong)player.Buttons };
+        var s = new HudSession { Tab = "weapons", LastButtons = (ulong)player.Buttons, Team = player.TeamNum == 2 ? 2 : 3 };
         _hudSessions[player.Slot] = s;
         SelectTab(player, s, "weapons");
 
@@ -344,7 +350,7 @@ public partial class PracSkins
         s.Tab = tab;
         s.Selected = tab switch
         {
-            "weapons" => HeldWeapon(player) is { Kind: "weapon" } held ? held.Def
+            "weapons" or "stickers" => HeldWeapon(player) is { Kind: "weapon" } held ? held.Def
                 : SortedGuns().FirstOrDefault()?.Def ?? 0,
             "knives" => _loadout.Knife.For(player.TeamNum)?.DefIndex ?? 0,
             "gloves" => _loadout.Gloves.For(player.TeamNum) is { PaintKit: > 0 } g ? g.DefIndex : 0,
@@ -365,7 +371,7 @@ public partial class PracSkins
     /// <summary>Fills s.Side and s.Tiles from the catalog and loadout for the tab and selection.</summary>
     private void BuildHud(CCSPlayerController player, HudSession s)
     {
-        var team = player.TeamNum;
+        var team = HudTeam(player, s);
         s.Side = new();
         s.Tiles = new();
         switch (s.Tab)
@@ -377,7 +383,7 @@ public partial class PracSkins
                     var def = w.Def;
                     s.Side.Add(new HudSide(w.Name, SkinName(def, _loadout.WeaponPaint(def, team)?.PaintKit ?? 0), def == s.Selected, pl =>
                     {
-                        EquipForHud(pl, w);
+                        if (team == pl.TeamNum) EquipForHud(pl, w); // the other team's gun would not show the edit
                         s.Selected = def;
                         BuildHud(pl, s);
                         ShowCurrentTilePage(s);
@@ -559,15 +565,139 @@ public partial class PracSkins
                         }));
                 break;
             }
+            case "stickers":
+                BuildStickerTab(s, team);
+                break;
         }
         s.SidePage = Math.Clamp(s.SidePage, 0, Math.Max(0, (s.Side.Count - 1) / SideRows));
         s.GridPage = Math.Clamp(s.GridPage, 0, Math.Max(0, (s.Tiles.Count - 1) / GridTiles));
     }
 
+    /// <summary>The team a tab edits: the T/CT switch for weapons and stickers, the player's own team elsewhere.</summary>
+    private static int HudTeam(CCSPlayerController player, HudSession s) => s.Tab is "weapons" or "stickers" ? s.Team : player.TeamNum;
+
+    private static string ShortName(string name) => name.Contains(" | ") ? name[(name.IndexOf(" | ") + 3)..] : name;
+
+    private string StickerName(int def) => _catalog.Stickers.FirstOrDefault(x => x.Def == def) is { } st ? ShortName(st.Name) : $"Sticker {def}";
+
+    /// <summary>
+    /// Stickers tab: guns on the left; tiles = the five sticker slots and the charm (click one to make it the target),
+    /// then what can go there. Without a search the sticker list shows the ones already used plus the first of the
+    /// catalog; !sticker / !charm &lt;text&gt; in chat search while the window is open.
+    /// </summary>
+    private void BuildStickerTab(HudSession s, int team)
+    {
+        foreach (var w in SortedGuns())
+        {
+            var def = w.Def;
+            var wp = _loadout.WeaponPaint(def, team);
+            var n = wp?.Stickers.Count(x => x is { DefIndex: > 0 }) ?? 0;
+            var charm = wp?.Keychain is { DefIndex: > 0 };
+            var sub = n == 0 && !charm ? "" : $"{n}/5 stickers{(charm ? " + charm" : "")}";
+            s.Side.Add(new HudSide(w.Name, sub, def == s.Selected, pl =>
+            {
+                if (team == pl.TeamNum) EquipForHud(pl, w);
+                s.Selected = def;
+                s.GridPage = 0;
+            }, $"b{def}"));
+        }
+        if (s.Selected <= 0) return;
+        var sel = s.Selected;
+        var cur = WeaponPaintOrNew(team, sel);
+        for (var slot = 0; slot < 5; slot++)
+        {
+            var i = slot;
+            var st = SlotOf(cur, i);
+            s.Tiles.Add(new HudTile($"Slot {i + 1}: {(st is { DefIndex: > 0 } ? StickerName(st.DefIndex) : "empty")}", "", "", s.Target == i, _ =>
+            {
+                s.Target = i;
+                s.GridPage = 0;
+            }));
+        }
+        s.Tiles.Add(new HudTile($"Charm: {ShortName(CharmLabel(cur.Keychain))}", "", "", s.Target == 5, _ =>
+        {
+            s.Target = 5;
+            s.GridPage = 0;
+        }));
+        if (s.Query.Length > 0)
+            s.Tiles.Add(new HudTile($"Clear search \"{s.Query}\"", "", "", false, _ =>
+            {
+                s.Query = "";
+                s.GridPage = 0;
+            }));
+        var weaponName = _catalog.WeaponName(sel);
+        if (s.Target == 5)
+        {
+            s.Tiles.Add(new HudTile("No charm", "", "", false, pl =>
+            {
+                var p = WeaponPaintOrNew(team, sel);
+                p.Keychain = null;
+                CommitWeapon(pl, team, sel, p);
+                HudStatusFor(pl, $"{weaponName}: charm removed");
+            }));
+            foreach (var k in _catalog.Keychains.Where(k => Matches(k.Name, s.Query)))
+                s.Tiles.Add(new HudTile(ShortName(k.Name), "", "", cur.Keychain?.DefIndex == k.Def, pl =>
+                {
+                    var p = WeaponPaintOrNew(team, sel);
+                    p.Keychain = new KeychainPaint { DefIndex = k.Def, Seed = p.Keychain?.Seed ?? 0, X = p.Keychain?.X ?? 0, Y = p.Keychain?.Y ?? 0, Z = p.Keychain?.Z ?? 0 };
+                    CommitWeapon(pl, team, sel, p);
+                    HudStatusFor(pl, $"{weaponName}: {ShortName(k.Name)}");
+                }));
+            return;
+        }
+        var target = s.Target;
+        var onSlot = SlotOf(cur, target);
+        s.Tiles.Add(new HudTile("Remove sticker", "", "", false, pl =>
+        {
+            var p = WeaponPaintOrNew(team, sel);
+            SetSlot(p, target, null);
+            CommitWeapon(pl, team, sel, p);
+            HudStatusFor(pl, $"{weaponName}: slot {target + 1} cleared");
+        }));
+        IEnumerable<CatalogNamed> list;
+        if (s.Query.Length > 0) list = _catalog.Stickers.Where(x => Matches(x.Name, s.Query)).Take(256);
+        else
+        {
+            // no text entry in the window: what the loadout already uses, then the start of the catalog
+            var used = new[] { 2, 3 }.SelectMany(t => _loadout.Weapons.For(t)?.Values ?? Enumerable.Empty<Paint>())
+                .SelectMany(p => p.Stickers).Where(x => x is { DefIndex: > 0 }).Select(x => x!.DefIndex).ToHashSet();
+            var usedList = _catalog.Stickers.Where(x => used.Contains(x.Def)).ToList();
+            list = usedList.Concat(_catalog.Stickers.Where(x => !used.Contains(x.Def))).Take(Math.Max(usedList.Count, GridTiles - s.Tiles.Count));
+        }
+        foreach (var st in list)
+            s.Tiles.Add(new HudTile(ShortName(st.Name), "", "", onSlot?.DefIndex == st.Def, pl =>
+            {
+                var p = WeaponPaintOrNew(team, sel);
+                var old = SlotOf(p, target);
+                SetSlot(p, target, new StickerPaint { DefIndex = st.Def, Wear = old?.Wear ?? 0, Scale = old?.Scale ?? 1, Rotation = old?.Rotation ?? 0, X = old?.X ?? 0, Y = old?.Y ?? 0 });
+                CommitWeapon(pl, team, sel, p);
+                HudStatusFor(pl, $"{weaponName}: {ShortName(st.Name)} -> slot {target + 1}");
+            }));
+    }
+
+    private void HudStatusFor(CCSPlayerController player, string text)
+    {
+        if (_hudSessions.TryGetValue(player.Slot, out var s)) HudStatus(player, s, text);
+    }
+
+    /// <summary>!sticker / !charm while the skin window is open: search in its stickers tab instead of the text menu.</summary>
+    private bool HudSearch(CCSPlayerController player, string query, bool charm)
+    {
+        if (!_hudSessions.TryGetValue(player.Slot, out var s) || !HudReady) return false;
+        if (s.Tab != "stickers") SelectTab(player, s, "stickers");
+        s.Query = query.Trim();
+        if (charm) s.Target = 5;
+        else if (s.Target == 5) s.Target = 0;
+        s.GridPage = 0;
+        BuildHud(player, s);
+        RenderHud(player, s);
+        return true;
+    }
+
     /// <summary>The finish the wear/StatTrak buttons act on in this tab, or null when there is none.</summary>
     private (float Wear, bool StatTrak, bool CanStatTrak)? HudCurrentFinish(CCSPlayerController player, HudSession s)
     {
-        var team = player.TeamNum;
+        var team = HudTeam(player, s);
         switch (s.Tab)
         {
             case "weapons" when _loadout.WeaponPaint(s.Selected, team) is { PaintKit: > 0 } p:
@@ -584,9 +714,16 @@ public partial class PracSkins
     private void RenderHud(CCSPlayerController player, HudSession s)
     {
         if (!HudReady) return;
-        var team = player.TeamNum;
+        var team = HudTeam(player, s);
         HudText(player, "pk_title", $"Loadout · {(team == 2 ? "T" : "CT")}");
         foreach (var t in HudTabs) HudFlag(player, $"pk_tab_{t}", "picked", s.Tab == t);
+        var teamBar = s.Tab is "weapons" or "stickers";
+        HudFlag(player, "pk_teambar", "gone", !teamBar);
+        HudFlag(player, "pk_team_t", "picked", s.Team == 2);
+        HudFlag(player, "pk_team_ct", "picked", s.Team != 2);
+        HudText(player, "pk_teamhint", !teamBar ? "" : s.Tab == "stickers"
+            ? (s.Query.Length > 0 ? $"Search: {s.Query}" : "Search in chat: !sticker <text>, !charm <text>")
+            : s.Team != player.TeamNum ? "Editing the other team's skins" : "");
 
         // agents tab: first/third person; in third person the window moves left, no dim, pose + camera buttons
         var agents = s.Tab == "agents";
@@ -631,12 +768,14 @@ public partial class PracSkins
             "pins" => "Pin (both teams)",
             "music" => "Music kit (both teams)",
             "graffiti" => "Graffiti (spray: bind a key to css_spray)",
+            "stickers" => s.Selected > 0 ? $"{_catalog.WeaponName(s.Selected)} · {(s.Target == 5 ? "charm" : $"sticker slot {s.Target + 1}")}" : "Stickers",
             _ => $"Agents ({(team == 2 ? "T" : "CT")})"
         });
         var empty = s.Tiles.Count > 0 ? "" : s.Tab switch
         {
             "knives" => "Default knife in use. Pick a knife on the left.",
             "gloves" => "Default gloves in use. Pick a glove type on the left.",
+            "stickers" => "Pick a gun on the left.",
             _ => "Nothing here. Open the Loadout tab in the CS2Prac app once, then restart the server."
         };
         HudText(player, "pk_empty", empty);
@@ -722,6 +861,8 @@ public partial class PracSkins
             case "pk_prev": s.GridPage = Math.Max(0, s.GridPage - 1); return;
             case "pk_next": s.GridPage++; return;
             case "pk_st": ToggleHudStatTrak(player, s); return;
+            case "pk_team_t": s.Team = 2; s.GridPage = 0; return;
+            case "pk_team_ct": s.Team = 3; s.GridPage = 0; return;
         }
         if (TryIndex(id, "pk_side_", out var side) && s.SidePage * SideRows + side < s.Side.Count)
             s.Side[s.SidePage * SideRows + side].OnClick(player);
@@ -811,7 +952,7 @@ public partial class PracSkins
 
     private void SetHudWear(CCSPlayerController player, HudSession s, (string Name, float Value) wear)
     {
-        var team = player.TeamNum;
+        var team = HudTeam(player, s);
         switch (s.Tab)
         {
             case "weapons" when _loadout.WeaponPaint(s.Selected, team) is { PaintKit: > 0 }:
@@ -838,7 +979,7 @@ public partial class PracSkins
 
     private void ToggleHudStatTrak(CCSPlayerController player, HudSession s)
     {
-        var team = player.TeamNum;
+        var team = HudTeam(player, s);
         bool on;
         switch (s.Tab)
         {

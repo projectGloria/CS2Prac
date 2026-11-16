@@ -36,6 +36,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:plugin
+      - run: npm run build:modeltool
 
       # electron-builder uploads its files in parallel and each upload creates the release if none exists, which
       # made two drafts for v1.0.0. Creating the draft once here (with the notes from docs/release-notes/<tag>)

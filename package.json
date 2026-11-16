@@ -15,12 +15,14 @@
     "dist": "npm run build:bundle && npm run build && electron-builder --win --publish never",
     "release": "npm run build:bundle && npm run build && electron-builder --win --publish always",
     "build:bundle": "node scripts/bundle.mjs",
-    "build:hud": "node scripts/hud/build-hud.mjs"
+    "build:hud": "node scripts/hud/build-hud.mjs",
+    "build:modeltool": "node scripts/build-modeltool.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^6.3.0",
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0",
@@ -33,7 +35,8 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "electron-updater": "^6.8.11"
+    "electron-updater": "^6.8.11",
+    "three": "^0.180.0"
   },
   "allowScripts": {
     "electron-winstaller": false,
@@ -61,6 +64,10 @@
       {
         "from": "resources/hud",
         "to": "hud"
+      },
+      {
+        "from": "resources/modeltool",
+        "to": "modeltool"
       }
     ],
     "win": {
