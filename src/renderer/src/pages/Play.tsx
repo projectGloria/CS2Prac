@@ -55,11 +55,15 @@ const MZ_COMMANDS: [string, string][] = [
 ]
 
 const mapLabel = (m: MapChoice) => (m.kind === 'official' ? m.name : `Workshop ${m.id}`)
+/** the active-duty style pool shown first, in this order; everything else goes under "Others" */
+const COMP_POOL = ['de_inferno', 'de_mirage', 'de_dust2', 'de_ancient', 'de_anubis', 'de_overpass', 'de_train', 'de_vertigo', 'de_cache']
+type MapPool = 'comp' | 'others'
 const prettyMap = (name: string) => name.replace(/^(de|cs|ar)_/, '').replace(/_/g, ' ')
 
 export default function Play({ status }: { status: ServerStatus }) {
   const [maps, setMaps] = useState<string[]>([])
   const [selected, setSelected] = useState<MapChoice>({ kind: 'official', name: 'de_mirage' })
+  const [pool, setPool] = useState<MapPool>('comp')
   const [workshopId, setWorkshopId] = useState('')
   const [mode, setMode] = useState<GameMode>('competitive')
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -129,9 +133,15 @@ export default function Play({ status }: { status: ServerStatus }) {
         </div>
       )}
       <section className="card wide">
-        <h2>Map</h2>
+        <div className="card-head">
+          <h2>Map</h2>
+          <select value={pool} onChange={(e) => setPool(e.target.value as MapPool)}>
+            <option value="comp">Comp pool</option>
+            <option value="others">Others</option>
+          </select>
+        </div>
         <div className="map-grid">
-          {maps.map((name) => {
+          {(pool === 'comp' ? COMP_POOL.filter((n) => maps.includes(n)) : maps.filter((n) => !COMP_POOL.includes(n))).map((name) => {
             const m: MapChoice = { kind: 'official', name }
             return (
               <button key={name} className={`map-tile ${isSelected(m) ? 'selected' : ''}`} onClick={() => setSelected(m)}>
