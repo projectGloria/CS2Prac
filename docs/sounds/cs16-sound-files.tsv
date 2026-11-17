@@ -1,0 +1,458 @@
+path	group	format	rate	channels	bits	seconds	bytes	suggestedCs2Target
+english/ambience/3dmbridge.wav	ambience	pcm	11025	1	8	1.92	21198	none (no direct CS2 equivalent)
+english/ambience/3dmeagle.wav	ambience	pcm	11025	1	8	2.93	32338	none (no direct CS2 equivalent)
+english/ambience/3dmstart.wav	ambience	pcm	11025	1	8	8.04	88656	none (no direct CS2 equivalent)
+english/ambience/3dmthrill.wav	ambience	pcm	11025	1	8	6.95	76786	none (no direct CS2 equivalent)
+english/ambience/alarm1.wav	ambience	pcm	11025	1	8	16.31	179964	none (no direct CS2 equivalent)
+english/ambience/arabmusic.wav	ambience	pcm	11025	1	8	107.72	1187762	none (no direct CS2 equivalent)
+english/ambience/Birds1.wav	ambience	pcm	11025	2	8	2.81	62156	none (no direct CS2 equivalent)
+english/ambience/Birds2.wav	ambience	pcm	16000	2	8	0.80	25784	none (no direct CS2 equivalent)
+english/ambience/Birds3.wav	ambience	pcm	22050	1	8	2.75	60838	none (no direct CS2 equivalent)
+english/ambience/Birds4.wav	ambience	pcm	22050	1	8	2.82	62242	none (no direct CS2 equivalent)
+english/ambience/Birds5.wav	ambience	pcm	11025	1	8	2.32	25720	none (no direct CS2 equivalent)
+english/ambience/Birds6.wav	ambience	pcm	22050	1	8	1.45	31992	none (no direct CS2 equivalent)
+english/ambience/Birds7.wav	ambience	pcm	22050	1	8	0.65	14532	none (no direct CS2 equivalent)
+english/ambience/Birds8.wav	ambience	pcm	11025	1	8	2.95	32640	none (no direct CS2 equivalent)
+english/ambience/Birds9.wav	ambience	pcm	11025	1	8	7.62	84126	none (no direct CS2 equivalent)
+english/ambience/car1.wav	ambience	pcm	11025	1	8	8.14	89882	none (no direct CS2 equivalent)
+english/ambience/car2.wav	ambience	pcm	11025	1	8	4.74	52406	none (no direct CS2 equivalent)
+english/ambience/cat1.wav	ambience	pcm	11025	1	8	1.82	20158	none (no direct CS2 equivalent)
+english/ambience/chimes.wav	ambience	pcm	22050	1	8	7.71	170110	none (no direct CS2 equivalent)
+english/ambience/cicada3.wav	ambience	pcm	22050	1	8	9.93	219070	none (no direct CS2 equivalent)
+english/ambience/copter.wav	ambience	pcm	22050	1	8	17.58	387711	none (no direct CS2 equivalent)
+english/ambience/cow.wav	ambience	pcm	11025	1	8	2.09	23136	none (no direct CS2 equivalent)
+english/ambience/crow.wav	ambience	pcm	22050	1	8	2.57	56606	none (no direct CS2 equivalent)
+english/ambience/dog1.wav	ambience	pcm	11025	1	8	0.73	8222	none (no direct CS2 equivalent)
+english/ambience/dog2.wav	ambience	pcm	11025	1	8	1.42	15728	none (no direct CS2 equivalent)
+english/ambience/dog3.wav	ambience	pcm	11025	1	8	2.08	23034	none (no direct CS2 equivalent)
+english/ambience/dog4.wav	ambience	pcm	11025	1	8	4.18	46262	none (no direct CS2 equivalent)
+english/ambience/dog5.wav	ambience	pcm	11025	1	8	1.47	16366	none (no direct CS2 equivalent)
+english/ambience/dog6.wav	ambience	pcm	11025	1	8	4.18	46278	none (no direct CS2 equivalent)
+english/ambience/dog7.wav	ambience	pcm	11025	1	8	1.47	16382	none (no direct CS2 equivalent)
+english/ambience/doorbell.wav	ambience	pcm	22000	1	8	2.40	52916	none (no direct CS2 equivalent)
+english/ambience/fallscream.wav	ambience	pcm	11025	1	8	2.84	31406	none (no direct CS2 equivalent)
+english/ambience/guit1.wav	ambience	pcm	11000	1	8	45.76	503528	none (no direct CS2 equivalent)
+english/ambience/kajika.wav	ambience	pcm	22050	1	8	4.67	102970	none (no direct CS2 equivalent)
+english/ambience/lv_elvis.wav	ambience	pcm	22050	1	8	2.09	46150	none (no direct CS2 equivalent)
+english/ambience/lv_fruit1.wav	ambience	pcm	22050	1	8	1.45	32172	none (no direct CS2 equivalent)
+english/ambience/lv_fruit2.wav	ambience	pcm	22050	1	8	2.40	53128	none (no direct CS2 equivalent)
+english/ambience/lv_fruitwin.wav	ambience	pcm	22050	1	8	10.67	235478	none (no direct CS2 equivalent)
+english/ambience/lv_jubilee.wav	ambience	pcm	22050	1	8	6.14	135538	none (no direct CS2 equivalent)
+english/ambience/lv_neon.wav	ambience	pcm	11025	1	8	4.02	44480	none (no direct CS2 equivalent)
+english/ambience/lv1.wav	ambience	pcm	11025	1	8	2.09	23142	none (no direct CS2 equivalent)
+english/ambience/lv2.wav	ambience	pcm	11025	1	8	1.45	16154	none (no direct CS2 equivalent)
+english/ambience/lv3.wav	ambience	pcm	11025	1	8	2.40	26632	none (no direct CS2 equivalent)
+english/ambience/lv4.wav	ambience	pcm	11025	1	8	10.67	117812	none (no direct CS2 equivalent)
+english/ambience/lv5.wav	ambience	pcm	11025	1	8	6.14	67866	none (no direct CS2 equivalent)
+english/ambience/lv6.wav	ambience	pcm	11025	1	8	4.02	44492	none (no direct CS2 equivalent)
+english/ambience/Opera.wav	ambience	pcm	8000	1	8	72.71	581948	none (no direct CS2 equivalent)
+english/ambience/rain.wav	ambience	pcm	22050	1	16	54.45	2401436	none (no direct CS2 equivalent)
+english/ambience/ratchant.wav	ambience	pcm	22050	1	8	2.01	44442	none (no direct CS2 equivalent)
+english/ambience/rd_shipshorn.wav	ambience	pcm	11025	1	8	4.59	50724	none (no direct CS2 equivalent)
+english/ambience/rd_waves.wav	ambience	pcm	11025	1	8	18.58	205142	none (no direct CS2 equivalent)
+english/ambience/sheep.wav	ambience	pcm	11025	1	8	3.13	34684	none (no direct CS2 equivalent)
+english/ambience/sparrow.wav	ambience	pcm	22050	1	8	9.64	212650	none (no direct CS2 equivalent)
+english/ambience/thunder_clap.wav	ambience	pcm	11025	1	8	5.25	58020	none (no direct CS2 equivalent)
+english/ambience/waterrun.wav	ambience	pcm	22050	1	8	2.57	56936	none (no direct CS2 equivalent)
+english/ambience/wolfhowl01.wav	ambience	pcm	11025	1	8	3.64	40200	none (no direct CS2 equivalent)
+english/ambience/wolfhowl02.wav	ambience	pcm	11025	1	8	5.55	61308	none (no direct CS2 equivalent)
+english/de_torn/tk_steam.wav	de_torn	pcm	8000	1	8	3.24	25980	none (no direct CS2 equivalent)
+english/de_torn/tk_windStreet.wav	de_torn	pcm	11025	1	8	3.40	37532	none (no direct CS2 equivalent)
+english/de_torn/torn_AK-47.wav	de_torn	pcm	11025	1	8	1.49	16458	none (no direct CS2 equivalent)
+english/de_torn/torn_ambience.wav	de_torn	pcm	11025	1	8	3.91	43232	none (no direct CS2 equivalent)
+english/de_torn/torn_Bomb1.wav	de_torn	pcm	11025	1	8	3.08	33954	none (no direct CS2 equivalent)
+english/de_torn/torn_Bomb2.wav	de_torn	pcm	11025	1	8	2.01	22216	none (no direct CS2 equivalent)
+english/de_torn/torn_MGun1.wav	de_torn	pcm	11025	1	8	0.70	7756	none (no direct CS2 equivalent)
+english/de_torn/torn_Templewind.wav	de_torn	pcm	8000	1	8	4.44	35602	none (no direct CS2 equivalent)
+english/de_torn/torn_thndrstrike.wav	de_torn	pcm	11025	1	8	7.59	83682	none (no direct CS2 equivalent)
+english/de_torn/torn_water1.wav	de_torn	pcm	11025	1	8	3.44	38046	none (no direct CS2 equivalent)
+english/de_torn/torn_water2.wav	de_torn	pcm	11025	1	8	2.70	30056	none (no direct CS2 equivalent)
+english/events/enemy_died.wav	events	pcm	22050	1	16	0.36	15804	UI.DeathNotice / kill sound
+english/events/friend_died.wav	events	pcm	22050	1	16	0.41	18246	none (teammate died)
+english/events/task_complete.wav	events	pcm	22050	1	16	1.80	83376	none (tutor)
+english/events/tutor_msg.wav	events	pcm	22050	1	16	0.36	19856	none (tutor)
+english/hostage/hos1.wav	hostage	pcm	22050	1	8	1.04	23008	Hostage.Pain / Hostage.StartFollowCT
+english/hostage/hos2.wav	hostage	pcm	22050	1	8	1.16	25672	Hostage.Pain / Hostage.StartFollowCT
+english/hostage/hos3.wav	hostage	pcm	22050	1	8	0.91	20284	Hostage.Pain / Hostage.StartFollowCT
+english/hostage/hos4.wav	hostage	pcm	22050	1	8	1.48	32604	Hostage.Pain / Hostage.StartFollowCT
+english/hostage/hos5.wav	hostage	pcm	22050	1	8	1.02	22664	Hostage.Pain / Hostage.StartFollowCT
+english/items/equip_nvg.wav	items	pcm	22050	1	8	0.50	11070	none (CS2 has no NVG)
+english/items/kevlar.wav	items	pcm	22050	1	8	0.50	11164	Player.EquipArmor_CT
+english/items/nvg_off.wav	items	pcm	22050	1	8	0.26	5848	none
+english/items/nvg_on.wav	items	pcm	22050	1	8	1.76	38836	none
+english/items/tr_kevlar.wav	items	pcm	22050	1	8	0.82	18282	Player.EquipArmor_T
+english/materials.txt	data file						11064	
+english/misc/cow.wav	misc	pcm	11025	1	8	2.09	23136	map ambience
+english/misc/killChicken.wav	misc	pcm	22050	1	8	0.28	6356	Chicken.Death
+english/misc/plane_drone.wav	misc	pcm	22050	1	8	10.39	229430	map ambience
+english/misc/sheep.wav	misc	pcm	11025	1	8	3.13	34684	map ambience
+english/misc/talk.wav	misc	pcm	22050	1	8	0.06	1397	none
+english/plats/vehicle_brake1.wav	plats	pcm	22050	1	8	2.09	46144	none (no direct CS2 equivalent)
+english/plats/vehicle_ignition.wav	plats	pcm	22050	1	8	1.49	32992	none (no direct CS2 equivalent)
+english/plats/vehicle_start1.wav	plats	pcm	22050	1	8	1.49	32992	none (no direct CS2 equivalent)
+english/plats/vehicle1.wav	plats	pcm	22050	1	8	1.39	30920	none (no direct CS2 equivalent)
+english/plats/vehicle2.wav	plats	pcm	22050	1	8	1.22	27400	none (no direct CS2 equivalent)
+english/plats/vehicle3.wav	plats	pcm	22050	1	8	1.80	40010	none (no direct CS2 equivalent)
+english/plats/vehicle4.wav	plats	pcm	22050	1	8	1.46	32398	none (no direct CS2 equivalent)
+english/plats/vehicle6.wav	plats	pcm	22050	1	8	2.23	49432	none (no direct CS2 equivalent)
+english/plats/vehicle7.wav	plats	pcm	22050	1	8	2.23	49432	none (no direct CS2 equivalent)
+english/player/bhit_flesh-1.wav	player	pcm	22050	1	8	0.32	7020	Player.DamageBody.Victim / Player.DamageBody.Onlooker
+english/player/bhit_flesh-2.wav	player	pcm	22050	1	8	0.34	7650	Player.DamageBody.Victim / Player.DamageBody.Onlooker
+english/player/bhit_flesh-3.wav	player	pcm	22050	1	8	0.29	6520	Player.DamageBody.Victim / Player.DamageBody.Onlooker
+english/player/bhit_helmet-1.wav	player	pcm	22050	1	8	0.26	5670	Player.DamageHeadShotArmor.Victim / Player.DamageHeadShotArmor.Onlooker
+english/player/bhit_kevlar-1.wav	player	pcm	22050	1	8	0.33	7238	Player.DamageKevlar
+english/player/breathe1.wav	player	pcm	11025	1	8	7.19	79562	none (no player breathing event)
+english/player/breathe2.wav	player	pcm	11025	1	8	1.80	20070	none (no player breathing event)
+english/player/death6.wav	player	pcm	22050	1	8	1.26	27823	Player.Death
+english/player/die1.wav	player	pcm	22050	1	8	0.96	21244	Player.Death
+english/player/die2.wav	player	pcm	22050	1	8	1.98	43776	Player.Death
+english/player/die3.wav	player	pcm	22050	1	8	0.98	21646	Player.Death
+english/player/headshot1.wav	player	pcm	22050	1	8	0.87	19134	Player.DeathHeadShot.*
+english/player/headshot2.wav	player	pcm	22050	1	8	1.00	22184	Player.DeathHeadShot.*
+english/player/headshot3.wav	player	pcm	22050	1	8	0.71	15700	Player.DeathHeadShot.*
+english/player/pl_die1.wav	player	pcm	22050	1	8	0.72	15824	Player.Death
+english/player/pl_dirt1.wav	player	pcm	11025	1	8	0.34	3894	*_Dirt.Step*
+english/player/pl_dirt2.wav	player	pcm	11025	1	8	0.29	3368	*_Dirt.Step*
+english/player/pl_dirt3.wav	player	pcm	11025	1	8	0.37	4234	*_Dirt.Step*
+english/player/pl_dirt4.wav	player	pcm	11025	1	8	0.45	5060	*_Dirt.Step*
+english/player/pl_duct1.wav	player	pcm	11025	1	8	0.85	9500	*_Duct.Step*
+english/player/pl_duct2.wav	player	pcm	11025	1	8	0.85	9532	*_Duct.Step*
+english/player/pl_duct3.wav	player	pcm	11025	1	8	0.91	10184	*_Duct.Step*
+english/player/pl_duct4.wav	player	pcm	11025	1	8	0.82	9160	*_Duct.Step*
+english/player/pl_fallpain1.wav	player	pcm	11025	1	8	0.99	11080	Player.DamageFall
+english/player/pl_fallpain2.wav	player	pcm	11025	1	8	0.99	11080	Player.DamageFall
+english/player/pl_fallpain3.wav	player	pcm	11025	1	8	0.65	7308	Player.DamageFall
+english/player/pl_grate1.wav	player	pcm	11025	1	8	0.82	9188	*_MetalGrate.Step*
+english/player/pl_grate2.wav	player	pcm	11025	1	8	0.86	9618	*_MetalGrate.Step*
+english/player/pl_grate3.wav	player	pcm	11025	1	8	0.84	9342	*_MetalGrate.Step*
+english/player/pl_grate4.wav	player	pcm	11025	1	8	0.92	10314	*_MetalGrate.Step*
+english/player/pl_jump1.wav	player	pcm	11025	1	8	0.55	6198	Land_* / jump
+english/player/pl_jump2.wav	player	pcm	11025	1	8	0.47	5268	Land_* / jump
+english/player/pl_ladder1.wav	player	pcm	11025	1	8	0.36	4098	CT_Ladder.StepLeft / T_Ladder.StepLeft (+Right)
+english/player/pl_ladder2.wav	player	pcm	11025	1	8	0.36	4054	CT_Ladder.StepLeft / T_Ladder.StepLeft (+Right)
+english/player/pl_ladder3.wav	player	pcm	11025	1	8	0.44	5006	CT_Ladder.StepLeft / T_Ladder.StepLeft (+Right)
+english/player/pl_ladder4.wav	player	pcm	11025	1	8	0.43	4910	CT_Ladder.StepLeft / T_Ladder.StepLeft (+Right)
+english/player/pl_metal1.wav	player	pcm	11025	1	8	0.58	6546	*_SolidMetal.Step*
+english/player/pl_metal2.wav	player	pcm	11025	1	8	0.55	6216	*_SolidMetal.Step*
+english/player/pl_metal3.wav	player	pcm	11025	1	8	0.61	6808	*_SolidMetal.Step*
+english/player/pl_metal4.wav	player	pcm	11025	1	8	0.55	6190	*_SolidMetal.Step*
+english/player/pl_pain2.wav	player	pcm	22050	1	8	0.34	7650	Player.DamageBody.Victim
+english/player/pl_pain4.wav	player	pcm	22050	1	8	0.32	7020	Player.DamageBody.Victim
+english/player/pl_pain5.wav	player	pcm	22050	1	8	0.32	7020	Player.DamageBody.Victim
+english/player/pl_pain6.wav	player	pcm	22050	1	8	0.34	7650	Player.DamageBody.Victim
+english/player/pl_pain7.wav	player	pcm	22050	1	8	0.29	6520	Player.DamageBody.Victim
+english/player/pl_shell1.wav	player	pcm	22050	1	8	0.22	4904	Bounce.Shell
+english/player/pl_shot1.wav	player	pcm	22050	1	8	0.29	6520	Bounce.ShotgunShell
+english/player/pl_slosh1.wav	player	pcm	11025	1	8	0.89	9892	*_Water.Step* (shallow)
+english/player/pl_slosh2.wav	player	pcm	11025	1	8	0.84	9440	*_Water.Step* (shallow)
+english/player/pl_slosh3.wav	player	pcm	11025	1	8	0.80	8990	*_Water.Step* (shallow)
+english/player/pl_slosh4.wav	player	pcm	11025	1	8	0.69	7688	*_Water.Step* (shallow)
+english/player/pl_snow1.wav	player	pcm	22050	1	8	0.41	9132	*_Snow.Step*
+english/player/pl_snow2.wav	player	pcm	22050	1	8	0.32	7148	*_Snow.Step*
+english/player/pl_snow3.wav	player	pcm	22050	1	8	0.28	6124	*_Snow.Step*
+english/player/pl_snow4.wav	player	pcm	22050	1	8	0.41	9132	*_Snow.Step*
+english/player/pl_snow5.wav	player	pcm	22050	1	8	0.31	6892	*_Snow.Step*
+english/player/pl_snow6.wav	player	pcm	22050	1	8	0.28	6124	*_Snow.Step*
+english/player/pl_step1.wav	player	pcm	11025	1	8	0.27	3064	CT_/T_Concrete.StepLeft/Right (default floor)
+english/player/pl_step2.wav	player	pcm	11025	1	8	0.22	2556	CT_/T_Concrete.StepLeft/Right (default floor)
+english/player/pl_step3.wav	player	pcm	11025	1	8	0.20	2344	CT_/T_Concrete.StepLeft/Right (default floor)
+english/player/pl_step4.wav	player	pcm	11025	1	8	0.26	2948	CT_/T_Concrete.StepLeft/Right (default floor)
+english/player/pl_swim1.wav	player	pcm	11025	1	8	0.60	6794	Player.Swim
+english/player/pl_swim2.wav	player	pcm	11025	1	8	1.44	15992	Player.Swim
+english/player/pl_swim3.wav	player	pcm	11025	1	8	0.78	8758	Player.Swim
+english/player/pl_swim4.wav	player	pcm	11025	1	8	0.90	10044	Player.Swim
+english/player/pl_tile1.wav	player	pcm	11025	1	8	0.23	2636	*_Tile.Step*
+english/player/pl_tile2.wav	player	pcm	11025	1	8	0.23	2626	*_Tile.Step*
+english/player/pl_tile3.wav	player	pcm	11025	1	8	0.26	2990	*_Tile.Step*
+english/player/pl_tile4.wav	player	pcm	11025	1	8	0.25	2840	*_Tile.Step*
+english/player/pl_tile5.wav	player	pcm	11025	1	8	0.31	3554	*_Tile.Step*
+english/player/pl_wade1.wav	player	pcm	22050	1	8	1.20	26620	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
+english/player/pl_wade2.wav	player	pcm	22050	1	8	0.90	19910	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
+english/player/pl_wade3.wav	player	pcm	22050	1	8	1.18	26100	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
+english/player/pl_wade4.wav	player	pcm	22050	1	8	1.16	25814	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
+english/player/sprayer.wav	player	pcm	11025	1	8	0.91	10128	SprayCan.Paint (our graffiti)
+english/radio/blow.wav	radio	pcm	22050	1	8	1.91	42144	agent ct_bombexploding
+english/radio/bombdef.wav	radio	pcm	22050	1	8	1.78	39288	announcer Event.BombDefused
+english/radio/bombpl.wav	radio	pcm	22050	1	8	1.51	33400	announcer Event.BombPlanted
+english/radio/circleback.wav	radio	pcm	22050	1	8	1.15	25586	none
+english/radio/clear.wav	radio	pcm	22050	1	8	1.08	23932	agent clearedarea / bombsite_clear
+english/radio/com_followcom.wav	radio	pcm	22050	1	8	2.02	44572	agent radio_followme
+english/radio/com_getinpos.wav	radio	pcm	22050	1	8	2.22	49108	agent radiobothold
+english/radio/com_go.wav	radio	pcm	22050	1	8	1.33	29436	agent radio_letsgo / radio_go
+english/radio/com_reportin.wav	radio	pcm	22050	1	8	1.52	33670	agent requestreport
+english/radio/ct_affirm.wav	radio	pcm	22050	1	8	0.93	20714	agent affirmative
+english/radio/ct_backup.wav	radio	pcm	22050	1	8	1.32	29270	agent radio_needbackup
+english/radio/ct_coverme.wav	radio	pcm	22050	1	8	0.91	20226	agent coverme
+english/radio/ct_enemys.wav	radio	pcm	22050	1	8	1.24	27462	agent radio_enemyspotted
+english/radio/ct_fireinhole.wav	radio	pcm	22050	1	8	1.43	31674	agent t_grenade / t_flashbang / t_smoke / t_molotov / t_decoy
+english/radio/ct_imhit.wav	radio	pcm	22050	1	8	0.62	13830	agent help / pinneddown
+english/radio/ct_inpos.wav	radio	pcm	22050	1	8	1.05	23256	agent inposition
+english/radio/ct_point.wav	radio	pcm	22050	1	8	1.32	29222	agent radio_letsgo (no point line)
+english/radio/ct_reportingin.wav	radio	pcm	22050	1	8	1.10	24434	agent reportingin
+english/radio/ctwin.wav	radio	pcm	22050	1	8	1.88	41458	announcer Event.CTWin
+english/radio/elim.wav	radio	pcm	22050	1	8	2.51	55548	agent (enemy eliminated; check list)
+english/radio/enemydown.wav	radio	pcm	22050	1	8	1.22	27082	agent enemydown
+english/radio/fallback.wav	radio	pcm	22050	1	8	1.44	31914	agent radiobotfallback
+english/radio/fireassis.wav	radio	pcm	22050	1	8	2.54	56132	agent radio_takingfire
+english/radio/flankthem.wav	radio	pcm	22050	1	8	0.78	17252	none
+english/radio/followme.wav	radio	pcm	22050	1	8	1.12	24752	agent radio_followme
+english/radio/getout.wav	radio	pcm	22050	1	8	1.93	42774	none
+english/radio/go.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo
+english/radio/hitassist.wav	radio	pcm	22050	1	8	2.04	45188	agent radio_takingfire
+english/radio/hosdown.wav	radio	pcm	22050	1	8	1.85	40940	none (hostage killed; no announcer line)
+english/radio/letsgo.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo
+english/radio/locknload.wav	radio	pcm	22050	1	8	1.22	27064	agent radio_locknload
+english/radio/matedown.wav	radio	pcm	22050	1	8	1.54	34136	agent (teammate down; check list)
+english/radio/meetme.wav	radio	pcm	22050	1	8	1.65	36534	none
+english/radio/moveout.wav	radio	pcm	22050	1	8	1.54	34044	agent radio_letsgo
+english/radio/negative.wav	radio	pcm	22050	1	8	0.97	21496	agent negative / disagree
+english/radio/position.wav	radio	pcm	22050	1	8	1.39	30832	agent radiobothold
+english/radio/regroup.wav	radio	pcm	22050	1	8	1.54	34190	agent radiobotregroup
+english/radio/rescued.wav	radio	pcm	22050	1	8	2.06	45578	announcer Event.HostageRescued
+english/radio/roger.wav	radio	pcm	22050	1	8	0.88	19640	agent agree / affirmative
+english/radio/rounddraw.wav	radio	pcm	22050	1	8	1.19	26386	announcer Event.RoundDraw
+english/radio/sticktog.wav	radio	pcm	22050	1	8	1.58	34952	agent radiobotregroup
+english/radio/stormfront.wav	radio	pcm	22050	1	8	1.14	25248	none
+english/radio/takepoint.wav	radio	pcm	22050	1	8	1.24	27492	agent radio_followme (no take-point line)
+english/radio/terwin.wav	radio	pcm	22050	1	8	1.64	36394	announcer Event.TERWin
+english/radio/vip.wav	radio	pcm	22050	1	8	2.52	55598	none (VIP mode)
+english/sentences.txt	data file						21148	
+english/storm/thunder-theme.wav	storm	pcm	11025	1	16	107.65	2373798	none (no direct CS2 equivalent)
+english/weapons/ak47_boltpull.wav	weapons	pcm	22050	1	8	0.34	7524	Weapon_AK47.BoltPull
+english/weapons/ak47_clipin.wav	weapons	pcm	22050	1	8	0.69	15364	Weapon_AK47.Clipin
+english/weapons/ak47_clipout.wav	weapons	pcm	22050	1	8	0.79	17366	Weapon_AK47.Clipout
+english/weapons/ak47-1.wav	weapons	pcm	22050	1	8	1.18	25976	Weapon_AK47.Single
+english/weapons/ak47-2.wav	weapons	pcm	22050	1	8	1.18	25976	Weapon_AK47.Single (alt take)
+english/weapons/aug_boltpull.wav	weapons	pcm	22050	1	8	0.33	7382	Weapon_AUG.Boltpull
+english/weapons/aug_boltslap.wav	weapons	pcm	22050	1	8	0.37	8204	Weapon_AUG.Boltrelease
+english/weapons/aug_clipin.wav	weapons	pcm	22050	1	8	0.48	10530	Weapon_AUG.Clipin
+english/weapons/aug_clipout.wav	weapons	pcm	22050	1	8	0.17	3876	Weapon_AUG.Clipout
+english/weapons/aug_forearm.wav	weapons	pcm	22050	1	8	0.46	10158	Weapon_AUG.Cliphit
+english/weapons/aug-1.wav	weapons	pcm	22050	1	8	1.12	24890	Weapon_AUG.Single
+english/weapons/awp_clipin.wav	weapons	pcm	22050	1	8	0.74	16310	Weapon_AWP.Clipin
+english/weapons/awp_clipout.wav	weapons	pcm	22050	1	8	0.68	15194	Weapon_AWP.Clipout
+english/weapons/awp_deploy.wav	weapons	pcm	22050	1	8	0.51	11196	Weapon_AWP.Draw
+english/weapons/awp1.wav	weapons	pcm	22050	1	8	1.83	40478	Weapon_AWP.Single
+english/weapons/boltdown.wav	weapons	pcm	22050	1	8	0.28	6302	generic bolt (several guns)
+english/weapons/boltpull1.wav	weapons	pcm	22050	1	8	0.26	5822	generic bolt
+english/weapons/boltup.wav	weapons	pcm	22050	1	8	0.25	5560	generic bolt
+english/weapons/c4_beep1.wav	weapons	pcm	22050	1	8	1.50	33206	C4.PlantSound
+english/weapons/c4_beep2.wav	weapons	pcm	22050	1	8	1.50	33206	C4.PlantSound / C4.PlantSoundB (beep; 1.6 speeds up by file)
+english/weapons/c4_beep3.wav	weapons	pcm	22050	1	8	1.50	33206	C4.PlantSound / C4.PlantSoundB (beep; 1.6 speeds up by file)
+english/weapons/c4_beep4.wav	weapons	pcm	22050	1	8	1.50	33206	C4.PlantSound / C4.PlantSoundB (beep; 1.6 speeds up by file)
+english/weapons/c4_beep5.wav	weapons	pcm	22050	1	8	1.50	33132	C4.PlantSound / C4.PlantSoundB (beep; 1.6 speeds up by file)
+english/weapons/c4_click.wav	weapons	pcm	22050	1	8	0.14	3167	c4.keypressquiet
+english/weapons/c4_disarm.wav	weapons	pcm	22050	1	8	0.56	12318	c4.disarmstart
+english/weapons/c4_disarmed.wav	weapons	pcm	22050	1	8	0.24	5505	c4.disarmfinish
+english/weapons/c4_explode1.wav	weapons	pcm	22050	1	8	3.74	82516	c4.explode
+english/weapons/c4_plant.wav	weapons	pcm	22050	1	8	0.16	3608	c4.plant
+english/weapons/clipin1.wav	weapons	pcm	22050	1	8	0.30	6718	generic clip in
+english/weapons/clipout1.wav	weapons	pcm	22050	1	8	0.57	12536	generic clip out
+english/weapons/de_clipin.wav	weapons	pcm	22050	1	8	0.66	14574	Weapon_DEagle.Clipin
+english/weapons/de_clipout.wav	weapons	pcm	22050	1	8	0.35	7864	Weapon_DEagle.Clipout
+english/weapons/de_deploy.wav	weapons	pcm	22050	1	8	0.50	11070	Weapon_DEagle.Draw
+english/weapons/deagle-1.wav	weapons	pcm	22050	1	8	1.15	25386	Weapon_DEagle.Single
+english/weapons/deagle-2.wav	weapons	pcm	22050	1	8	1.43	31734	Weapon_DEagle.Single (alt take)
+english/weapons/dryfire_pistol.wav	weapons	pcm	22050	1	8	0.12	2620	Default.ClipEmpty_Pistol
+english/weapons/dryfire_rifle.wav	weapons	pcm	22050	1	8	0.14	3062	Default.ClipEmpty_Rifle
+english/weapons/elite_clipout.wav	weapons	pcm	22050	1	8	0.55	12100	Weapon_ELITE.Clipout
+english/weapons/elite_deploy.wav	weapons	pcm	22050	1	8	0.56	12374	Weapon_ELITE.Draw
+english/weapons/elite_fire.wav	weapons	pcm	22050	1	8	1.30	28676	Weapon_ELITE.Single
+english/weapons/elite_leftclipin.wav	weapons	pcm	22050	1	8	0.66	14692	Weapon_ELITE.Lclipin
+english/weapons/elite_reloadstart.wav	weapons	pcm	22050	1	8	0.99	21890	Weapon_ELITE.Reloadstart
+english/weapons/elite_rightclipin.wav	weapons	pcm	22050	1	8	0.52	11402	Weapon_ELITE.Rclipin
+english/weapons/elite_sliderelease.wav	weapons	pcm	22050	1	8	0.33	7496	Weapon_ELITE.Sliderelease
+english/weapons/elite_twirl.wav	weapons	pcm	22050	1	8	0.56	12374	Weapon_ELITE.TauntTwirl
+english/weapons/famas_boltpull.wav	weapons	pcm	22050	1	8	0.33	7382	Weapon_FAMAS.BoltBack
+english/weapons/famas_boltslap.wav	weapons	pcm	22050	1	8	0.37	8204	Weapon_FAMAS.BoltForward
+english/weapons/famas_clipin.wav	weapons	pcm	22050	1	8	0.48	10530	Weapon_FAMAS.Clipin
+english/weapons/famas_clipout.wav	weapons	pcm	22050	1	8	0.17	3876	Weapon_FAMAS.Clipout
+english/weapons/famas_forearm.wav	weapons	pcm	22050	1	8	0.46	10158	Weapon_FAMAS.ClipHit
+english/weapons/famas-1.wav	weapons	pcm	22050	1	16	1.40	61820	Weapon_FAMAS.Single
+english/weapons/famas-2.wav	weapons	pcm	22050	1	16	1.40	61820	Weapon_FAMAS.Single (alt take)
+english/weapons/famas-burst.wav	weapons	pcm	22050	1	16	1.48	65596	Weapon_FAMAS.Single (burst)
+english/weapons/fiveseven_clipin.wav	weapons	pcm	22050	1	8	0.99	21922	Weapon_FiveSeven.Clipin
+english/weapons/fiveseven_clipout.wav	weapons	pcm	22050	1	8	0.37	8188	Weapon_FiveSeven.Clipout
+english/weapons/fiveseven_slidepull.wav	weapons	pcm	22050	1	8	0.24	5316	Weapon_FiveSeven.Slideback
+english/weapons/fiveseven_sliderelease.wav	weapons	pcm	22050	1	8	0.43	9688	Weapon_FiveSeven.Sliderelease
+english/weapons/fiveseven-1.wav	weapons	pcm	22050	1	8	0.57	12674	Weapon_FiveSeven.Single
+english/weapons/flashbang-1.wav	weapons	pcm	22050	1	8	1.41	31244	Flashbang.Explode
+english/weapons/flashbang-2.wav	weapons	pcm	22050	1	8	1.41	31244	Flashbang.Explode
+english/weapons/g3sg1_clipin.wav	weapons	pcm	22050	1	8	0.63	14102	Weapon_G3SG1.Clipin
+english/weapons/g3sg1_clipout.wav	weapons	pcm	22050	1	8	0.57	12536	Weapon_G3SG1.Clipout
+english/weapons/g3sg1_slide.wav	weapons	pcm	22050	1	8	0.50	11176	Weapon_G3SG1.SlideBack
+english/weapons/g3sg1-1.wav	weapons	pcm	22050	1	8	1.50	33130	Weapon_G3SG1.Single
+english/weapons/galil_boltpull.wav	weapons	pcm	22050	1	16	0.33	14584	Weapon_GalilAR.BoltBack
+english/weapons/galil_clipin.wav	weapons	pcm	22050	1	8	0.18	3966	Weapon_GalilAR.Clipin
+english/weapons/galil_clipout.wav	weapons	pcm	22050	1	8	0.15	3418	Weapon_GalilAR.Clipout
+english/weapons/galil-1.wav	weapons	pcm	22050	1	16	1.62	71788	Weapon_GalilAR.Single
+english/weapons/galil-2.wav	weapons	pcm	22050	1	16	1.62	71788	Weapon_GalilAR.Single (alt take)
+english/weapons/generic_reload.wav	weapons	pcm	22050	1	8	1.56	34464	generic reload
+english/weapons/generic_shot_reload.wav	weapons	pcm	22050	1	8	1.37	30296	shotgun reload
+english/weapons/glock18-1.wav	weapons	pcm	22050	1	8	1.00	22190	Weapon_Glock.Single
+english/weapons/glock18-2.wav	weapons	pcm	22050	1	8	0.94	20908	Weapon_Glock.Single (alt take)
+english/weapons/grenade_hit1.wav	weapons	pcm	22050	1	8	0.49	10830	HEGrenade.Bounce / Flashbang.Bounce / SmokeGrenade.Bounce
+english/weapons/grenade_hit2.wav	weapons	pcm	22050	1	8	0.49	10830	HEGrenade.Bounce / Flashbang.Bounce / SmokeGrenade.Bounce
+english/weapons/grenade_hit3.wav	weapons	pcm	22050	1	8	0.49	10830	HEGrenade.Bounce / Flashbang.Bounce / SmokeGrenade.Bounce
+english/weapons/he_bounce-1.wav	weapons	pcm	22050	1	8	0.49	10746	HEGrenade.Bounce
+english/weapons/headshot2.wav	weapons	pcm	22050	1	8	1.01	22312	Player.DeathHeadShot.*
+english/weapons/hegrenade-1.wav	weapons	pcm	22050	1	8	3.26	71854	BaseGrenade.Explode
+english/weapons/hegrenade-2.wav	weapons	pcm	22050	1	8	3.26	71854	BaseGrenade.Explode
+english/weapons/knife_deploy1.wav	weapons	pcm	22050	1	8	0.34	7614	Weapon_Knife.Deploy
+english/weapons/knife_hit1.wav	weapons	pcm	22050	1	8	0.48	10624	Weapon_Knife.Hit
+english/weapons/knife_hit2.wav	weapons	pcm	22050	1	8	0.60	13284	Weapon_Knife.Hit
+english/weapons/knife_hit3.wav	weapons	pcm	22050	1	8	0.41	9080	Weapon_Knife.Hit
+english/weapons/knife_hit4.wav	weapons	pcm	22050	1	8	0.60	13284	Weapon_Knife.Hit
+english/weapons/knife_hitwall1.wav	weapons	pcm	22050	1	8	0.49	10858	Weapon_Knife.HitWall
+english/weapons/knife_slash1.wav	weapons	pcm	22050	1	8	0.13	2916	Weapon_Knife.Slash
+english/weapons/knife_slash2.wav	weapons	pcm	22050	1	8	0.13	2916	Weapon_Knife.Slash
+english/weapons/knife_stab.wav	weapons	pcm	22050	1	8	1.33	29418	Weapon_Knife.Stab
+english/weapons/m249_boxin.wav	weapons	pcm	22050	1	8	1.26	27850	Weapon_M249.Boxin
+english/weapons/m249_boxout.wav	weapons	pcm	22050	1	8	1.94	42964	Weapon_M249.Boxout
+english/weapons/m249_chain.wav	weapons	pcm	22050	1	8	1.04	22916	Weapon_M249.Chain
+english/weapons/m249_coverdown.wav	weapons	pcm	22050	1	8	0.27	6108	Weapon_M249.Coverdown
+english/weapons/m249_coverup.wav	weapons	pcm	22050	1	8	0.37	8208	Weapon_M249.Coverup
+english/weapons/m249-1.wav	weapons	pcm	22050	1	8	1.14	25268	Weapon_M249.Single
+english/weapons/m249-2.wav	weapons	pcm	22050	1	8	1.14	25268	Weapon_M249.Single (alt take)
+english/weapons/m3_insertshell.wav	weapons	pcm	22050	1	8	0.37	8100	Weapon_Nova.Insertshell
+english/weapons/m3_pump.wav	weapons	pcm	22050	1	8	0.36	7930	Weapon_Nova.Pump
+english/weapons/m3-1.wav	weapons	pcm	22050	1	8	1.60	35354	Weapon_Nova.Single
+english/weapons/m4a1_boltpull.wav	weapons	pcm	22050	1	8	0.29	6382	Weapon_M4A1.BoltBack
+english/weapons/m4a1_clipin.wav	weapons	pcm	22050	1	8	0.54	12038	Weapon_M4A1.Clipin
+english/weapons/m4a1_clipout.wav	weapons	pcm	22050	1	8	0.42	9228	Weapon_M4A1.Clipout
+english/weapons/m4a1_deploy.wav	weapons	pcm	22050	1	8	0.42	9286	Weapon_M4A1.Draw
+english/weapons/m4a1_silencer_off.wav	weapons	pcm	22050	1	8	0.59	13148	Weapon_M4A1.Silencer_Off
+english/weapons/m4a1_silencer_on.wav	weapons	pcm	22050	1	8	0.63	14026	Weapon_M4A1.Silencer_On
+english/weapons/m4a1_unsil-1.wav	weapons	pcm	22050	1	8	0.85	18704	Weapon_M4A4.Single
+english/weapons/m4a1_unsil-2.wav	weapons	pcm	22050	1	8	0.50	11098	Weapon_M4A4.Single
+english/weapons/m4a1-1.wav	weapons	pcm	22050	1	8	0.85	18936	Weapon_M4A1.Silenced
+english/weapons/mac10_boltpull.wav	weapons	pcm	22050	1	8	0.24	5228	Weapon_MAC10.BoltBack
+english/weapons/mac10_clipin.wav	weapons	pcm	22050	1	8	0.73	16120	Weapon_MAC10.Clipin
+english/weapons/mac10_clipout.wav	weapons	pcm	22050	1	8	0.17	3870	Weapon_MAC10.Clipout
+english/weapons/mac10-1.wav	weapons	pcm	22050	1	8	0.39	8794	Weapon_MAC10.Single
+english/weapons/mp5_clipin.wav	weapons	pcm	22050	1	8	0.62	13726	Weapon_MP5.Clipin
+english/weapons/mp5_clipout.wav	weapons	pcm	22050	1	8	0.64	14174	Weapon_MP5.Clipout
+english/weapons/mp5_slideback.wav	weapons	pcm	22050	1	8	0.28	6312	Weapon_MP5.Slideback
+english/weapons/mp5-1.wav	weapons	pcm	22050	1	8	1.07	23746	Weapon_MP5.Single
+english/weapons/mp5-2.wav	weapons	pcm	22050	1	8	1.07	23746	Weapon_MP5.Single (alt take)
+english/weapons/p228_clipin.wav	weapons	pcm	22050	1	8	0.66	14692	Weapon_P250.Clipin
+english/weapons/p228_clipout.wav	weapons	pcm	22050	1	8	0.37	8188	Weapon_P250.Clipout
+english/weapons/p228_slidepull.wav	weapons	pcm	22050	1	8	0.43	9628	Weapon_P250.Slideback
+english/weapons/p228_sliderelease.wav	weapons	pcm	22050	1	8	0.50	11094	Weapon_P250.Sliderelease
+english/weapons/p228-1.wav	weapons	pcm	22050	1	8	0.70	15408	Weapon_P250.Single
+english/weapons/p90_boltpull.wav	weapons	pcm	22050	1	8	0.40	8962	Weapon_P90.BoltBack
+english/weapons/p90_clipin.wav	weapons	pcm	22050	1	8	0.44	9732	Weapon_P90.Clipin
+english/weapons/p90_clipout.wav	weapons	pcm	22050	1	8	0.47	10396	Weapon_P90.Clipout
+english/weapons/p90_cliprelease.wav	weapons	pcm	22050	1	8	0.36	8116	Weapon_P90.Cliprelease
+english/weapons/p90-1.wav	weapons	pcm	22050	1	8	0.63	14024	Weapon_P90.Single
+english/weapons/pinpull.wav	weapons	pcm	22050	1	8	0.12	2809	HEGrenade.PullPin / Flashbang.PullPin / SmokeGrenade.PullPin
+english/weapons/ric_conc-1.wav	weapons	pcm	22050	1	8	0.58	12802	FX_RicochetSound.Ricochet
+english/weapons/ric_conc-2.wav	weapons	pcm	22050	1	8	0.57	12588	FX_RicochetSound.Ricochet
+english/weapons/ric_metal-1.wav	weapons	pcm	22050	1	8	0.73	16118	FX_RicochetSound.Ricochet
+english/weapons/ric_metal-2.wav	weapons	pcm	22050	1	8	0.56	12372	FX_RicochetSound.Ricochet
+english/weapons/scout_bolt.wav	weapons	pcm	22050	1	8	0.58	12900	Weapon_SSG08.BoltBack
+english/weapons/scout_clipin.wav	weapons	pcm	22050	1	8	0.63	14118	Weapon_SSG08.Clipin
+english/weapons/scout_clipout.wav	weapons	pcm	22050	1	8	0.49	11026	Weapon_SSG08.Clipout
+english/weapons/scout_fire-1.wav	weapons	pcm	22050	1	16	1.30	57392	Weapon_SSG08.Single
+english/weapons/sg_explode.wav	weapons	pcm	22050	1	8	1.01	22322	BaseSmokeEffect.Sound
+english/weapons/sg550_boltpull.wav	weapons	pcm	22050	1	8	0.30	6648	Weapon_SCAR20.BoltBack
+english/weapons/sg550_clipin.wav	weapons	pcm	22050	1	8	0.82	18060	Weapon_SCAR20.Clipin
+english/weapons/sg550_clipout.wav	weapons	pcm	22050	1	8	0.42	9228	Weapon_SCAR20.Clipout
+english/weapons/sg550-1.wav	weapons	pcm	22050	1	8	1.92	42366	Weapon_SCAR20.Single
+english/weapons/sg552_boltpull.wav	weapons	pcm	22050	1	8	0.67	14778	Weapon_sg556.BoltBack
+english/weapons/sg552_clipin.wav	weapons	pcm	22050	1	8	0.37	8294	Weapon_sg556.Clipin
+english/weapons/sg552_clipout.wav	weapons	pcm	22050	1	8	0.71	15810	Weapon_sg556.Clipout
+english/weapons/sg552-1.wav	weapons	pcm	22050	1	8	1.11	24492	Weapon_sg556.Single
+english/weapons/sg552-2.wav	weapons	pcm	22050	1	8	1.10	24294	Weapon_sg556.Single (alt take)
+english/weapons/slideback1.wav	weapons	pcm	22050	1	8	0.26	5778	generic slide
+english/weapons/sliderelease1.wav	weapons	pcm	22050	1	8	0.47	10534	generic slide
+english/weapons/tmp-1.wav	weapons	pcm	22050	1	8	0.25	5628	Weapon_MP9.Single
+english/weapons/tmp-2.wav	weapons	pcm	22050	1	8	0.25	5628	Weapon_MP9.Single (alt take)
+english/weapons/ump45_boltslap.wav	weapons	pcm	22050	1	8	0.29	6584	Weapon_UMP45.BoltForward
+english/weapons/ump45_clipin.wav	weapons	pcm	22050	1	8	0.62	13818	Weapon_UMP45.Clipin
+english/weapons/ump45_clipout.wav	weapons	pcm	22050	1	8	0.17	3870	Weapon_UMP45.Clipout
+english/weapons/ump45-1.wav	weapons	pcm	22050	1	8	0.70	15462	Weapon_UMP45.Single
+english/weapons/usp_clipin.wav	weapons	pcm	22050	1	8	0.66	14692	Weapon_USP.Clipin
+english/weapons/usp_clipout.wav	weapons	pcm	22050	1	8	0.37	8188	Weapon_USP.Clipout
+english/weapons/usp_silencer_off.wav	weapons	pcm	22050	1	8	1.16	25640	Weapon_USP.DetachSilencer
+english/weapons/usp_silencer_on.wav	weapons	pcm	22050	1	8	1.40	31024	Weapon_USP.AttachSilencer
+english/weapons/usp_slideback.wav	weapons	pcm	22050	1	8	0.30	6604	Weapon_USP.Slideback
+english/weapons/usp_sliderelease.wav	weapons	pcm	22050	1	8	0.47	10534	Weapon_USP.Sliderelease
+english/weapons/usp_unsil-1.wav	weapons	pcm	22050	1	8	0.76	16960	Weapon_USP.Single
+english/weapons/usp1.wav	weapons	pcm	22050	1	8	0.26	5845	Weapon_USP.SilencedShot
+english/weapons/usp2.wav	weapons	pcm	22050	1	8	0.26	5845	Weapon_USP.SilencedShot
+english/weapons/xm1014-1.wav	weapons	pcm	22050	1	8	0.98	21652	Weapon_XM1014.Single
+english/weapons/zoom.wav	weapons	pcm	22050	1	8	0.36	8016	Weapon_AWP.Zoom / Weapon_SCAR20.Zoom / Weapon_AUG.ZoomIn
+turkish/hostage/hos1.wav	hostage	pcm	22050	1	8	1.49	32958	Hostage.Pain / Hostage.StartFollowCT
+turkish/hostage/hos2.wav	hostage	pcm	22050	1	8	1.09	24140	Hostage.Pain / Hostage.StartFollowCT
+turkish/hostage/hos3.wav	hostage	pcm	22050	1	8	1.59	35196	Hostage.Pain / Hostage.StartFollowCT
+turkish/hostage/hos4.wav	hostage	pcm	22050	1	8	1.48	32794	Hostage.Pain / Hostage.StartFollowCT
+turkish/hostage/hos5.wav	hostage	pcm	22050	1	8	0.75	16708	Hostage.Pain / Hostage.StartFollowCT
+turkish/radio/blow.wav	radio	pcm	22050	1	8	1.95	43048	agent ct_bombexploding
+turkish/radio/bombdef.wav	radio	pcm	22050	1	8	1.57	34796	announcer Event.BombDefused
+turkish/radio/bombpl.wav	radio	pcm	22050	1	8	1.37	30240	announcer Event.BombPlanted
+turkish/radio/circleback.wav	radio	pcm	22050	1	8	1.52	33578	none
+turkish/radio/clear.wav	radio	pcm	22050	1	8	0.93	20716	agent clearedarea / bombsite_clear
+turkish/radio/com_followcom.wav	radio	pcm	22050	1	8	1.31	29054	agent radio_followme
+turkish/radio/com_getinpos.wav	radio	pcm	22050	1	8	1.88	41538	agent radiobothold
+turkish/radio/com_go.wav	radio	pcm	22050	1	8	1.07	23704	agent radio_letsgo / radio_go
+turkish/radio/com_reportin.wav	radio	pcm	22050	1	8	1.16	25608	agent requestreport
+turkish/radio/ct_affirm.wav	radio	pcm	22050	1	8	0.80	17790	agent affirmative
+turkish/radio/ct_backup.wav	radio	pcm	22050	1	8	1.42	31480	agent radio_needbackup
+turkish/radio/ct_coverme.wav	radio	pcm	22050	1	8	0.93	20704	agent coverme
+turkish/radio/ct_enemys.wav	radio	pcm	22050	1	8	1.11	24502	agent radio_enemyspotted
+turkish/radio/ct_fireinhole.wav	radio	pcm	22050	1	8	0.98	21774	agent t_grenade / t_flashbang / t_smoke / t_molotov / t_decoy
+turkish/radio/ct_imhit.wav	radio	pcm	22050	1	8	0.95	21138	agent help / pinneddown
+turkish/radio/ct_inpos.wav	radio	pcm	22050	1	8	0.87	19338	agent inposition
+turkish/radio/ct_point.wav	radio	pcm	22050	1	8	0.92	20484	agent radio_letsgo (no point line)
+turkish/radio/ct_reportingin.wav	radio	pcm	22050	1	8	1.17	25998	agent reportingin
+turkish/radio/ctwin.wav	radio	pcm	22050	1	8	1.70	37512	announcer Event.CTWin
+turkish/radio/custom/blow.wav	radio (custom variant)	pcm	22050	1	8	1.95	43060	agent ct_bombexploding
+turkish/radio/custom/clear.wav	radio (custom variant)	pcm	22050	1	8	0.93	20728	agent clearedarea / bombsite_clear
+turkish/radio/custom/com_getinpos.wav	radio (custom variant)	pcm	22050	1	8	1.88	41550	agent radiobothold
+turkish/radio/custom/com_go.wav	radio (custom variant)	pcm	22050	1	8	1.07	23716	agent radio_letsgo / radio_go
+turkish/radio/custom/com_reportin.wav	radio (custom variant)	pcm	22050	1	8	1.16	25620	agent requestreport
+turkish/radio/custom/ct_backup.wav	radio (custom variant)	pcm	22050	1	8	1.42	31492	agent radio_needbackup
+turkish/radio/custom/ct_coverme.wav	radio (custom variant)	pcm	22050	1	8	0.93	20716	agent coverme
+turkish/radio/custom/ct_enemys.wav	radio (custom variant)	pcm	22050	1	8	1.11	24514	agent radio_enemyspotted
+turkish/radio/custom/ct_fireinhole.wav	radio (custom variant)	pcm	22050	1	8	0.98	21786	agent t_grenade / t_flashbang / t_smoke / t_molotov / t_decoy
+turkish/radio/custom/ct_inpos.wav	radio (custom variant)	pcm	22050	1	8	0.87	19350	agent inposition
+turkish/radio/custom/ct_reportingin.wav	radio (custom variant)	pcm	22050	1	8	1.17	26010	agent reportingin
+turkish/radio/custom/enemydown.wav	radio (custom variant)	pcm	22050	1	8	1.02	22676	agent enemydown
+turkish/radio/custom/fallback.wav	radio (custom variant)	pcm	22050	1	8	1.15	25558	agent radiobotfallback
+turkish/radio/custom/fireassis.wav	radio (custom variant)	pcm	22050	1	8	1.78	39476	agent radio_takingfire
+turkish/radio/custom/followme.wav	radio (custom variant)	pcm	22050	1	8	1.13	25122	agent radio_followme
+turkish/radio/custom/negative.wav	radio (custom variant)	pcm	22050	1	8	0.77	17048	agent negative / disagree
+turkish/radio/custom/position.wav	radio (custom variant)	pcm	22050	1	8	1.03	22764	agent radiobothold
+turkish/radio/custom/regroup.wav	radio (custom variant)	pcm	22050	1	8	1.36	30112	agent radiobotregroup
+turkish/radio/custom/roger.wav	radio (custom variant)	pcm	22050	1	8	1.29	28658	agent agree / affirmative
+turkish/radio/custom/sticktog.wav	radio (custom variant)	pcm	22050	1	8	1.34	29706	agent radiobotregroup
+turkish/radio/custom/stormfront.wav	radio (custom variant)	pcm	22050	1	8	1.02	22614	none
+turkish/radio/custom/takepoint.wav	radio (custom variant)	pcm	22050	1	8	1.01	22356	agent radio_followme (no take-point line)
+turkish/radio/elim.wav	radio	pcm	22050	1	8	1.30	28858	agent (enemy eliminated; check list)
+turkish/radio/enemydown.wav	radio	pcm	22050	1	8	1.02	22664	agent enemydown
+turkish/radio/fallback.wav	radio	pcm	22050	1	8	1.15	25546	agent radiobotfallback
+turkish/radio/fireassis.wav	radio	pcm	22050	1	8	1.78	39464	agent radio_takingfire
+turkish/radio/flankthem.wav	radio	pcm	22050	1	8	1.17	25828	none
+turkish/radio/followme.wav	radio	pcm	22050	1	8	1.13	25110	agent radio_followme
+turkish/radio/getout.wav	radio	pcm	22050	1	8	1.21	26904	none
+turkish/radio/go.wav	radio	pcm	22050	1	8	0.85	18956	agent radio_letsgo
+turkish/radio/hitassis.wav	radio	pcm	22050	1	8	1.38	30480	agent radio_takingfire
+turkish/radio/hitassist.wav	radio	pcm	22050	1	8	1.38	30554	agent radio_takingfire
+turkish/radio/hosdown.wav	radio	pcm	22050	1	8	1.03	22798	none (hostage killed; no announcer line)
+turkish/radio/letsgo.wav	radio	pcm	22050	1	8	1.21	26800	agent radio_letsgo
+turkish/radio/locknload.wav	radio	pcm	22050	1	8	1.13	25046	agent radio_locknload
+turkish/radio/matedown.wav	radio	pcm	22050	1	8	1.16	25726	agent (teammate down; check list)
+turkish/radio/meetme.wav	radio	pcm	22050	1	8	1.32	29290	none
+turkish/radio/moveout.wav	radio	pcm	22050	1	8	1.29	28586	agent radio_letsgo
+turkish/radio/negative.wav	radio	pcm	22050	1	8	0.77	17036	agent negative / disagree
+turkish/radio/position.wav	radio	pcm	22050	1	8	1.03	22752	agent radiobothold
+turkish/radio/regroup.wav	radio	pcm	22050	1	8	1.36	30100	agent radiobotregroup
+turkish/radio/rescued.wav	radio	pcm	22050	1	8	1.49	33052	announcer Event.HostageRescued
+turkish/radio/roger.wav	radio	pcm	22050	1	8	1.29	28646	agent agree / affirmative
+turkish/radio/rounddraw.wav	radio	pcm	22050	1	8	1.34	29760	announcer Event.RoundDraw
+turkish/radio/sticktog.wav	radio	pcm	22050	1	8	1.34	29694	agent radiobotregroup
+turkish/radio/stormfront.wav	radio	pcm	22050	1	8	1.02	22602	none
+turkish/radio/takepoint.wav	radio	pcm	22050	1	8	1.01	22344	agent radio_followme (no take-point line)
+turkish/radio/terwin.wav	radio	pcm	22050	1	8	1.61	35596	announcer Event.TERWin
+turkish/radio/vip.wav	radio	pcm	22050	1	8	1.37	30276	none (VIP mode)
