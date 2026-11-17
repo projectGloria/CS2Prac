@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron'
+import { execFile } from 'node:child_process'
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
@@ -22,7 +23,7 @@ import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
 import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
-import { installClientHud, installGraffitiTextures } from './setup/clientHud'
+import { installClientHud, installGraffitiTextures, installSkyThumbs } from './setup/clientHud'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
@@ -140,10 +141,41 @@ async function installSkinWindow() {
     if (r === 'installed')
       send(IPC.serverLog, '[cs2prac] skin window installed into CS2 – restart CS2 if it is running, then press K in game')
     else if (r === 'missing') send(IPC.serverLog, '[cs2prac] skin window files missing (npm run build:hud) – K opens the text menu')
+    void installSkyImages(client.dir)
   } catch (e) {
     logError('skin window install', e)
     send(IPC.serverLog, `[cs2prac] could not install the skin window: ${e instanceof Error ? e.message : e}`)
   }
+}
+
+/** The L window's sky thumbnails (rendered and compiled once, in the background; ~40 s the first time). */
+let skyImagesJob: Promise<void> | null = null
+function installSkyImages(cs2Dir: string) {
+  skyImagesJob ??= (async () => {
+    try {
+      const jpgs = await models().skyFiles(SKIES.map((s) => s.value).filter(Boolean))
+      const r = await installSkyThumbs(
+        cs2Dir,
+        jpgs,
+        (exe, args) =>
+          new Promise((resolve, reject) =>
+            execFile(exe, args, { windowsHide: true, timeout: 300_000 }, (err, stdout) =>
+              err && !stdout ? reject(err) : resolve()
+            )
+          )
+      )
+      if (r === 'installed') {
+        hudUpdated = true
+        send(IPC.serverLog, '[cs2prac] sky thumbnails installed for the L window – restart CS2 to see them')
+      } else if (r === 'nocompiler')
+        log('hud', 'sky thumbnails skipped: CS2 Workshop Tools (resourcecompiler.exe) not installed')
+    } catch (e) {
+      logError('sky thumbnails', e)
+    } finally {
+      skyImagesJob = null
+    }
+  })()
+  return skyImagesJob
 }
 
 /**

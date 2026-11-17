@@ -173,6 +173,14 @@ export class ModelStore {
    * tool run. Skies that failed once aren't retried until the app restarts.
    */
   async skies(materials: string[]): Promise<Record<string, string>> {
+    const result: Record<string, string> = {}
+    for (const [m, file] of Object.entries(await this.skyFiles(materials)))
+      result[m] = 'data:image/jpeg;base64,' + (await readFile(file)).toString('base64')
+    return result
+  }
+
+  /** Same as skies(), but material -> the jpg file (for the in-game window's compiled thumbnails, clientHud.ts) */
+  async skyFiles(materials: string[]): Promise<Record<string, string>> {
     const env = await this.env()
     const dir = join(await this.dir(env), 'skies')
     await mkdir(dir, { recursive: true })
@@ -203,7 +211,7 @@ export class ModelStore {
     const result: Record<string, string> = {}
     for (const m of materials) {
       const file = join(dir, skyThumbName(m))
-      if (existsSync(file)) result[m] = 'data:image/jpeg;base64,' + (await readFile(file)).toString('base64')
+      if (existsSync(file)) result[m] = file
     }
     return result
   }

@@ -20,8 +20,13 @@
 				<Button id="ps_close" class="pk-close"><Panel class="ps-ic ps-close-ic ic-cancel" hittest="false" /></Button>
 			</Panel>
 
-			<Panel class="ps-list" hittest="true">
+			<Panel id="ps_list" class="ps-list" hittest="true">
 <!--PS_ROWS-->
+			</Panel>
+
+			<!-- Sky tab: one tile per SettingsHud.cs Skies entry (tile 0 = map default), thumbnails from the app -->
+			<Panel id="ps_skygrid" class="ps-list ps-skygrid" hittest="true">
+<!--PS_SKY_TILES-->
 			</Panel>
 
 			<Panel class="pk-footer" hittest="false">

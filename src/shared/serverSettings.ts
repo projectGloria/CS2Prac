@@ -21,6 +21,8 @@ export interface SettingDef {
   name: string
   sub: string
   options: SettingOption[]
+  /** any number in this range may be typed (the options are shortcuts) */
+  input?: { min: number; max: number; unit: string }
 }
 
 const offOn: SettingOption[] = [
@@ -82,6 +84,17 @@ export const SETTINGS: SettingDef[] = [
   { id: 'noflash', tab: 'practice', name: 'No flash', sub: "Flashbangs don't blind players", options: offOn },
   { id: 'god', tab: 'practice', name: 'God mode', sub: 'Players take no damage', options: offOn },
   { id: 'bhop', tab: 'practice', name: 'Auto bunnyhop', sub: 'Hold space to keep hopping', options: offOn },
+  {
+    id: 'spraycooldown',
+    tab: 'practice',
+    name: 'Graffiti timer',
+    sub: 'Seconds between two sprays (0 = no limit)',
+    options: [
+      { label: 'No limit', value: '0' },
+      ...['3', '5', '10', '30', '60'].map((v) => ({ label: `${v} s`, value: v }))
+    ],
+    input: { min: 0, max: 3600, unit: 's' }
+  },
 
   { id: 'friendlyfire', tab: 'server', name: 'Friendly fire', sub: 'mp_friendlyfire', options: offOn },
   { id: 'falldamage', tab: 'server', name: 'Fall damage', sub: 'sv_falldamage_scale', options: offOn },
@@ -174,9 +187,27 @@ function cleanMap(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object') return out
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const def = byId.get(k)
-    if (def && typeof v === 'string' && def.options.some((o) => o.value === v)) out[k] = v
+    if (!def || typeof v !== 'string') continue
+    if (def.options.some((o) => o.value === v)) out[k] = v
+    else if (def.input) {
+      const n = parseInputValue(def, v)
+      if (n != null) out[k] = n
+    }
   }
   return out
+}
+
+/**
+ * A typed value of an input setting as stored ("7", "2.5"), or null when it isn't a number in range.
+ * At most two decimals, like the plugin's SprayCooldownText.
+ */
+export function parseInputValue(def: SettingDef, raw: string): string | null {
+  if (!def.input) return null
+  const t = raw.trim().replace(',', '.')
+  if (!/^\d+(\.\d+)?$/.test(t)) return null
+  const n = Math.round(Number(t) * 100) / 100
+  if (!Number.isFinite(n) || n < def.input.min || n > def.input.max) return null
+  return String(n)
 }
 
 /** Parses server_prefs.json: unknown ids and values outside a setting's options are dropped. */
@@ -216,5 +247,8 @@ export function clearMap(prefs: ServerPrefs, map: string): ServerPrefs {
 
 /** Display text of a stored value. */
 export function optionLabel(id: string, value: string): string {
-  return byId.get(id)?.options.find((o) => o.value === value)?.label ?? value
+  const def = byId.get(id)
+  const opt = def?.options.find((o) => o.value === value)
+  if (opt) return opt.label
+  return def?.input ? `${value} ${def.input.unit}` : value
 }

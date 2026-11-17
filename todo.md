@@ -374,6 +374,51 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
       body_legacy group, ByMykel/items_game flag no Doppler as legacy, the material files are shared per finish
       (weapons/paints/legacy/am_*.vcompmat_c). Open question for the user: does a re-pick / `css_prac_reload` fix it
       (timing), or is it plain every time (data)?
+## v1.6.0 test fixes (user report 2026-11-17, screenshots in assets/Screenshots/v1.6.0)
+- [x] 1 Radio voice stayed male with a female agent: ApplyAgent now also sets the pawn's StrVOPrefix,
+      HasFemaleVoice and the controller's CharacterDefIndex from the agent's vo_prefix (AgentView VoiceSet).
+- [ ] 2 Buy menu (B) shows the account's own skins and 3 team select (M) shows default agents: both are drawn by
+      the client from the Steam inventory (GC), not from the server. Changing them would mean touching the client or
+      the account: not possible under the "no account risk" rule. Explained to the user.
+- [x] 4 K window side list shows the picked skin's icon (weapons, knives).
+- [x] 5 K opens on the held gun with its picked skin in the second visible row (FirstRow; "▲ Show earlier" chip).
+- [x] 6 L window Sky tab = thumbnail tiles (ps_skygrid, 5 per row). The app renders the thumbnails from the user's
+      VPK and compiles them with their resourcecompiler into the client's panorama/images/custom_game/cs2prac_skies
+      (installSkyThumbs). Without Workshop Tools: names on dark tiles. **User check in game.**
+- [x] 7 Search for stickers/music/graffiti/pins: on-screen keyboard (Panorama has no text input), filters per key.
+- [x] 8 Tabs without a side list use the full width (pk_win class noside); the grid no longer runs under the footer.
+- [x] 9 Stickers picked in the K window landed on the default skin: they now keep the weapon's picked paint.
+- [x] 10 Sticker and charm images in the K window (.pk-img.k<def> / .c<def>; vcss now ~2.3 MB).
+- [ ] **User check in game** of 1, 4–10 (restart CS2 once for the new layout).
+
+## v1.6.0 second test (user report 2026-11-17, screenshots in assets/Screenshots/v1.6.0)
+- [x] 1 After picking hand wraps every other glove showed wrapped: the pawn's model is swapped away and back before
+      new gloves are set (ResetHandsModel), so the client rebuilds the hands.
+- [x] 2 Graffiti timer jumped after a map change ("Next graffiti in 495.8 s"): the cooldown used Server.CurrentTime,
+      which restarts every map. Now a wall clock, cleared on map start. New setting "Graffiti timer" (K window
+      graffiti tab, timer rows on the left, admins only; moved from L's Practice tab on request; the app's Server settings has a number box; 0 = no limit, up to 3600 s).
+- [x] 3 Spray sound but no graffiti until a map change: sprays are tracked by entity handle (a stale wrapper could
+      remove the new decal that reused its index), old ones are pruned before the new one spawns, the decal sits
+      1 unit off the surface, and every spray is logged. **Cause not proven: user check in game.**
+- [x] 4 Bots wore the user's agent and skins: every bot now rolls its own random loadout (BotLoadouts.cs: agent,
+      knife, gloves, a skin on every gun, sometimes StatTrak, pin, music kit). Stand-ins still show the player's.
+- [x] 5 A picked sticker only showed after a weapon switch: the re-given weapon was skinned twice (GiveNamedItem
+      hook, then OnEntitySpawned a frame later wiped the attributes and gave a new item id). The second pass now
+      re-sets the attributes in place. **User check in game**, including "some weapons get no stickers at all".
+- [x] Bots stood empty-handed after the gun swap (screenshot "bot cannot hold the weapon"): the removed gun was the
+      held one. Server-side the bot always held the new gun (live test 27115), so the same-tick remove + give looked
+      wrong only on the client. Now like the stand-in pose swap: hands emptied (networked), new guns given 0.1 s later.
+      **User check in game.**
+- [x] User check: 1, 2 and most of 4 work; 3 and 5 not fixed, bots all carried the same guns.
+- [x] 3 again: the failing sprays (log: #640–642) came on de_inferno before any old spray was removed, so the
+      5-spray cleanup is not it; the next map's (cs_shelter) drew. Decal EndPos now 1 unit inside the surface, in case
+      the client's start → end trace stops short of it. **Guess: user check on de_inferno right after a start.**
+      If it still fails: try `retry` in the console (does a reconnect fix it?) and `changelevel` to the same map.
+- [x] 5 again: after a pick whose weapon has stickers/a charm, RefreshPlayer switches to the knife and back
+      (0.45 s later), so the client draws the gun again with its attributes. **User check in game.**
+- [x] 4b Bots get random guns too (BotLoadouts.cs GiveBotGuns: a rolled primary + pistol per bot and team, 0.2 s
+      after each spawn, not for stand-ins). **User check in game, also with MatchZy `.bot` bots.**
+- [ ] **User check in game** of 3, 4b, 5.
 ---
 # v3: our own tooling (planned 2026-11-17)
 Replace ByMykel/CSGO-API and MatchZy with our own code. Metamod and CounterStrikeSharp stay (engine hooks, rebuilt

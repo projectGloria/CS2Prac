@@ -34,6 +34,7 @@ public partial class PracSkins
 
     private void InitWheel()
     {
+        InitGraffiti();
         RegisterListener<Listeners.OnMapEnd>(() => _wheels.Clear());
         RegisterListener<Listeners.OnClientPutInServer>(slot => _wheels.Remove(slot));
         RegisterListener<Listeners.OnClientDisconnect>(slot => _wheels.Remove(slot));
@@ -122,15 +123,16 @@ public partial class PracSkins
             player.PrintToChat($"{ChatTag} No graffiti picked: hold T and click one, or K > Graffiti.");
             return;
         }
-        var now = Server.CurrentTime;
-        if (_nextSpray.TryGetValue(player.Slot, out var next) && now < next)
+        var now = SprayClock;
+        if (_sprayCooldown > 0 && _nextSpray.TryGetValue(player.Slot, out var next) && now < next)
         {
             player.PrintToChat($"{ChatTag} Next graffiti in {next - now:0.0} s.");
             return;
         }
         var error = Spray(player, _loadout.Graffiti, _loadout.GraffitiTint);
         if (error != null) player.PrintToChat($"{ChatTag} {error}.");
-        else _nextSpray[player.Slot] = now + SprayCooldown;
+        else if (_sprayCooldown > 0) _nextSpray[player.Slot] = now + _sprayCooldown;
+        else _nextSpray.Remove(player.Slot);
     }
 
     /// <summary>The wheel's graffiti: the last ones picked, the current one, then the catalog's first.</summary>
@@ -189,10 +191,10 @@ public partial class PracSkins
 
     private void RenderWheelCooldown(CCSPlayerController player)
     {
-        var left = _nextSpray.TryGetValue(player.Slot, out var next) ? next - Server.CurrentTime : 0f;
+        var left = _sprayCooldown > 0 && _nextSpray.TryGetValue(player.Slot, out var next) ? next - SprayClock : 0.0;
         HudText(player, "gw_cd", left > 0 ? $"Next in {left:0.0} s" : "Ready");
         HudFlag(player, "gw_cd", "ready", left <= 0);
-        var count = _sprays.TryGetValue(player.Slot, out var mine) ? mine.Count(e => e.IsValid) : 0;
+        var count = LiveSprays(player.Slot);
         HudText(player, "gw_hint", $"Click to pick, release T to spray  ·  {count}/{SpraysPerPlayer} on the map");
     }
 

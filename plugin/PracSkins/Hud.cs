@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Extensions;
 using Microsoft.Extensions.Logging;
@@ -36,6 +37,13 @@ public class HudSession
     public int Target { get; set; }
     /// <summary>Stickers tab: search text from !sticker / !charm while the window is open.</summary>
     public string Query { get; set; } = "";
+    /// <summary>
+    /// First grid row shown: the server can't scroll the grid, so on open the rows above the picked tile's row
+    /// (minus one) are hidden and a "Show earlier" bar brings them back (the picked skin lands in the middle).
+    /// </summary>
+    public int FirstRow { get; set; }
+    /// <summary>Keyboard rows for the search (pins, music, graffiti, stickers) are open.</summary>
+    public bool Keys { get; set; }
 }
 
 /// <summary>What the client was last sent per slot (texts, classes), so a render only sends changes.</summary>
@@ -466,6 +474,8 @@ public partial class PracSkins
     private void SelectTab(CCSPlayerController player, HudSession s, string tab)
     {
         s.Tab = tab;
+        s.Query = "";
+        s.Keys = false;
         s.Selected = tab switch
         {
             "weapons" or "stickers" => HeldWeapon(player) is { Kind: "weapon" } held ? held.Def
@@ -484,6 +494,8 @@ public partial class PracSkins
     {
         var tileIndex = s.Tiles.FindIndex(x => x.Picked);
         s.GridPage = tileIndex < 0 ? 0 : tileIndex / GridTiles;
+        // picked tile in the second visible row (user request: the picked skin in the middle of the window)
+        s.FirstRow = tileIndex < 0 ? 0 : Math.Max(0, tileIndex % GridTiles / GridCols - 1);
     }
 
     /// <summary>Fills s.Side and s.Tiles from the catalog and loadout for the tab and selection.</summary>
@@ -499,13 +511,14 @@ public partial class PracSkins
                 foreach (var w in SortedGuns())
                 {
                     var def = w.Def;
-                    s.Side.Add(new HudSide(w.Name, SkinName(def, _loadout.WeaponPaint(def, team)?.PaintKit ?? 0), def == s.Selected, pl =>
+                    var kit = _loadout.WeaponPaint(def, team)?.PaintKit ?? 0;
+                    s.Side.Add(new HudSide(w.Name, SkinName(def, kit), def == s.Selected, pl =>
                     {
                         EquipForHud(pl, w); // any gun on either side (user request: AK/Glock as CT, M4/USP as T)
                         s.Selected = def;
                         BuildHud(pl, s);
                         ShowCurrentTilePage(s);
-                    }, $"b{def}"));
+                    }, kit > 0 ? $"s{def}_{kit}" : $"b{def}")); // the picked skin's icon (user request)
                 }
                 if (s.Selected <= 0) break;
                 var sel = s.Selected;
@@ -553,7 +566,7 @@ public partial class PracSkins
                         s.Selected = k.Def;
                         BuildHud(pl, s);
                         ShowCurrentTilePage(s);
-                    }, $"b{k.Def}"));
+                    }, mine && knife!.PaintKit > 0 ? $"s{k.Def}_{knife.PaintKit}" : $"b{k.Def}"));
                 }
                 var selKnife = _catalog.Weapons.FirstOrDefault(w => w.Kind == "knife" && w.Def == s.Selected);
                 if (selKnife == null) break;
@@ -632,7 +645,7 @@ public partial class PracSkins
                     CommitProfileItems(pl, "Pin removed");
                     HudStatus(pl, s, "Pin removed");
                 }));
-                foreach (var p in _catalog.Pins)
+                foreach (var p in _catalog.Pins.Where(p => Matches(p.Name, s.Query)))
                     s.Tiles.Add(new HudTile(p.Name, $"p{p.Def}", "", _loadout.Pin == p.Def, pl =>
                     {
                         _loadout.Pin = p.Def;
@@ -668,7 +681,7 @@ public partial class PracSkins
                     CommitProfileItems(pl, "Default music");
                     HudStatus(pl, s, "Default music");
                 }));
-                foreach (var m in _catalog.MusicKits)
+                foreach (var m in _catalog.MusicKits.Where(m => Matches(m.Name, s.Query)))
                     s.Tiles.Add(new HudTile(m.Name, $"m{m.Def}", "", _loadout.MusicKit == m.Def, pl =>
                     {
                         _loadout.MusicKit = m.Def;
@@ -680,7 +693,29 @@ public partial class PracSkins
             }
             case "graffiti":
             {
-                // left: the tints (only for graffiti that has them); tiles: the patterns
+                // left: the spray timer (server setting "spraycooldown", admins only), then the tints (only for
+                // graffiti that has them); tiles: the patterns
+                var timer = SetDefs.First(d => d.Id == "spraycooldown");
+                var timerNow = SettingValue(timer);
+                var timerKnown = timer.Opts.Any(o => SameValue(timerNow, o.Value));
+                foreach (var o in timer.Opts)
+                {
+                    var on = SameValue(timerNow, o.Value);
+                    s.Side.Add(new HudSide($"Timer: {o.Label}", on ? "in use" : "", on, pl =>
+                    {
+                        if (!AdminManager.PlayerHasPermissions(pl, "@css/root"))
+                        {
+                            HudStatus(pl, s, "Only admins can change the graffiti timer");
+                            return;
+                        }
+                        ChangeSetting(timer, o.Value, mapOnly: false);
+                        RefreshSettingsWindows();
+                        HudStatus(pl, s, o.Value == "0" ? "Graffiti timer: no limit" : $"Graffiti timer: {o.Label} between sprays");
+                    }));
+                }
+                // a value typed in the app that no row has (7 s …)
+                if (!timerKnown && timerNow.Length > 0)
+                    s.Side.Add(new HudSide($"Timer: {timerNow} s", "in use (set in the app)", true, _ => { }));
                 var cur = _catalog.Graffiti.FirstOrDefault(g => g.Def == _loadout.Graffiti);
                 if (cur is { Tinted: true })
                     foreach (var t in GraffitiTints)
@@ -694,7 +729,7 @@ public partial class PracSkins
                     CommitGraffiti(pl, 0, 0, "Graffiti removed");
                     HudStatus(pl, s, "Graffiti removed");
                 }));
-                foreach (var g in _catalog.Graffiti)
+                foreach (var g in _catalog.Graffiti.Where(g => Matches(g.Name, s.Query)))
                     s.Tiles.Add(new HudTile(g.Name, $"g{g.Def}", "", _loadout.Graffiti == g.Def, pl =>
                     {
                         var tint = g.Tinted ? (_loadout.GraffitiTint > 0 ? _loadout.GraffitiTint : 1) : 0;
@@ -709,6 +744,28 @@ public partial class PracSkins
         }
         s.SidePage = Math.Clamp(s.SidePage, 0, Math.Max(0, (s.Side.Count - 1) / SideRows));
         s.GridPage = Math.Clamp(s.GridPage, 0, Math.Max(0, (s.Tiles.Count - 1) / GridTiles));
+        var rowsOnPage = (Math.Clamp(s.Tiles.Count - s.GridPage * GridTiles, 0, GridTiles) + GridCols - 1) / GridCols;
+        s.FirstRow = Math.Clamp(s.FirstRow, 0, Math.Max(0, rowsOnPage - 1));
+    }
+
+    /// <summary>Tabs with the search bar and on-screen keyboard (Panorama has no text input).</summary>
+    private static bool HasSearch(string tab) => tab is "pins" or "music" or "graffiti" or "stickers";
+
+    private const int MaxQuery = 24;
+
+    /// <summary>A key of the window's keyboard: filters at once (user request: search on every keystroke).</summary>
+    private static void HudKey(HudSession s, string key)
+    {
+        s.Query = key switch
+        {
+            "back" => s.Query.Length > 0 ? s.Query[..^1] : "",
+            "clear" => "",
+            "space" => s.Query.Length is > 0 and < MaxQuery && !s.Query.EndsWith(' ') ? s.Query + " " : s.Query,
+            _ when key.Length == 1 && s.Query.Length < MaxQuery => s.Query + key,
+            _ => s.Query
+        };
+        s.GridPage = 0;
+        s.FirstRow = 0;
     }
 
     /// <summary>The team a tab edits: the T/CT switch for weapons and stickers, the player's own team elsewhere.</summary>
@@ -731,13 +788,15 @@ public partial class PracSkins
             var wp = _loadout.WeaponPaint(def, team);
             var n = wp?.Stickers.Count(x => x is { DefIndex: > 0 }) ?? 0;
             var charm = wp?.Keychain is { DefIndex: > 0 };
-            var sub = n == 0 && !charm ? "" : $"{n}/5 stickers{(charm ? " + charm" : "")}";
+            var kit = wp?.PaintKit ?? 0;
+            var extras = n == 0 && !charm ? "" : $"{n}/5{(charm ? " + charm" : "")}";
+            var sub = kit > 0 ? (extras.Length > 0 ? $"{extras} · {SkinName(def, kit)}" : SkinName(def, kit)) : extras;
             s.Side.Add(new HudSide(w.Name, sub, def == s.Selected, pl =>
             {
                 if (team == pl.TeamNum) EquipForHud(pl, w);
                 s.Selected = def;
-                s.GridPage = 0;
-            }, $"b{def}"));
+                s.GridPage = 0; s.FirstRow = 0;
+            }, kit > 0 ? $"s{def}_{kit}" : $"b{def}"));
         }
         if (s.Selected <= 0) return;
         var sel = s.Selected;
@@ -746,37 +805,31 @@ public partial class PracSkins
         {
             var i = slot;
             var st = SlotOf(cur, i);
-            s.Tiles.Add(new HudTile($"Slot {i + 1}: {(st is { DefIndex: > 0 } ? StickerName(st.DefIndex) : "empty")}", "", "", s.Target == i, _ =>
+            s.Tiles.Add(new HudTile($"Slot {i + 1}: {(st is { DefIndex: > 0 } ? StickerName(st.DefIndex) : "empty")}", st is { DefIndex: > 0 } ? $"k{st.DefIndex}" : "", "", s.Target == i, _ =>
             {
                 s.Target = i;
-                s.GridPage = 0;
+                s.GridPage = 0; s.FirstRow = 0;
             }));
         }
-        s.Tiles.Add(new HudTile($"Charm: {ShortName(CharmLabel(cur.Keychain))}", "", "", s.Target == 5, _ =>
+        s.Tiles.Add(new HudTile($"Charm: {ShortName(CharmLabel(cur.Keychain))}", cur.Keychain is { DefIndex: > 0 } kc ? $"c{kc.DefIndex}" : "", "", s.Target == 5, _ =>
         {
             s.Target = 5;
-            s.GridPage = 0;
+            s.GridPage = 0; s.FirstRow = 0;
         }));
-        if (s.Query.Length > 0)
-            s.Tiles.Add(new HudTile($"Clear search \"{s.Query}\"", "", "", false, _ =>
-            {
-                s.Query = "";
-                s.GridPage = 0;
-            }));
         var weaponName = _catalog.WeaponName(sel);
         if (s.Target == 5)
         {
             s.Tiles.Add(new HudTile("No charm", "", "", false, pl =>
             {
-                var p = WeaponPaintOrNew(team, sel);
+                var p = StickerBasePaint(team, sel);
                 p.Keychain = null;
                 CommitWeapon(pl, team, sel, p);
                 HudStatusFor(pl, $"{weaponName}: charm removed");
             }));
             foreach (var k in _catalog.Keychains.Where(k => Matches(k.Name, s.Query)))
-                s.Tiles.Add(new HudTile(ShortName(k.Name), "", "", cur.Keychain?.DefIndex == k.Def, pl =>
+                s.Tiles.Add(new HudTile(ShortName(k.Name), $"c{k.Def}", "", cur.Keychain?.DefIndex == k.Def, pl =>
                 {
-                    var p = WeaponPaintOrNew(team, sel);
+                    var p = StickerBasePaint(team, sel);
                     p.Keychain = new KeychainPaint { DefIndex = k.Def, Seed = p.Keychain?.Seed ?? 0, X = p.Keychain?.X ?? 0, Y = p.Keychain?.Y ?? 0, Z = p.Keychain?.Z ?? 0 };
                     CommitWeapon(pl, team, sel, p);
                     HudStatusFor(pl, $"{weaponName}: {ShortName(k.Name)}");
@@ -787,7 +840,7 @@ public partial class PracSkins
         var onSlot = SlotOf(cur, target);
         s.Tiles.Add(new HudTile("Remove sticker", "", "", false, pl =>
         {
-            var p = WeaponPaintOrNew(team, sel);
+            var p = StickerBasePaint(team, sel);
             SetSlot(p, target, null);
             CommitWeapon(pl, team, sel, p);
             HudStatusFor(pl, $"{weaponName}: slot {target + 1} cleared");
@@ -803,9 +856,9 @@ public partial class PracSkins
             list = usedList.Concat(_catalog.Stickers.Where(x => !used.Contains(x.Def))).Take(Math.Max(usedList.Count, GridTiles - s.Tiles.Count));
         }
         foreach (var st in list)
-            s.Tiles.Add(new HudTile(ShortName(st.Name), "", "", onSlot?.DefIndex == st.Def, pl =>
+            s.Tiles.Add(new HudTile(ShortName(st.Name), $"k{st.Def}", "", onSlot?.DefIndex == st.Def, pl =>
             {
-                var p = WeaponPaintOrNew(team, sel);
+                var p = StickerBasePaint(team, sel);
                 var old = SlotOf(p, target);
                 SetSlot(p, target, new StickerPaint { DefIndex = st.Def, Wear = old?.Wear ?? 0, Scale = old?.Scale ?? 1, Rotation = old?.Rotation ?? 0, X = old?.X ?? 0, Y = old?.Y ?? 0 });
                 CommitWeapon(pl, team, sel, p);
@@ -826,7 +879,7 @@ public partial class PracSkins
         s.Query = query.Trim();
         if (charm) s.Target = 5;
         else if (s.Target == 5) s.Target = 0;
-        s.GridPage = 0;
+        s.GridPage = 0; s.FirstRow = 0;
         BuildHud(player, s);
         RenderHud(player, s);
         return true;
@@ -860,8 +913,7 @@ public partial class PracSkins
         HudFlag(player, "pk_team_t", "picked", s.Team == 2);
         HudFlag(player, "pk_team_ct", "picked", s.Team != 2);
         HudText(player, "pk_teamhint", !teamBar ? "" : s.Tab == "stickers"
-            ? (s.Query.Length > 0 ? $"Search: {s.Query}" : "Search in chat: !sticker <text>, !charm <text>")
-            : s.Team != player.TeamNum ? "Editing the other team's skins" : "");
+            ? "" : s.Team != player.TeamNum ? "Editing the other team's skins" : "");
 
         // agents tab: first/third person; in third person the window moves left, no dim, pose + camera buttons
         var agents = s.Tab == "agents";
@@ -884,7 +936,18 @@ public partial class PracSkins
         }
 
         // left list
-        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" || (s.Tab is "graffiti" or "music" && s.Side.Count == 0));
+        var noSide = s.Tab is "agents" or "pins" || (s.Tab is "graffiti" or "music" && s.Side.Count == 0);
+        HudFlag(player, "pk_side", "gone", noSide);
+        // no side list: the grid takes the whole width (user report: blank space on the right); not in third person
+        HudFlag(player, "pk_win", "noside", noSide && view == null);
+
+        // search bar + keyboard
+        var search = HasSearch(s.Tab);
+        HudFlag(player, "pk_searchbar", "gone", !search);
+        HudFlag(player, "pk_keys", "gone", !search || !s.Keys);
+        HudFlag(player, "pk_search", "picked", s.Keys);
+        HudText(player, "pk_query", s.Query.Length > 0 ? s.Query + (s.Keys ? "_" : "")
+            : s.Keys ? "_" : s.Tab == "stickers" ? "Click to type (or !sticker / !charm <text> in chat)" : "Click to type");
         var sideStart = s.SidePage * SideRows;
         for (var i = 0; i < SideRows; i++)
         {
@@ -922,7 +985,8 @@ public partial class PracSkins
         // grid
         var gridStart = s.GridPage * GridTiles;
         var onPage = Math.Clamp(s.Tiles.Count - gridStart, 0, GridTiles);
-        for (var r = 0; r < GridTiles / GridCols; r++) HudFlag(player, $"pk_grow_{r}", "gone", r * GridCols >= onPage);
+        for (var r = 0; r < GridTiles / GridCols; r++) HudFlag(player, $"pk_grow_{r}", "gone", r * GridCols >= onPage || r < s.FirstRow);
+        HudFlag(player, "pk_earlier", "gone", s.FirstRow == 0);
         for (var i = 0; i < GridTiles; i++)
         {
             var tile = gridStart + i < s.Tiles.Count ? s.Tiles[gridStart + i] : null;
@@ -1002,11 +1066,18 @@ public partial class PracSkins
         }
         switch (id)
         {
-            case "pk_prev": s.GridPage = Math.Max(0, s.GridPage - 1); return;
-            case "pk_next": s.GridPage++; return;
+            case "pk_prev": s.GridPage = Math.Max(0, s.GridPage - 1); s.FirstRow = 0; return;
+            case "pk_next": s.GridPage++; s.FirstRow = 0; return;
+            case "pk_earlier": s.FirstRow = 0; return;
             case "pk_st": ToggleHudStatTrak(player, s); return;
-            case "pk_team_t": s.Team = 2; s.GridPage = 0; return;
-            case "pk_team_ct": s.Team = 3; s.GridPage = 0; return;
+            case "pk_search": s.Keys = !s.Keys; return;
+            case "pk_team_t": s.Team = 2; s.GridPage = 0; s.FirstRow = 0; return;
+            case "pk_team_ct": s.Team = 3; s.GridPage = 0; s.FirstRow = 0; return;
+        }
+        if (id.StartsWith("pk_key_"))
+        {
+            HudKey(s, id["pk_key_".Length..]);
+            return;
         }
         if (TryIndex(id, "pk_side_", out var side) && s.SidePage * SideRows + side < s.Side.Count)
             s.Side[s.SidePage * SideRows + side].OnClick(player);

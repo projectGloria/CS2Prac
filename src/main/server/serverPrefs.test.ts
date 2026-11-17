@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clearMap, effectivePrefs, normalizePrefs, setGlobal, SETTINGS } from '@shared/serverSettings'
+import { clearMap, effectivePrefs, normalizePrefs, optionLabel, parseInputValue, setGlobal, SETTINGS } from '@shared/serverSettings'
 import { addRecentWorkshop } from './serverPrefs'
 
 describe('server prefs', () => {
@@ -10,6 +10,17 @@ describe('server prefs', () => {
     })
     expect(p).toEqual({ global: { glow: '1', botradio: 'off', sky: '' }, maps: { de_mirage: { gravity: '400' } } })
     expect(normalizePrefs(null)).toEqual({ global: {}, maps: {} })
+  })
+
+  it('takes typed numbers for input settings', () => {
+    const p = normalizePrefs({ global: { spraycooldown: '7.5' }, maps: { de_nuke: { spraycooldown: '9999' }, de_inferno: { spraycooldown: 'x' } } })
+    expect(p).toEqual({ global: { spraycooldown: '7.5' }, maps: {} })
+    const def = SETTINGS.find((s) => s.id === 'spraycooldown')!
+    expect(parseInputValue(def, ' 2,505 ')).toBe('2.51')
+    expect(parseInputValue(def, '0')).toBe('0')
+    expect(parseInputValue(def, '-1')).toBeNull()
+    expect(optionLabel('spraycooldown', '7')).toBe('7 s')
+    expect(optionLabel('spraycooldown', '0')).toBe('No limit')
   })
 
   it('puts map values over global ones', () => {

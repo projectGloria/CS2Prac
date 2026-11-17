@@ -19,8 +19,29 @@ public partial class PracSkins
 {
     /// <summary>how far a player can spray (the game's limit is about this)</summary>
     private const float SprayRange = 200f;
-    /// <summary>seconds between two sprays of one player</summary>
-    private const float SprayCooldown = 3f;
+    /// <summary>default seconds between two sprays of one player</summary>
+    private const float DefaultSprayCooldown = 3f;
+    /// <summary>seconds between two sprays of one player, 0 = no limit (L window / app setting "spraycooldown")</summary>
+    private float _sprayCooldown = DefaultSprayCooldown;
+
+    /// <summary>
+    /// Seconds on a wall clock. Server.CurrentTime starts again at every map load, so a cooldown stored in it from
+    /// the old map was minutes away on the new one (user report: "Next graffiti in 495.8 s" after a map change).
+    /// </summary>
+    private static double SprayClock => Environment.TickCount64 / 1000.0;
+
+    private string SprayCooldownText() => _sprayCooldown.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private void SetSprayCooldown(string value)
+    {
+        if (!float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s)
+            || float.IsNaN(s)) return;
+        _sprayCooldown = Math.Clamp(s, 0f, 3600f);
+        // a shorter cooldown applies to sprays already waiting too
+        var now = SprayClock;
+        foreach (var (slot, next) in _nextSpray.ToList())
+            if (next - now > _sprayCooldown) _nextSpray[slot] = now + _sprayCooldown;
+    }
     /// <summary>sprays kept per player; the oldest goes when a new one is added</summary>
     private const int SpraysPerPlayer = 5;
 
@@ -65,8 +86,34 @@ public partial class PracSkins
         }
     }
 
-    private readonly Dictionary<int, float> _nextSpray = new();
-    private readonly Dictionary<int, List<CPlayerSprayDecal>> _sprays = new();
+    /// <summary>slot -> SprayClock time of the next allowed spray</summary>
+    private readonly Dictionary<int, double> _nextSpray = new();
+    /// <summary>
+    /// slot -> that player's decals as raw entity handles (index + serial). A wrapper kept across a map change (or a
+    /// round restart's cleanup) points at whatever entity got that index next, and removing the "oldest spray" then
+    /// removed a random entity; a handle resolves to nothing instead.
+    /// </summary>
+    private readonly Dictionary<int, List<uint>> _sprays = new();
+
+    private static CPlayerSprayDecal? SprayEntity(uint raw)
+    {
+        var h = new CHandle<CPlayerSprayDecal>(raw);
+        return h.IsValid && h.Value is { IsValid: true } e && e.DesignerName == "player_spray_decal" ? e : null;
+    }
+
+    private int LiveSprays(int slot) => _sprays.TryGetValue(slot, out var mine) ? mine.Count(r => SprayEntity(r) != null) : 0;
+
+    private void InitGraffiti()
+    {
+        RegisterListener<Listeners.OnMapStart>(_ =>
+        {
+            _nextSpray.Clear();
+            _sprays.Clear();
+            _sprayCooldown = DefaultSprayCooldown; // the saved setting comes back with ApplySettings
+        });
+        RegisterListener<Listeners.OnMapEnd>(() => { _nextSpray.Clear(); _sprays.Clear(); });
+        RegisterListener<Listeners.OnClientDisconnect>(slot => _nextSpray.Remove(slot));
+    }
 
     [ConsoleCommand("css_spray", "Spray your graffiti where you look (bind a key: bind t css_spray)")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
@@ -205,7 +252,8 @@ public partial class PracSkins
                 left = new Vector(-MathF.Sin(yaw), MathF.Cos(yaw), 0);
             }
 
-            var decal = Utilities.CreateEntityByName<CPlayerSprayDecal>("player_spray_decal");            if (decal == null) return "The game refused the graffiti entity";
+            var decal = Utilities.CreateEntityByName<CPlayerSprayDecal>("player_spray_decal");
+            if (decal == null) return "The game refused the graffiti entity";
             decal.UniqueID = def;
             decal.TintID = Math.Max(tint, 0);
             decal.AccountID = (uint)(player.SteamID & 0xFFFFFFFF);
@@ -219,21 +267,28 @@ public partial class PracSkins
             decal.Version = (byte)SprayVersion;
             // the trace start (the eye): the client re-traces start → end to find the surface to project onto
             decal.Start.X = eye.X; decal.Start.Y = eye.Y; decal.Start.Z = eye.Z;
-            decal.EndPos.X = hit.EndPos.X; decal.EndPos.Y = hit.EndPos.Y; decal.EndPos.Z = hit.EndPos.Z;
+            // End one unit inside the surface: a client trace start → exactly the hit point can stop a hair short of
+            // it and find nothing (guess for "sound but no graffiti" on some maps' floors, e.g. de_inferno)
+            decal.EndPos.X = hit.EndPos.X - n.X; decal.EndPos.Y = hit.EndPos.Y - n.Y; decal.EndPos.Z = hit.EndPos.Z - n.Z;
             decal.Normal.X = n.X; decal.Normal.Y = n.Y; decal.Normal.Z = n.Z;
             decal.Left.X = left.X; decal.Left.Y = left.Y; decal.Left.Z = left.Z;
-            decal.DispatchSpawn();
-            decal.Teleport(new Vector(hit.EndPos.X, hit.EndPos.Y, hit.EndPos.Z));
-            PlaySpraySound(player);
-
+            // The oldest spray goes first, so the entity count never grows past the limit.
             if (!_sprays.TryGetValue(player.Slot, out var list)) _sprays[player.Slot] = list = new();
-            list.RemoveAll(e => !e.IsValid);
-            list.Add(decal);
-            while (list.Count > SpraysPerPlayer)
+            list.RemoveAll(r => SprayEntity(r) == null);
+            while (list.Count >= SpraysPerPlayer)
             {
-                if (list[0].IsValid) list[0].Remove();
+                SprayEntity(list[0])?.Remove();
                 list.RemoveAt(0);
             }
+
+            decal.DispatchSpawn();
+            // The entity's origin a unit off the surface: right on it, the origin can count as inside the wall and
+            // the client may never get the entity (one guess for "spray sound but no graffiti").
+            decal.Teleport(new Vector(hit.EndPos.X + n.X, hit.EndPos.Y + n.Y, hit.EndPos.Z + n.Z));
+            PlaySpraySound(player);
+            list.Add(decal.EntityHandle.Raw);
+            Logger.LogInformation("spray #{Index} by {Player}: def {Def} tint {Tint} at {X:0} {Y:0} {Z:0} normal {NX:0.00} {NY:0.00} {NZ:0.00}",
+                decal.Index, player.PlayerName, def, tint, hit.EndPos.X, hit.EndPos.Y, hit.EndPos.Z, n.X, n.Y, n.Z);
             return null;
         }
         catch (Exception e)

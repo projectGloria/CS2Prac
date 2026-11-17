@@ -14,6 +14,8 @@
 //   .pk-img.p<def>            pin/coin/medal (items' image_inventory econ/status_icons/…)
 //   .pk-img.m<def>            music kit (music_definitions' image_inventory econ/music_kits/…)
 //   .pk-img.g<def>            graffiti (sticker_kits spray_* and *_graffiti: econ/stickers/<sticker_material>_png)
+//   .pk-img.k<def>            sticker (the other sticker_kits: econ/stickers/<sticker_material>_png)
+//   .pk-img.c<def>            charm (keychain_definitions' image_inventory econ/keychains/…)
 //   .pk-img.a<def>            agent portrait (econ/characters/customplayer_<model>[_square]_png)
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -42,6 +44,9 @@ const SET_CHIPS = 6
 const SET_XML_SRC = join(here, 'cs2prac_settings.xml')
 const SET_CSS_SRC = join(here, 'cs2prac_settings.css')
 // Keep in sync with plugin/PracSkins/GraffitiWheel.cs (WheelSlots; tints = items_game graffiti_tints 1-19).
+// Keep in sync with plugin/PracSkins/SettingsHud.cs (SkyCols; the sky list itself is read from Skies there).
+const SKY_COLS = 5
+const SKY_IMG_DIR = 'custom_game/cs2prac_skies'
 const GW_SLOTS = 8
 const GW_TINTS = 19
 const GW_XML_SRC = join(here, 'cs2prac_graffiti.xml')
@@ -103,7 +108,7 @@ function buildLayout() {
   xml = xml.replace('<!--SIDE_ROWS-->', rows.join('\n')).replace('<!--GRID_ROWS-->', grid.join('\n'))
   xml = xml.replace('<!--SETTINGS_WINDOW-->', buildSettings())
   xml = xml.replace('<!--GRAFFITI_WHEEL-->', buildWheel())
-  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS|GRAFFITI_WHEEL|GW_SLOTS|GW_TINTS)-->/.test(xml)) throw new Error('layout markers missing')
+  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS|PS_SKY_TILES|GRAFFITI_WHEEL|GW_SLOTS|GW_TINTS)-->/.test(xml)) throw new Error('layout markers missing')
   return xml
 }
 
@@ -130,7 +135,46 @@ function buildSettings() {
         `${t}</Panel>`
     )
   }
-  return readFileSync(SET_XML_SRC, 'utf8').replace('<!--PS_ROWS-->', rows.join('\n'))
+  return readFileSync(SET_XML_SRC, 'utf8').replace('<!--PS_ROWS-->', rows.join('\n')).replace('<!--PS_SKY_TILES-->', buildSkyTiles())
+}
+
+/** SettingsHud.cs Skies: (name, material) in list order; tile 0 is the map's own sky */
+function readSkies() {
+  const src = readFileSync(join(root, 'plugin', 'PracSkins', 'SettingsHud.cs'), 'utf8')
+  const block = /Skies\s*=\s*\[([\s\S]*?)\];/.exec(src)
+  if (!block) throw new Error('Skies list not found in SettingsHud.cs')
+  return [...block[1].matchAll(/\("([^"]+)", "(materials\/[^"]+\.vmat)"\)/g)].map((m) => ({ name: m[1], material: m[2] }))
+}
+
+/** a sky tile's image class = the thumbnail stem the app writes (src/main/skins/models.ts skyThumbName without .jpg) */
+function skyStem(material) {
+  return 'sky_' + material.split('/').pop().replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9]/g, '_')
+}
+
+function buildSkyTiles() {
+  const t = '\t\t\t\t'
+  const tiles = [{ name: 'Map default', cls: 'ps-ic ic-globe' }, ...readSkies().map((s) => ({ name: s.name, cls: skyStem(s.material) }))]
+  const rows = []
+  for (let r = 0; r * SKY_COLS < tiles.length; r++) {
+    const cells = []
+    for (let c = 0; c < SKY_COLS && r * SKY_COLS + c < tiles.length; c++) {
+      const i = r * SKY_COLS + c
+      cells.push(
+        `${t}\t<Button id="ps_sky_${i}" class="ps-sky">` +
+          `<Panel class="ps-sky-img ${tiles[i].cls}" hittest="false" />` +
+          `<Label class="ps-sky-name" text="${tiles[i].name}" hittest="false" /></Button>`
+      )
+    }
+    rows.push(`${t}<Panel class="ps-sky-row" hittest="false">\n${cells.join('\n')}\n${t}</Panel>`)
+  }
+  return rows.join('\n')
+}
+
+/** .ps-sky-img.<stem> -> the thumbnail the app compiles into the client's panorama/images/custom_game/cs2prac_skies */
+function buildSkyCss() {
+  return readSkies().map(
+    (s) => `.ps-sky-img.${skyStem(s.material)}\n{\n\tbackground-image: url("s2r://panorama/images/${SKY_IMG_DIR}/${skyStem(s.material)}_jpg.vtex");\n}`
+  )
 }
 
 // The graffiti wheel (hold T): also a fragment of the same layout.
@@ -192,6 +236,7 @@ function buildImageCss(cs2) {
   const skins = []
   const agents = []
   const extras = []
+  const stickers = []
   const itemByName = new Map([...items].map(([def, it]) => [it.name, def]))
 
   for (const [def, it] of items) {
@@ -221,14 +266,25 @@ function buildImageCss(cs2) {
       const mat = get(body, 'sticker_material')
       const graffiti = name.startsWith('spray_') || String(get(body, 'item_name') ?? '').startsWith('#SprayKit')
         || /graffiti/i.test(name) || /graffiti/i.test(String(mat ?? ''))
-      if (!graffiti) continue
       const img = mat && `panorama/images/econ/stickers/${mat}_png.vtex`
+      if (!graffiti) {
+        // sticker icons for the K window's stickers tab (user request: stickers had no images)
+        if (img && /^\d+$/.test(def) && has(img)) stickers.push(`.pk-img.k${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
+        continue
+      }
       if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.g${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
       // the decal's own textures: the client loads them when a spray appears, so the plugin precaches them
       if (mat && /^\d+$/.test(def)) {
         const tex = [`materials/decals/sprays/${mat}.vtex`, `materials/decals/sprays/${mat}_nodrips.vtex`].filter(has)
         if (tex.length) graffitiTextures[def] = tex
       }
+    }
+  // charms: keychain_definitions image_inventory (econ/keychains/<set>/<name>)
+  for (const section of all(game, 'keychain_definitions'))
+    for (const [def, body] of section) {
+      const image = Array.isArray(body) ? get(body, 'image_inventory') : null
+      const img = image && `panorama/images/${image}_png.vtex`
+      if (img && /^\d+$/.test(def) && has(img)) stickers.push(`.pk-img.c${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
     }
   // graffiti tints: the wheel's colour swatches and the wash on a tinted graffiti's (grey) icon
   for (const section of all(game, 'graffiti_tints'))
@@ -265,9 +321,9 @@ function buildImageCss(cs2) {
     }
     if (!done) unmatched++
   }
-  console.log(`images: ${base.length} base weapons, ${skins.length} skins, ${agents.length} agents, ${extras.length} pins/music kits (${unmatched} icons unmatched)`)
+  console.log(`images: ${base.length} base weapons, ${skins.length} skins, ${agents.length} agents, ${extras.length} pins/music kits, ${stickers.length} stickers/charms (${unmatched} icons unmatched)`)
   // base first: a tile carries b<def> and s<def>_<paint>; the skin rule comes later and wins when it exists
-  return [...icons, ...base, ...agents, ...extras, ...skins].join('\n\n') + '\n'
+  return [...icons, ...buildSkyCss(), ...base, ...agents, ...extras, ...stickers, ...skins].join('\n\n') + '\n'
 }
 
 /** sticker kit def -> spray decal textures (resources/hud/graffiti.json, precached by PracSkins Graffiti.cs) */

@@ -65,6 +65,7 @@ public partial class PracSkins : BasePlugin
         InitMovement();
         InitHud(hotReload);
         InitWheel();
+        InitBotLoadouts();
         InitSettings();
         InitBots();
         InitSafeKick();
@@ -89,6 +90,7 @@ public partial class PracSkins : BasePlugin
             LoadCatalogIfChanged();
             foreach (var model in _loadout.Precache.Concat(AgentModels()).Concat(_catalog.Agents.Select(a => a.Model)).Distinct())
                 manifest.AddResource(model);
+            manifest.AddResource(HandsResetModel);
             PrecacheGraffiti(manifest);
         });
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
@@ -206,7 +208,7 @@ public partial class PracSkins : BasePlugin
             lines.Add($"  {p.PlayerName} steamid {p.SteamID} team {p.TeamNum} bot {p.IsBot} target {IsTarget(p)} alive {p.PawnIsAlive}" +
                       $" pin {(p.InventoryServices is { } iv ? (int)iv.Rank[5] : -1)} music {p.MusicKitID}" +
                       (pawn is { IsValid: true }
-                          ? $" gloves def {pawn.EconGloves.ItemDefinitionIndex} model {pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName}"
+                          ? $" active {pawn.WeaponServices?.ActiveWeapon.Value?.DesignerName ?? "none"} gloves def {pawn.EconGloves.ItemDefinitionIndex} model {pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName}"
                           : ""));
             var weapons = pawn?.WeaponServices?.MyWeapons;
             if (weapons == null) continue;
@@ -214,7 +216,7 @@ public partial class PracSkins : BasePlugin
                 if (h.Value is { IsValid: true } w)
                     lines.Add($"    {w.DesignerName} def {w.AttributeManager.Item.ItemDefinitionIndex} paint {w.FallbackPaintKit} " +
                               $"wear {w.FallbackWear} quality {w.AttributeManager.Item.EntityQuality} itemid {w.AttributeManager.Item.ItemID} " +
-                              $"attrs {w.AttributeManager.Item.NetworkedDynamicAttributes.Attributes.Count}");
+                              $"attrs {w.AttributeManager.Item.NetworkedDynamicAttributes.Attributes.Count} deploytick {w.As<CCSWeaponBase>().DeployTick} now {Server.TickCount}");
         }
         command.ReplyToCommand(string.Join('\n', lines));
     }
@@ -226,6 +228,7 @@ public partial class PracSkins : BasePlugin
         if (player is not { IsValid: true } || player.IsHLTV) return false;
         if (player.TeamNum is not (2 or 3)) return false;
         if (IsStandIn(player)) return true; // third-person stand-in bot: shows the previewing player's loadout
+        if (IsBotAny(player)) return true;  // bots wear their own random loadout (BotLoadouts.cs)
         return _loadout.Owner is null || player.SteamID.ToString() == _loadout.Owner;
     }
 
@@ -299,7 +302,13 @@ public partial class PracSkins : BasePlugin
                     var ownerPawn = weapon.OwnerEntity.Value?.As<CCSPlayerPawn>();
                     player = ownerPawn is { IsValid: true } ? ownerPawn.Controller.Value?.As<CCSPlayerController>() : null;
                 }
-                if (IsTarget(player)) ApplyWeapon(player!, weapon);
+                if (!IsTarget(player)) return;
+                // Already skinned by the GiveNamedItem hook for this player: only re-set the attributes. A second full
+                // apply (attributes wiped, new item id a frame after the give) made the client drop the stickers
+                // until the next weapon switch (user report 2026-11-17).
+                var item = weapon.AttributeManager.Item;
+                var ours = item.ItemID >= FirstCustomItemId && item.AccountID == (uint)player!.SteamID;
+                ApplyWeapon(player!, weapon, keepId: ours);
             }
             catch (Exception e)
             {
@@ -349,8 +358,8 @@ public partial class PracSkins : BasePlugin
 
     private Paint? PaintFor(CCSPlayerController player, CBasePlayerWeapon weapon) =>
         IsKnife(weapon)
-            ? _loadout.Knife.For(SkinTeam(player))
-            : _loadout.WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex, SkinTeam(player));
+            ? SkinsOf(player).Knife.For(SkinTeam(player))
+            : SkinsOf(player).WeaponPaint(weapon.AttributeManager.Item.ItemDefinitionIndex, SkinTeam(player));
 
     private void ApplyToCurrentWeapons(CCSPlayerController player)
     {
@@ -360,14 +369,16 @@ public partial class PracSkins : BasePlugin
             if (handle.Value is { IsValid: true } weapon) ApplyWeapon(player, weapon);
     }
 
-    private void ApplyWeapon(CCSPlayerController player, CBasePlayerWeapon weapon)
+    /// <param name="keepId">the weapon already carries this skin (our item id): set the attributes again in place,
+    /// without wiping them or giving it a new item id</param>
+    private void ApplyWeapon(CCSPlayerController player, CBasePlayerWeapon weapon, bool keepId = false)
     {
         var item = weapon.AttributeManager.Item;
         Paint? paint;
 
         if (IsKnife(weapon))
         {
-            var knife = _loadout.Knife.For(SkinTeam(player));
+            var knife = SkinsOf(player).Knife.For(SkinTeam(player));
             if (knife == null || knife.DefIndex <= 0) return;
 
             if (item.ItemDefinitionIndex != knife.DefIndex)
@@ -378,14 +389,17 @@ public partial class PracSkins : BasePlugin
         }
         else
         {
-            paint = _loadout.WeaponPaint(item.ItemDefinitionIndex, SkinTeam(player));
+            paint = SkinsOf(player).WeaponPaint(item.ItemDefinitionIndex, SkinTeam(player));
             if (paint == null) return;
             item.EntityQuality = paint.StatTrak >= 0 ? 9 : 0;
         }
 
-        item.AttributeList.Attributes.RemoveAll();
-        item.NetworkedDynamicAttributes.Attributes.RemoveAll();
-        NewItemId(item);
+        if (!keepId)
+        {
+            item.AttributeList.Attributes.RemoveAll();
+            item.NetworkedDynamicAttributes.Attributes.RemoveAll();
+            NewItemId(item);
+        }
         item.AccountID = (uint)player.SteamID;
         item.CustomName = paint.NameTag ?? "";
 
@@ -440,12 +454,21 @@ public partial class PracSkins : BasePlugin
 
     private void ApplyAgent(CCSPlayerController player)
     {
-        var agent = _loadout.Agents.For(SkinTeam(player));
+        var agent = SkinsOf(player).Agents.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (agent is not { DefIndex: > 0 } || string.IsNullOrEmpty(agent.Model) || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
         try
         {
             pawn.SetModel(agent.Model);
+            // Radio and other voice lines go by the pawn's character/voice fields, not the model (a female agent
+            // still spoke with the default male voice): <set>.<line> sound events, same sets as the preview voice.
+            var set = VoiceSet(agent.DefIndex, agent.Model);
+            pawn.CharacterDefIndex = (ushort)agent.DefIndex;
+            if (set.Length > 0)
+            {
+                pawn.StrVOPrefix = set;
+                pawn.HasFemaleVoice = set.Contains("fem");
+            }
         }
         catch (Exception e)
         {
@@ -508,6 +531,7 @@ public partial class PracSkins : BasePlugin
         {
             p.Gloves = true;
             ClearGloves(pawn);
+            ResetHandsModel(pawn);
         }
         var all = focusDef == 0 || p.Gloves;
 
@@ -545,6 +569,16 @@ public partial class PracSkins : BasePlugin
             }
             ApplyAgent(player);
             if (want != 0) SwitchTo(player, want, 0.1f, true);
+            // The client builds stickers/charms when a weapon is drawn, and the re-given weapon is drawn in the
+            // tick it's created (the old one was killed), before its attributes arrive: so it showed none until a
+            // weapon switch (user report). A quick knife-and-back draws it again with the attributes.
+            if (want > 0 && !IsBotAny(player) && SkinsOf(player).WeaponPaint(want, SkinTeam(player)) is { HasExtras: true })
+                AddTimer(0.45f, () =>
+                {
+                    if (!player.IsValid || !player.PawnIsAlive) return;
+                    SwitchTo(player, -1, 0.01f, false);
+                    SwitchTo(player, want, 0.3f, true);
+                }, TimerFlags.STOP_ON_MAPCHANGE);
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
@@ -578,7 +612,8 @@ public partial class PracSkins : BasePlugin
     private void ApplyProfileItems(CCSPlayerController player)
     {
         if (!player.IsValid || player.InventoryServices is not { } inv) return;
-        int pin = _loadout.Pin, kit = _loadout.MusicKit;
+        var mine = SkinsOf(player);
+        int pin = mine.Pin, kit = mine.MusicKit;
         if (pin <= 0 && kit <= 0 && !_profileItemsSet.Contains(player.Slot)) return;
         try
         {
@@ -601,7 +636,7 @@ public partial class PracSkins : BasePlugin
 
     private (uint, int, int, int, float)? GloveSig(CCSPlayerController player)
     {
-        var glove = _loadout.Gloves.For(SkinTeam(player));
+        var glove = SkinsOf(player).Gloves.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (glove is not { PaintKit: > 0 } || pawn is not { IsValid: true }) return null;
         return (pawn.Index, glove.DefIndex, glove.PaintKit, glove.Seed, glove.Wear);
@@ -618,10 +653,33 @@ public partial class PracSkins : BasePlugin
         item.AttributeList.Attributes.RemoveAll();
     }
 
+    /// <summary>a stock model the pawn is switched to for a moment (precached in Load)</summary>
+    private const string HandsResetModel = "characters/models/tm_jumpsuit/tm_jumpsuit_varianta.vmdl";
+
+    /// <summary>
+    /// Makes the client rebuild the hands: the pawn's model is swapped away and back (WeaponPaints technique). Hand
+    /// wraps attach their own model, and without this the client kept drawing it on every later pair of gloves
+    /// (user report 2026-11-17: "every glove gets wrapped"). Runs before the new gloves are set.
+    /// </summary>
+    private void ResetHandsModel(CCSPlayerPawn pawn)
+    {
+        try
+        {
+            var model = pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName;
+            if (string.IsNullOrEmpty(model)) return;
+            pawn.SetModel(HandsResetModel);
+            pawn.SetModel(model);
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning("ResetHandsModel: {Error}", e.Message);
+        }
+    }
+
     /// <summary>Writes the loadout's gloves onto the pawn (attributes cleared beforehand).</summary>
     private void SetGloves(CCSPlayerController player)
     {
-        var glove = _loadout.Gloves.For(SkinTeam(player));
+        var glove = SkinsOf(player).Gloves.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (glove is not { PaintKit: > 0 } || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
         try
@@ -659,6 +717,7 @@ public partial class PracSkins : BasePlugin
 
         var active = pawn.WeaponServices?.ActiveWeapon.Value?.DesignerName;
         ClearGloves(pawn);
+        ResetHandsModel(pawn);
         if (!IsBotAny(player)) player.ExecuteClientCommand("lastinv");
 
         AddTimer(0.08f, () =>

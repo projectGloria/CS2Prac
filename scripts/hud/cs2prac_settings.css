@@ -43,6 +43,86 @@
 	overflow: squish scroll;
 }
 
+.ps-list.gone
+{
+	visibility: collapse;
+}
+
+/* ---------------------------------------------------------------- sky tab tiles
+   5 per row (SkyCols in SettingsHud.cs / SKY_COLS in build-hud.mjs). The thumbnails are compiled by the app at
+   server start into panorama/images/custom_game/cs2prac_skies (build-hud.mjs writes one .ps-sky-img.<class> rule
+   per sky); without them a tile shows its name on a dark box. */
+
+.ps-sky-row
+{
+	width: 100%;
+	height: 218px;
+	flow-children: right;
+}
+
+.ps-sky
+{
+	width: 300px;
+	height: 206px;
+	margin-right: 12px;
+	padding: 6px;
+	flow-children: down;
+	background-color: #161b24;
+	border: 2px solid #ffffff0a;
+	border-radius: 5px;
+}
+
+.ps-sky:hover
+{
+	background-color: #1f2632;
+	border: 2px solid #ffffff30;
+}
+
+.ps-sky.picked
+{
+	border: 2px solid #e8a33d;
+	background-color: #2a2114;
+}
+
+.ps-sky.gone
+{
+	visibility: collapse;
+}
+
+.ps-sky-img
+{
+	width: 284px;
+	height: 160px;
+	background-color: #0b0e13;
+	background-size: cover;
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	border-radius: 3px;
+}
+
+.ps-sky-img.ps-ic
+{
+	background-size: 64px 64px;
+	wash-color: #8a93a3;
+}
+
+.ps-sky-name
+{
+	width: 100%;
+	margin-top: 6px;
+	color: #e6eaf0;
+	font-size: 20px;
+	font-weight: bold;
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ps-sky.picked .ps-sky-name
+{
+	color: #e8a33d;
+}
+
 .ps-row
 {
 	width: 1518px;

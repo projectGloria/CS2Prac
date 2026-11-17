@@ -989,10 +989,15 @@ public partial class PracSkins
     /// Plays the agent's inventory preview line (&lt;set&gt;.vo_preview: a random line, as when inspecting the agent in
     /// the game's inventory), only for this player.
     /// </summary>
-    private void PlayAgentVoice(CCSPlayerController player, int def, string model)
+    private static string VoiceSet(int def, string model)
     {
         var folder = model.Replace('\\', '/').Split('/') is { Length: >= 2 } parts ? parts[^2] : "";
-        var set = AgentVoice.TryGetValue(def, out var v) ? v : FactionVoice.GetValueOrDefault(folder, "");
+        return AgentVoice.TryGetValue(def, out var v) ? v : FactionVoice.GetValueOrDefault(folder, "");
+    }
+
+    private void PlayAgentVoice(CCSPlayerController player, int def, string model)
+    {
+        var set = VoiceSet(def, model);
         if (set.Length == 0 || player.PlayerPawn.Value is not { IsValid: true } pawn) return;
         try
         {

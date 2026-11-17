@@ -239,6 +239,25 @@ public partial class PracSkins
     private Paint WeaponPaintOrNew(int team, int def) =>
         _loadout.Weapons.For(team) is { } map && map.TryGetValue(def.ToString(), out var p) ? p : new Paint { Wear = 0.01f, StatTrak = -1 };
 
+    /// <summary>
+    /// The paint a sticker/charm edit starts from. A gun without a skin on this team takes the other team's skin
+    /// first (user report: stickers picked as CT landed on a plain Desert Eagle while the skin existed only on T).
+    /// </summary>
+    private Paint StickerBasePaint(int team, int def)
+    {
+        var p = WeaponPaintOrNew(team, def);
+        if (p.PaintKit > 0) return p;
+        if (_loadout.WeaponPaint(def, team == 2 ? 3 : 2) is { PaintKit: > 0 } other)
+        {
+            p.PaintKit = other.PaintKit;
+            p.Seed = other.Seed;
+            p.Wear = other.Wear;
+            p.LegacyModel = other.LegacyModel;
+            if (p.StatTrak < 0) p.StatTrak = other.StatTrak;
+        }
+        return p;
+    }
+
     private void SaveLoadout()
     {
         try

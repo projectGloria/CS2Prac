@@ -92,7 +92,7 @@ public partial class PracSkins
     {
         ["glow"] = "ic-enemyspotted", ["spawns"] = "ic-pin", ["ammo"] = "ic-bullet", ["buyanywhere"] = "ic-shoppingcart",
         ["trajectory"] = "ie-hegrenade", ["impacts"] = "ic-crosshair", ["noflash"] = "ie-flashbang", ["god"] = "ic-shield",
-        ["bhop"] = "ic-fast", ["friendlyfire"] = "ic-kill", ["falldamage"] = "ic-health", ["roundtime"] = "ic-timer",
+        ["bhop"] = "ic-fast", ["spraycooldown"] = "ic-timer",["friendlyfire"] = "ic-kill", ["falldamage"] = "ic-health", ["roundtime"] = "ic-timer",
         ["freezetime"] = "ic-hourglass", ["gravity"] = "ic-parachute", ["timescale"] = "ic-clock",
         ["botradio"] = "ic-chatwheel_affirmative", ["botdifficulty"] = "ic-stats", ["botshoot"] = "ie-ak47",
         ["botstop"] = "ic-pause", ["botcrouch"] = "ic-bot"
@@ -174,6 +174,10 @@ public partial class PracSkins
         new("god", "practice", "God mode", "Players take no damage (bots still do)", OffOn, [],
             () => _godOn ? "1" : "0", v => SetGod(v == "1")),
         new("bhop", "practice", "Auto bunnyhop", "Hold space to keep hopping", OffOn, ["sv_autobunnyhopping", "sv_enablebunnyhopping"]),
+        // any number of seconds (the app has an input box); the chips are shortcuts
+        new("spraycooldown", "graffiti", "Graffiti timer", "Seconds between two sprays (0 = no limit)",
+            [new("No limit", "0"), new("3 s", "3"), new("5 s", "5"), new("10 s", "10"), new("30 s", "30"), new("60 s", "60")], [],
+            SprayCooldownText, SetSprayCooldown),
 
         new("friendlyfire", "server", "Friendly fire", "mp_friendlyfire", OffOn, ["mp_friendlyfire"]),
         new("falldamage", "server", "Fall damage", "sv_falldamage_scale (off in movement mode anyway)", [new("Off", "0"), new("On", "1")], ["sv_falldamage_scale"]),
@@ -443,14 +447,7 @@ public partial class PracSkins
         switch (s.Tab)
         {
             case "sky":
-            {
-                var def = SetDefs.First(d => d.Id == "sky");
-                s.Rows.Add(new SetRow("Map default", "The map's own sky", [("Use", _sky.Length == 0, _ => ChangeSetting(def, "", s.MapScope))]) { Icon = "ic-globe" });
-                foreach (var (name, material) in Skies)
-                    s.Rows.Add(new SetRow(name, material.Split('/').Last().Replace(".vmat", ""),
-                        [("Use", _sky == material, _ => ChangeSetting(def, material, s.MapScope))]) { Icon = "ic-picture" });
-                break;
-            }
+                break; // tiles (ps_sky_<i>, RenderSettings), not rows
             case "map":
             {
                 s.Rows.Add(new SetRow("Restart round", "mp_restartgame 1", [("Restart", false, _ => Server.ExecuteCommand("mp_restartgame 1"))]) { Icon = "ic-refresh" });
@@ -474,7 +471,9 @@ public partial class PracSkins
                 {
                     var value = SettingValue(d);
                     var saved = prefs.ContainsKey(d.Id);
-                    s.Rows.Add(new SetRow(d.Name, d.Sub + (saved ? " · saved" : ""),
+                    // a value typed in the app that no chip has (graffiti timer 7 s …)
+                    var other = value.Length > 0 && d.Opts.Length > 0 && !d.Opts.Any(o => SameValue(value, o.Value)) ? $" · now {value}" : "";
+                    s.Rows.Add(new SetRow(d.Name, d.Sub + other + (saved ? " · saved" : ""),
                         d.Opts.Take(RowChips).Select(o => (o.Label, SameValue(value, o.Value),
                             (Action<CCSPlayerController>)(_ => ChangeSetting(d, o.Value, s.MapScope)))).ToList()) { Icon = SetIcons.GetValueOrDefault(d.Id, "") });
                 }
@@ -664,6 +663,12 @@ public partial class PracSkins
         if (!HudReady) return;
         HudText(player, "ps_title", $"Server settings · {CurrentMap}");
         foreach (var (id, _) in SetTabs) HudFlag(player, $"ps_tab_{id}", "picked", s.Tab == id);
+        var skyTab = s.Tab == "sky";
+        HudFlag(player, "ps_list", "gone", skyTab);
+        HudFlag(player, "ps_skygrid", "gone", !skyTab);
+        if (skyTab)
+            for (var i = 0; i <= Skies.Length; i++)
+                HudFlag(player, $"ps_sky_{i}", "picked", i == 0 ? _sky.Length == 0 : _sky == Skies[i - 1].Material);
         for (var i = 0; i < SetRows; i++)
         {
             var row = i < s.Rows.Count ? s.Rows[i] : null;
@@ -722,6 +727,16 @@ public partial class PracSkins
             var tab = id["ps_tab_".Length..];
             if (SetTabs.Any(t => t.Id == tab)) s.Tab = tab;
             s.Rename = null; // leaving the keyboard keeps the name
+            return;
+        }
+        // ps_sky_<i>: 0 = the map's own sky, i = Skies[i - 1]
+        if (id.StartsWith("ps_sky_"))
+        {
+            if (!int.TryParse(id["ps_sky_".Length..], out var k) || k < 0 || k > Skies.Length) return;
+            var (skyName, material) = k == 0 ? ("Map default", "") : Skies[k - 1];
+            var seqSky = s.StatusSeq;
+            ChangeSetting(SetDefs.First(d => d.Id == "sky"), material, s.MapScope);
+            if (s.StatusSeq == seqSky) SetStatus(s, $"Sky: {skyName}");
             return;
         }
         // ps_row_<i>_opt_<j>

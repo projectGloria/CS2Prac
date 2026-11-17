@@ -49,6 +49,61 @@
 							<Label id="pk_teamhint" class="pk-hint" text="{s:text}" hittest="false" />
 						</Panel>
 					</Panel>
+					<!-- Pins, music, graffiti, stickers: search; Panorama has no text input, so an on-screen keyboard (Hud.cs HudKey). -->
+					<Panel id="pk_searchbar" class="pk-agentbar" hittest="false">
+						<Panel class="pk-barrow" hittest="false">
+							<Label class="pk-barlabel" text="Search" hittest="false" />
+							<Button id="pk_search" class="pk-chip pk-searchbox"><Label id="pk_query" class="pk-chip-text pk-query" text="{s:text}" hittest="false" /></Button>
+							<Button id="pk_key_back" class="pk-chip"><Label class="pk-chip-text" text="&#9664; Back" hittest="false" /></Button>
+							<Button id="pk_key_clear" class="pk-chip"><Label class="pk-chip-text" text="Clear" hittest="false" /></Button>
+						</Panel>
+						<Panel id="pk_keys" class="pk-tp" hittest="false">
+							<Panel class="pk-barrow pk-keyrow" hittest="false">
+								<Button id="pk_key_q" class="pk-chip pk-key"><Label class="pk-chip-text" text="Q" hittest="false" /></Button>
+								<Button id="pk_key_w" class="pk-chip pk-key"><Label class="pk-chip-text" text="W" hittest="false" /></Button>
+								<Button id="pk_key_e" class="pk-chip pk-key"><Label class="pk-chip-text" text="E" hittest="false" /></Button>
+								<Button id="pk_key_r" class="pk-chip pk-key"><Label class="pk-chip-text" text="R" hittest="false" /></Button>
+								<Button id="pk_key_t" class="pk-chip pk-key"><Label class="pk-chip-text" text="T" hittest="false" /></Button>
+								<Button id="pk_key_y" class="pk-chip pk-key"><Label class="pk-chip-text" text="Y" hittest="false" /></Button>
+								<Button id="pk_key_u" class="pk-chip pk-key"><Label class="pk-chip-text" text="U" hittest="false" /></Button>
+								<Button id="pk_key_i" class="pk-chip pk-key"><Label class="pk-chip-text" text="I" hittest="false" /></Button>
+								<Button id="pk_key_o" class="pk-chip pk-key"><Label class="pk-chip-text" text="O" hittest="false" /></Button>
+								<Button id="pk_key_p" class="pk-chip pk-key"><Label class="pk-chip-text" text="P" hittest="false" /></Button>
+								<Button id="pk_key_1" class="pk-chip pk-key"><Label class="pk-chip-text" text="1" hittest="false" /></Button>
+								<Button id="pk_key_2" class="pk-chip pk-key"><Label class="pk-chip-text" text="2" hittest="false" /></Button>
+								<Button id="pk_key_3" class="pk-chip pk-key"><Label class="pk-chip-text" text="3" hittest="false" /></Button>
+								<Button id="pk_key_4" class="pk-chip pk-key"><Label class="pk-chip-text" text="4" hittest="false" /></Button>
+							</Panel>
+							<Panel class="pk-barrow pk-keyrow" hittest="false">
+								<Button id="pk_key_a" class="pk-chip pk-key"><Label class="pk-chip-text" text="A" hittest="false" /></Button>
+								<Button id="pk_key_s" class="pk-chip pk-key"><Label class="pk-chip-text" text="S" hittest="false" /></Button>
+								<Button id="pk_key_d" class="pk-chip pk-key"><Label class="pk-chip-text" text="D" hittest="false" /></Button>
+								<Button id="pk_key_f" class="pk-chip pk-key"><Label class="pk-chip-text" text="F" hittest="false" /></Button>
+								<Button id="pk_key_g" class="pk-chip pk-key"><Label class="pk-chip-text" text="G" hittest="false" /></Button>
+								<Button id="pk_key_h" class="pk-chip pk-key"><Label class="pk-chip-text" text="H" hittest="false" /></Button>
+								<Button id="pk_key_j" class="pk-chip pk-key"><Label class="pk-chip-text" text="J" hittest="false" /></Button>
+								<Button id="pk_key_k" class="pk-chip pk-key"><Label class="pk-chip-text" text="K" hittest="false" /></Button>
+								<Button id="pk_key_l" class="pk-chip pk-key"><Label class="pk-chip-text" text="L" hittest="false" /></Button>
+								<Button id="pk_key_5" class="pk-chip pk-key"><Label class="pk-chip-text" text="5" hittest="false" /></Button>
+								<Button id="pk_key_6" class="pk-chip pk-key"><Label class="pk-chip-text" text="6" hittest="false" /></Button>
+								<Button id="pk_key_7" class="pk-chip pk-key"><Label class="pk-chip-text" text="7" hittest="false" /></Button>
+								<Button id="pk_key_8" class="pk-chip pk-key"><Label class="pk-chip-text" text="8" hittest="false" /></Button>
+							</Panel>
+							<Panel class="pk-barrow pk-keyrow" hittest="false">
+								<Button id="pk_key_z" class="pk-chip pk-key"><Label class="pk-chip-text" text="Z" hittest="false" /></Button>
+								<Button id="pk_key_x" class="pk-chip pk-key"><Label class="pk-chip-text" text="X" hittest="false" /></Button>
+								<Button id="pk_key_c" class="pk-chip pk-key"><Label class="pk-chip-text" text="C" hittest="false" /></Button>
+								<Button id="pk_key_v" class="pk-chip pk-key"><Label class="pk-chip-text" text="V" hittest="false" /></Button>
+								<Button id="pk_key_b" class="pk-chip pk-key"><Label class="pk-chip-text" text="B" hittest="false" /></Button>
+								<Button id="pk_key_n" class="pk-chip pk-key"><Label class="pk-chip-text" text="N" hittest="false" /></Button>
+								<Button id="pk_key_m" class="pk-chip pk-key"><Label class="pk-chip-text" text="M" hittest="false" /></Button>
+								<Button id="pk_key_-" class="pk-chip pk-key"><Label class="pk-chip-text" text="-" hittest="false" /></Button>
+								<Button id="pk_key_9" class="pk-chip pk-key"><Label class="pk-chip-text" text="9" hittest="false" /></Button>
+								<Button id="pk_key_0" class="pk-chip pk-key"><Label class="pk-chip-text" text="0" hittest="false" /></Button>
+								<Button id="pk_key_space" class="pk-chip pk-key pk-space"><Label class="pk-chip-text" text="Space" hittest="false" /></Button>
+							</Panel>
+						</Panel>
+					</Panel>
 					<!-- Agents tab only: view toggle; in third person also pose and camera buttons (AgentView.cs). -->
 					<Panel id="pk_agentbar" class="pk-agentbar" hittest="false">
 						<Panel class="pk-barrow" hittest="false">
@@ -92,6 +147,8 @@
 					</Panel>
 					<Label id="pk_empty" class="pk-empty" text="{s:text}" hittest="false" />
 					<Panel class="pk-grid" hittest="true">
+						<!-- Shown when rows above the picked skin are hidden (Hud.cs FirstRow): the server cannot scroll the grid. -->
+						<Button id="pk_earlier" class="pk-chip pk-earlier"><Label class="pk-chip-text" text="&#9650; Show earlier" hittest="false" /></Button>
 <!--GRID_ROWS-->
 					</Panel>
 				</Panel>

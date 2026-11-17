@@ -2,7 +2,7 @@
 
 ## What this is
 CS2Prac is a personal Windows desktop app (Electron + React + TypeScript) that runs a **local CS2 practice server**. The user picks any map, starts the server, connects from their own CS2 client, and is admin there. Skins (weapons, knives, gloves, and later agents, stickers and keychains) are applied **server-side** by our CounterStrikeSharp plugin `PracSkins`. MatchZy provides the practice features.
-The app never touches the game client's memory; the only files it adds to the client install are the skin window's two Panorama files (see "Skin window"). Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
+The app never touches the game client's memory; the only files it adds to the client install are the skin window's two Panorama files and the L window's compiled sky thumbnails (see "Skin window", "3D skin editor"). Everything happens on a private `-insecure` + `sv_lan 1` server, so there is no VAC risk.
 
 ## Working rules
 - **Commit only when the user says so**, then push directly to `main`. No branches, no PRs. During UI work the user watches changes live in `npm run dev` and decides when a section is done; run typecheck + tests, leave the changes uncommitted and wait. Never push a `v*` release tag unless asked.
@@ -129,7 +129,7 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Catalog `graffiti` (ByMykel graffiti.json; one entry per def, `tints` = tint id → image from `graffiti-<def>_<tint>`).
   loadout.json `graffiti` / `graffitiTint` (both teams). K window tab `graffiti` (tints in the side list, icons
   `.pk-img.g<def>` from sticker_kits spray_* and tournament *_graffiti kits, `econ/stickers/<sticker_material>_png`; most tiles were
-  empty before the *_graffiti ones were added). 3 s cooldown, 5 sprays per player. The game's own T (spray wheel) never
+  empty before the *_graffiti ones were added). Cooldown = setting `spraycooldown` (default 3 s, 0 = none; wall clock, since Server.CurrentTime restarts per map; the app takes typed numbers via SettingDef.input; in game the K window's graffiti tab shows it as "Timer: …" side rows (@css/root), its SetDef has Tab "graffiti" so L doesn't list it), 5 sprays per player (tracked by raw entity handle). The game's own T (spray wheel) never
   reaches the plugin: the user's Nihil.cfg binds T to `+cs2prac_spray` (`css_spraywheel open|close`; `css_graffiti` is
   the text menu's `!graffiti`, taken).
 - **Checkerboard decal = texture not precached.** build-hud writes resources/hud/graffiti.json (def → spray vtex
@@ -175,6 +175,9 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - **MatchZy's `GetTrackedBotCount()` permanently drops tracked bots that aren't IsBot** (then bot_quota too low, bots
   kicked as untracked, "run .nobots", and a kick during `.bot`'s collision timer crashed the server, 0xC0000005).
   The engine's bot_quota does not count by the flag (live-tested).
+- **Bots wear random loadouts** (BotLoadouts.cs `SkinsOf(player)`: per slot, rolled from the catalog, cleared on put-in-server); every per-player loadout read in PracSkins.cs goes through SkinsOf, `_loadout` only for humans and stand-ins. Guns too: GiveBotGuns swaps primary + pistol 0.2 s after each spawn (rolled per bot and team); removing the held gun and giving the new one in the same tick showed the bot empty-handed in game (new gun on its back) although the server had it active and deployed, so when the held gun goes, the hands are emptied (m_hActiveWeapon none, networked) and the guns are given 0.1 s later (as the stand-in's pose swap). **Bots ignore server-sent `use`/`slot3`/`lastinv`** (ExecuteClientCommandFromServer; live-tested), so UseWeapon's bot branch does nothing. `css_prac_status` shows each player's active weapon and each weapon's deploy tick. After a sticker/charm pick RefreshPlayer does knife-and-back (the client builds stickers on draw).
+- Weapons are skinned by the GiveNamedItem hook and again by OnEntitySpawned; the second pass for a weapon already carrying our item id uses `keepId` (no wipe, no new id): the double apply hid fresh stickers until a weapon switch.
+- Gloves: `ResetHandsModel` swaps the pawn model away and back before new gloves (hand wraps stuck otherwise).
 - **Flag off only for the snapshot** (BotNames.cs): holding the flag around MatchZy's reads failed both ways (a
   networked hold took every bot's picture away on each `.bot`/death; a memory-only one leaked into the next packed
   snapshot, user test 2026-11-17: clients see whatever m_fFlags holds when the entity is packed). Measured frame
@@ -250,8 +253,15 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Hud.cs sends only changed texts/classes per slot (HudSent cache); tile images are class "variants" (old one removed).
 - Lists scroll (`overflow: squish scroll`, user-confirmed): 36 side rows, 128 tiles (32 rows; empty rows get class
   gone); the pager only shows (class gone otherwise) if a list ever outgrows 128. Side rows carry an icon panel
-  (`pk_side_<i>_img`, classes pk-img pk-row-img + the b<def> icon; gloves have no base icon, so the worn finish or the
-  type's first finish).
+  (`pk_side_<i>_img`, classes pk-img pk-row-img + the b<def> icon, or the picked skin's s<def>_<paint>; gloves have no
+  base icon, so the worn finish or the type's first finish).
+- The server can't scroll a list, so HudSession.FirstRow hides grid rows above it: K opens with the picked tile in
+  the second visible row; `pk_earlier` ("▲ Show earlier") resets it. Grid height is fill-parent-flow (never under
+  the footer). Tabs without a side list (pins/music/graffiti/stickers) add class `noside` on pk_win (wider tiles).
+- Search (pins/music/graffiti/stickers): Panorama has no text input, so `pk_search` toggles an on-screen keyboard
+  (`pk_keys`, `pk_key_<c>` / back / clear / space, HudKey, MaxQuery 24) that filters on every click; `!sticker`/
+  `!charm <text>` in chat still work. Sticker/charm tiles carry `.pk-img.k<def>` / `.c<def>` (build-hud, ~11k rules;
+  vcss ~2.3 MB).
 - **The client validates the layout and silently drops a rejected one** ("Layout xml did not pass CustomHud
   validation" in the CLIENT console only): the server still freezes the player and hides HUD bits, but nothing draws.
   The compiler checks nothing (made-up CSS properties compile fine). Known rejection: a full-screen self-closing
@@ -482,8 +492,13 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Sky thumbnails: `ModelExport sky <csgo> <out> <material…>` renders each sky material's texture (cubemap faces →
   lat-long via TextureExtract, LDR faces copied to RgbaF32; HDR tone-mapped) to a 320×180 `sky_<name>.jpg` (the
   horizon band). ModelStore.skies (models:skies) renders the missing ones in one run (~37 s for all 22) into
-  <build>/skies; the Play page's Server settings shows them as a tile picker. The L window can't show them (Panorama
-  images must be compiled resources and nothing of Valve's ships), so it keeps names.
+  <build>/skies; the Play page's Server settings shows them as a tile picker.
+- L window Sky tab = tiles (`ps_skygrid`, `ps_sky_<i>`, 0 = map default, i = SettingsHud Skies[i-1]; build-hud reads
+  that list and bakes class `sky_<stem>` per tile + `.ps-sky-img.sky_<stem>` → `s2r://panorama/images/custom_game/
+  cs2prac_skies/<stem>_jpg.vtex`). At server start (background, once) the app's `installSkyThumbs` (clientHud.ts)
+  compiles the rendered jpgs with the user's own resourcecompiler (a jpg referenced from a throwaway css, `-r`, gives
+  `<stem>_jpg.vtex_c`; jpg compiles directly) and copies them into the client's game/csgo/panorama/images/
+  custom_game/cs2prac_skies (more loose files in the client, like the layout). No Workshop Tools: names on dark tiles.
 - Renderer CSP blocks blob: URLs and fetches: glb bytes, the jpg and sticker/charm images (`models.image`, only
   steamstatic / raw.githubusercontent) come through main as bytes/data URLs.
 - three.js sanitizes node names (dots/slashes dropped, `_1`/`_2` per primitive): match bodies against markup.meshes,

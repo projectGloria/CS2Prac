@@ -7,8 +7,10 @@ import {
   SETTING_TABS,
   clearMap,
   optionLabel,
+  parseInputValue,
   setGlobal,
   type ServerPrefs,
+  type SettingDef,
   type SettingOption
 } from '@shared/serverSettings'
 
@@ -74,6 +76,52 @@ function SkyPicker({
   )
 }
 
+/** A typed number (graffiti timer …): saved on Enter or when the box loses focus; empty = Default. */
+function NumberSetting({
+  def,
+  value,
+  onChange
+}: {
+  def: SettingDef
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  const [text, setText] = useState(value ?? '')
+  const [bad, setBad] = useState(false)
+  useEffect(() => {
+    setText(value ?? '')
+    setBad(false)
+  }, [value])
+
+  function commit() {
+    if (text.trim() === '') {
+      setBad(false)
+      if (value != null) onChange(null)
+      return
+    }
+    const v = parseInputValue(def, text)
+    setBad(v == null)
+    if (v != null && v !== value) onChange(v)
+  }
+
+  return (
+    <span className="srv-input">
+      <input
+        type="text"
+        inputMode="decimal"
+        className={bad ? 'bad' : undefined}
+        value={text}
+        placeholder="Default"
+        title={`${def.input!.min}–${def.input!.max} ${def.input!.unit}; empty = Default`}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+      />
+      <span className="muted small">{def.input!.unit}</span>
+    </span>
+  )
+}
+
 /**
  * The settings of the in-game L window, saved for every map (server_prefs.json "global"). Values saved in game for
  * one map only are listed below and can be cleared here.
@@ -123,6 +171,13 @@ export default function ServerSettings({ onClose }: { onClose: () => void }) {
                   {s.name}
                   <span className="muted small">{s.sub}</span>
                 </span>
+                {s.input ? (
+                  <NumberSetting
+                    def={s}
+                    value={prefs.global[s.id] ?? null}
+                    onChange={(v) => save(setGlobal(prefs, s.id, v))}
+                  />
+                ) : (
                 <Dropdown
                   value={prefs.global[s.id] ?? DEFAULT}
                   align="right"
@@ -132,6 +187,7 @@ export default function ServerSettings({ onClose }: { onClose: () => void }) {
                     ...s.options.map((o) => ({ value: o.value, label: o.label || 'Map default' }))
                   ]}
                 />
+                )}
               </div>
               )
             )}
