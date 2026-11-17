@@ -1,7 +1,7 @@
 // 3D skin editor (Phase 14): the weapon's own model from the local CS2 install, stickers drawn where the game puts
 // them (its sticker UV set, TEXCOORD_1) and a charm marker. Drag on the model to move the picked sticker or the charm;
-// the result is saved to the loadout (and pushed to the server) when the drag ends. The finish itself is not
-// rendered: inspect the weapon in game (F) for the exact look.
+// the result is saved to the loadout (and pushed to the server) when the drag ends. The finish is an
+// approximation from the paint kit's material (pattern, colours, placement; no wear or masks): inspect in game (F).
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -18,7 +18,8 @@ import {
   stickerSlots,
   stickerUv,
   uvToStickerOffset,
-  type ModelMarkup
+  type ModelMarkup,
+  type PaintMarkup
 } from '@shared/models'
 import type { KeychainSel, StickerSel } from '@shared/skins'
 
@@ -54,9 +55,40 @@ const stickerBlock = (i: number) => `
     }
   }`
 
+// The finish: an approximation of csgo_customweapon. Custom/gunsmith patterns are the weapon's albedo in uv0; the
+// other styles tile a mask whose r/g/b pick colours 1–3 over colour 0. Wear and the game's per-part masks are left out.
+const PAINT = /* glsl */ `
+vec3 paintColour(vec3 base) {
+  float lum = dot(base, vec3(0.299, 0.587, 0.114));
+  // keep some of the weapon's own shading (ambient occlusion, edges) under the paint
+  float detail = baseDetail > 0.5 ? clamp(0.55 + lum * 0.9, 0.55, 1.15) : 1.0;
+  if (paintStyle > 5.5 && paintStyle < 6.5 || paintStyle > 7.5) {
+    vec4 p = texture2D(patMap, vUv);
+    return p.rgb * detail;
+  }
+  float c = cos(patXform.y), s = sin(patXform.y);
+  vec2 d = vUv - 0.5;
+  vec2 puv = vec2(d.x * c - d.y * s, d.x * s + d.y * c) * patXform.x + 0.5 + patXform.zw;
+  vec4 p = hasPattern > 0.5 ? texture2D(patMap, puv) : vec4(0.0);
+  if (paintStyle > 6.5) return clamp(p.rgb * paintBright, 0.0, 1.0) * detail;
+  vec3 col = paintCol[0];
+  col = mix(col, paintCol[1], p.r);
+  col = mix(col, paintCol[2], p.g);
+  col = mix(col, paintCol[3], p.b);
+  return clamp(col * paintBright, 0.0, 1.0) * detail;
+}`
+
 const FRAGMENT = /* glsl */ `
 uniform sampler2D baseMap;
 uniform float hasBase;
+uniform sampler2D patMap;
+uniform float paintOn;
+uniform float paintStyle;
+uniform float hasPattern;
+uniform float baseDetail;
+uniform float paintBright;
+uniform vec3 paintCol[4];
+uniform vec4 patXform;
 ${Array.from({ length: SLOTS }, (_, i) => `uniform sampler2D stTex${i};`).join('\n')}
 uniform vec4 stRect[${SLOTS}];
 uniform float stOn[${SLOTS}];
@@ -66,8 +98,10 @@ varying vec2 vUv;
 varying vec2 vSt;
 varying vec3 vN;
 varying vec3 vPos;
+${PAINT}
 void main() {
   vec3 col = hasBase > 0.5 ? texture2D(baseMap, vUv).rgb : vec3(0.42);
+  if (paintOn > 0.5) col = paintColour(baseDetail > 0.5 ? col : vec3(0.5));
   ${Array.from({ length: SLOTS }, (_, i) => stickerBlock(i)).join('\n')}
   vec3 n = normalize(vN);
   if (!gl_FrontFacing) n = -n;
@@ -94,6 +128,8 @@ interface Scene {
 export default function SkinViewer3D(props: {
   className: string
   legacy: boolean
+  /** the picked finish (0 = default) */
+  paintKit: number
   stickers: (StickerSel | null)[]
   keychain: KeychainSel | null
   stickerImage: (defIndex: number) => string | undefined
@@ -143,6 +179,41 @@ export default function SkinViewer3D(props: {
     }
   }, [props.className])
 
+  // ---------- the finish (per paint kit) ----------
+  const [finish, setFinish] = useState<{ paintKit: number; paint: PaintMarkup; texture: THREE.Texture | null } | null>(null)
+  const [finishNote, setFinishNote] = useState<string | null>(null)
+  useEffect(() => {
+    const kit = props.paintKit
+    setFinishNote(null)
+    if (!(kit > 0)) return setFinish(null)
+    let cancelled = false
+    let tex: THREE.Texture | null = null
+    setFinishNote('Loading the finish…')
+    window.api.models.paint(kit).then(
+      async (res) => {
+        if (cancelled) return
+        if (!res.ok) return setFinishNote(`Finish not shown: ${res.error}`)
+        if (res.pattern) {
+          tex = await new THREE.TextureLoader().loadAsync(res.pattern).catch(() => null)
+          if (cancelled) return tex?.dispose()
+          if (tex) {
+            tex.flipY = false
+            tex.colorSpace = THREE.NoColorSpace
+            tex.anisotropy = 8
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+          }
+        }
+        setFinish({ paintKit: kit, paint: res.paint, texture: tex })
+        setFinishNote(null)
+      },
+      (e) => !cancelled && setFinishNote(`Finish not shown: ${String(e)}`)
+    )
+    return () => {
+      cancelled = true
+      tex?.dispose()
+    }
+  }, [props.paintKit])
+
   // ---------- textures for stickers / charm ----------
   const texture = (url: string | undefined): THREE.Texture | null => {
     if (!url) return null
@@ -170,6 +241,19 @@ export default function SkinViewer3D(props: {
     const body = bodyMesh(s.markup, props.legacy)
     for (const m of s.meshes) m.visible = (m.userData.body as string) === body
     const u = s.material.uniforms
+    const f = finish?.paintKit === props.paintKit ? finish : null
+    u.paintOn.value = f ? 1 : 0
+    if (f) {
+      const p = f.paint
+      u.paintStyle.value = p.style
+      u.hasPattern.value = f.texture ? 1 : 0
+      u.patMap.value = f.texture ?? u.patMap.value
+      // the HD body's colour map only lines up with the HD body
+      u.baseDetail.value = u.hasBase.value > 0.5 && !props.legacy ? 1 : 0
+      u.paintBright.value = p.brightness || 1
+      p.colors.forEach((c, i) => (u.paintCol.value[i] as THREE.Vector3).set(c[0], c[1], c[2]))
+      ;(u.patXform.value as THREE.Vector4).set(p.scale || 1, (p.rotation * Math.PI) / 180, p.offset[0], p.offset[1])
+    }
     for (let i = 0; i < SLOTS; i++) {
       const st = props.stickers[i]
       const anchor = st ? anchorFor(s.markup, body, i) : null
@@ -343,7 +427,7 @@ export default function SkinViewer3D(props: {
       </div>
       <p className="muted small viewer3d-hint">
         {target ? 'Drag on the weapon to place it; drag elsewhere to turn, wheel to zoom.' : 'Drag to turn, wheel to zoom. Pick a sticker or the charm above to move it.'}{' '}
-        The finish isn't drawn here: inspect the weapon in game (F) for the exact look.
+        {finishNote ?? (props.paintKit > 0 ? 'The finish is an approximation (no wear): inspect it in game (F) for the exact look.' : '')}
       </p>
     </div>
   )
@@ -364,6 +448,14 @@ async function buildScene(el: HTMLDivElement, markup: ModelMarkup, glb: Uint8Arr
   const uniforms: Record<string, THREE.IUniform> = {
     baseMap: { value: baseMap ?? blank },
     hasBase: { value: baseMap ? 1 : 0 },
+    patMap: { value: blank },
+    paintOn: { value: 0 },
+    paintStyle: { value: 0 },
+    hasPattern: { value: 0 },
+    baseDetail: { value: 0 },
+    paintBright: { value: 1 },
+    paintCol: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) },
+    patXform: { value: new THREE.Vector4(1, 0, 0, 0) },
     stRect: { value: Array.from({ length: SLOTS }, () => new THREE.Vector4()) },
     stOn: { value: new Array(SLOTS).fill(0) },
     stWear: { value: new Array(SLOTS).fill(0) },

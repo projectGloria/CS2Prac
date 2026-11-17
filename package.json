@@ -1,6 +1,6 @@
 {
   "name": "cs2prac",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "description": "Local CS2 practice server manager",
   "author": "projectGloria",
   "main": "out/main/index.js",

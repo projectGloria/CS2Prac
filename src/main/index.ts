@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
@@ -31,9 +31,12 @@ import { cachedCatalog, getCatalog } from './skins/catalog'
 import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore } from './skins/loadoutStore'
 import { exportPluginCatalog } from './skins/pluginCatalog'
 import { SERVER_PREFS_FILE, addRecentWorkshop, readServerPrefs, writeServerPrefs, writeWorkshopMaps } from './server/serverPrefs'
-import type { ServerPrefs } from '@shared/serverSettings'
+import { SKIES, type ServerPrefs } from '@shared/serverSettings'
 import { listSteamAccounts, steamPath } from './steam/accounts'
 import { readBots, saveBots, writeServerBots } from './setup/bots'
+
+/** a picture over the engine's 16 KB avatar limit, scaled down to 64×64 (Steam's cache holds 184×184 files) */
+const shrinkAvatar = (png: Buffer): Buffer => nativeImage.createFromBuffer(png).resize({ width: 64, height: 64, quality: 'best' }).toPNG()
 import type { BotsConfig } from '@shared/bots'
 import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
 import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
@@ -133,6 +136,7 @@ async function installSkinWindow() {
     const client = await findCs2Install()
     if (!client) return
     const r = await installClientHud(client.dir)
+    hudUpdated = r === 'installed'
     if (r === 'installed')
       send(IPC.serverLog, '[cs2prac] skin window installed into CS2 – restart CS2 if it is running, then press K in game')
     else if (r === 'missing') send(IPC.serverLog, '[cs2prac] skin window files missing (npm run build:hud) – K opens the text menu')
@@ -202,11 +206,16 @@ function watchLoadout(csgoDir: string) {
 }
 
 let lastProblems: string[] = []
+let hudUpdated = false
 
 async function getHealth(): Promise<ServerHealth> {
   const { lastGoodBuildId, serverSource } = await loadSettings()
   const client = serverSource === 'client' ? await findCs2Install() : null
-  return { problems: lastProblems, cs2Updated: !!(lastGoodBuildId && client?.buildId && client.buildId !== lastGoodBuildId) }
+  return {
+    problems: lastProblems,
+    cs2Updated: !!(lastGoodBuildId && client?.buildId && client.buildId !== lastGoodBuildId),
+    hudUpdated
+  }
 }
 
 /** Asks the running server what loaded, remembers the CS2 build when all is well, and tells the UI. */
@@ -372,7 +381,7 @@ function registerIpc() {
     await writeMatchZyConfig(csgoDir, settings.matchzyMode, accounts.map((a) => a.steamId), serverName)
     const cfgs = await syncServerCfgs(userCfgDir(), csgoDir, serverName)
     send(IPC.serverLog, `[cs2prac] copied ${cfgs} cfg file(s) from ${userCfgDir()}`)
-    const avatars = await writeServerBots(csgoDir, await readBots(botsFile()), await steamPath(), accounts.map((a) => a.steamId))
+    const avatars = await writeServerBots(csgoDir, await readBots(botsFile()), await steamPath(), accounts.map((a) => a.steamId), shrinkAvatar)
     startedWithAvatars = avatars
     if (avatars) send(IPC.serverLog, '[cs2prac] bot pictures on (sv_reliableavatardata 1)')
     const stale = await killStaleServers(layout(installDir).cs2Exe)
@@ -398,6 +407,8 @@ function registerIpc() {
   })
   ipcMain.handle(IPC.modelsGet, (_e, className: string) => models().get(String(className ?? '')))
   ipcMain.handle(IPC.modelsImage, (_e, url: string) => models().image(String(url ?? '')))
+  ipcMain.handle(IPC.modelsPaint, (_e, paintKit: number) => models().paint(Math.floor(Number(paintKit) || 0)))
+  ipcMain.handle(IPC.modelsSkies, () => models().skies(SKIES.map((s) => s.value).filter(Boolean)))
   ipcMain.handle(IPC.workshopSearch, (_e, query: string, page: number, sort: WorkshopSort) =>
     workshop().search(String(query ?? ''), Math.max(1, Math.floor(Number(page) || 1)), sort)
   )
@@ -420,7 +431,7 @@ function registerIpc() {
       const { installDir } = await loadSettings()
       if (installDir) {
         const accounts = await listSteamAccounts()
-        const avatars = await writeServerBots(layout(installDir).csgoDir, saved, await steamPath(), accounts.map((a) => a.steamId))
+        const avatars = await writeServerBots(layout(installDir).csgoDir, saved, await steamPath(), accounts.map((a) => a.steamId), shrinkAvatar)
         restartForPictures = avatars && !startedWithAvatars
         await server.exec('css_prac_bots').catch((e) => logError('bots', e))
       }

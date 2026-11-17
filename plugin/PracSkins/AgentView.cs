@@ -278,7 +278,7 @@ public partial class PracSkins
         }
         v.BotsBefore.Clear();
         foreach (var p in Utilities.GetPlayers())
-            if (p is { IsValid: true, IsBot: true }) v.BotsBefore.Add(p.Slot);
+            if ((p is { IsValid: true } && IsBotAny(p))) v.BotsBefore.Add(p.Slot);
         SetBotStop(true);
         if (MatchZyInstalled && !v.BotViaMatchZy && !v.OwnBotTried)
         {
@@ -322,7 +322,7 @@ public partial class PracSkins
     /// <summary>Per tick while no stand-in exists yet: adopt a new bot, try the next way, or fall back to a prop.</summary>
     private void SearchStandIn(CCSPlayerController player, HudSession s, AgentView v)
     {
-        var bot = Utilities.GetPlayers().FirstOrDefault(p => p is { IsValid: true, IsBot: true }
+        var bot = Utilities.GetPlayers().FirstOrDefault(p => (p is { IsValid: true } && IsBotAny(p))
             && !v.BotsBefore.Contains(p.Slot) && !IsStandIn(p) && p.Slot != player.Slot);
         if (bot != null)
         {
@@ -358,6 +358,7 @@ public partial class PracSkins
         var bp = bot.PlayerPawn.Value!;
         v.Bot = bot;
         _standInTeam[bot.Slot] = player.TeamNum;
+        RemoveGlow(bp.Index); // .glow outlines bots; the preview's stand-in must look like the plain agent (user report)
         bp.TakesDamage = false;
         SetMoveType(bp, MoveType_t.MOVETYPE_NONE);
         // no collision with the (invisible) player standing on the same spot
@@ -436,7 +437,7 @@ public partial class PracSkins
                 if (ConVar.Find("bot_quota") is { } q && CvarInt(q) > 0)
                     Server.ExecuteCommand($"bot_quota {CvarInt(q) - 1}");
             }
-            else Server.ExecuteCommand($"bot_kick \"{bot.PlayerName}\""); // also lowers bot_quota
+            else ExecKickNow($"bot_kick \"{bot.PlayerName}\""); // stands apart already; also lowers bot_quota
         }
         if (v.Bot != null)
         {
@@ -451,7 +452,7 @@ public partial class PracSkins
         AddTimer(2f, () =>
         {
             foreach (var p in Utilities.GetPlayers())
-                if (p is { IsValid: true, IsBot: true } && !before.Contains(p.Slot) && !IsStandIn(p)) Kick(p, viaMz);
+                if ((p is { IsValid: true } && IsBotAny(p)) && !before.Contains(p.Slot) && !IsStandIn(p)) Kick(p, viaMz);
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
@@ -843,7 +844,7 @@ public partial class PracSkins
 
     private void UseWeapon(CCSPlayerController player, string name)
     {
-        if (!player.IsBot) player.ExecuteClientCommand($"use {name}");
+        if (!IsBotAny(player)) player.ExecuteClientCommand($"use {name}");
         player.ExecuteClientCommandFromServer($"use {name}");
     }
 

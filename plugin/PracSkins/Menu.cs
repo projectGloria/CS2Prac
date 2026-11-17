@@ -61,6 +61,10 @@ public partial class PracSkins
 
     private bool MenuOpen(CCSPlayerController player) => _menus.ContainsKey(player.Slot);
 
+    /// <summary>Any of our freezing windows (text menu, K, L) is open for the player.</summary>
+    private bool WindowOpen(CCSPlayerController player) =>
+        _menus.ContainsKey(player.Slot) || _hudSessions.ContainsKey(player.Slot) || _setSessions.ContainsKey(player.Slot);
+
     private void OpenMenu(CCSPlayerController player, MenuPage page)
     {
         if (!_menus.TryGetValue(player.Slot, out var session))
@@ -141,7 +145,7 @@ public partial class PracSkins
         foreach (var (slot, session) in _menus.ToList())
         {
             var player = Utilities.GetPlayerFromSlot(slot);
-            if (player is not { IsValid: true } || player.IsBot || session.Pages.Count == 0)
+            if (player is not { IsValid: true } || IsBotAny(player) || session.Pages.Count == 0)
             {
                 _menus.Remove(slot);
                 continue;

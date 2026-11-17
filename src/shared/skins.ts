@@ -111,7 +111,7 @@ export const GRAFFITI_TINTS: { id: number; name: string; color: string }[] = [
   { id: 19, name: 'Shark White', color: '#c1c1c1' }
 ]
 
-export const CATALOG_VERSION = 5
+export const CATALOG_VERSION = 6
 
 export interface Catalog {
   version: number

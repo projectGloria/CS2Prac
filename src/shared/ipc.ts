@@ -2,7 +2,7 @@ import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
 import type { Lineup } from './lineups'
-import type { ModelResult } from './models'
+import type { ModelResult, PaintResult } from './models'
 import type { WorkshopMap, WorkshopSearchResult, WorkshopSort } from './workshop'
 
 export type SetupPhase = 'idle' | 'steamcmd' | 'server' | 'plugins' | 'done' | 'error'
@@ -96,6 +96,8 @@ export interface ServerHealth {
   problems: string[]
   /** CS2 has a different build than at the last start where everything loaded */
   cs2Updated: boolean
+  /** the skin window's layout was copied into CS2 at this start: a CS2 that was already running still has the old one */
+  hudUpdated?: boolean
 }
 
 export type UpdateStatus =
@@ -194,8 +196,15 @@ export interface Api {
   /** weapon models for the 3D editor, exported from the local CS2 install on first use */
   models: {
     get(className: string): Promise<ModelResult>
+    /** a paint kit's finish (pattern + parameters), exported from the local CS2 install on first use */
+    paint(paintKit: number): Promise<PaintResult>
     /** a sticker/charm image (https, Steam CDN) as a data URL, or null */
     image(url: string): Promise<string | null>
+    /**
+     * thumbnails of the sky options (material → jpeg data URL), rendered from the local CS2 install on first use;
+     * skies that failed are missing. Rejects when the model tool can't run (no Setup yet).
+     */
+    skies(): Promise<Record<string, string>>
   }
   skins: {
     getCatalog(refresh?: boolean): Promise<Catalog>
@@ -269,6 +278,8 @@ export const IPC = {
   workshopForget: 'workshop:forget',
   modelsGet: 'models:get',
   modelsImage: 'models:image',
+  modelsPaint: 'models:paint',
+  modelsSkies: 'models:skies',
   skinsCatalog: 'skins:catalog',
   skinsSteamAccounts: 'skins:steamAccounts',
   loadoutGet: 'loadout:get',

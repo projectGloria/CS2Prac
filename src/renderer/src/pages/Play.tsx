@@ -164,7 +164,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
           )}
         </div>
       )}
-      {(crashed || health?.cs2Updated || !!health?.problems.length) && (
+      {(crashed || health?.cs2Updated || health?.hudUpdated || !!health?.problems.length) && (
         <div className="notices">
           {crashed && (
             <p className="notice error">
@@ -177,6 +177,12 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
               {p}
             </p>
           ))}
+          {health?.hudUpdated && (
+            <p className="notice">
+              The in-game windows (K and L) were updated. If CS2 was already open, restart it once: until then it keeps the old
+              layout (missing tiles, buttons that do nothing).
+            </p>
+          )}
           {health?.cs2Updated && !health.problems.length && (
             <p className="notice">
               CS2 has been updated since your last working start. If the server or skins misbehave, use Setup → Update plugins to

@@ -66,6 +66,7 @@ public partial class PracSkins : BasePlugin
         InitHud(hotReload);
         InitSettings();
         InitBots();
+        InitSafeKick();
 
         // A dedicated server has no sound system: `play <sound>` (common in client cfgs and aliases run with
         // !cmd exec) crashes it with an access violation. Swallow the sound commands server-side.
@@ -75,6 +76,7 @@ public partial class PracSkins : BasePlugin
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
             _nextItemId = FirstCustomItemId;
+            _refreshPending.Clear(); // their timers stopped with the old map
             // After the game mode's own cfgs have run: the app's defaults, then the user's server cfg.
             AddTimer(2.0f, () => Server.ExecuteCommand("execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg"),
                 TimerFlags.STOP_ON_MAPCHANGE);
@@ -102,6 +104,7 @@ public partial class PracSkins : BasePlugin
         UnloadMovement();
         UnloadSettings();
         UnloadHud();
+        RestoreBotFlags();
     }
 
     // ---------------------------------------------------------------- setup
@@ -306,7 +309,7 @@ public partial class PracSkins : BasePlugin
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        if (player is { IsValid: true, IsBot: true }) Server.NextFrame(() => { if (player.IsValid) ApplyBotProfile(player); });
+        if ((player is { IsValid: true } && IsBotAny(player))) Server.NextFrame(() => { if (player.IsValid) ApplyBotProfile(player); });
         if (IsTarget(player))
             Server.NextFrame(() =>
             {
@@ -448,7 +451,11 @@ public partial class PracSkins : BasePlugin
         }
     }
 
-    private static readonly string[] NotRefreshed = { "weapon_c4", "grenade", "flashbang", "decoy", "molotov", "weapon_healthshot", "weapon_taser" };
+    // The Zeus is refreshed too (it was listed here, so a Zeus skin pick never showed until the next spawn).
+    private static readonly string[] NotRefreshed = { "weapon_c4", "grenade", "flashbang", "decoy", "molotov", "weapon_healthshot" };
+
+    /// <summary>Slots with a re-give still pending: a second pick within 0.1 s must not remove and give twice.</summary>
+    private readonly HashSet<int> _refreshPending = new();
 
     private static bool IsKnifeName(string name) => name.Contains("knife") || name.Contains("bayonet");
 
@@ -462,6 +469,9 @@ public partial class PracSkins : BasePlugin
         var pawn = player.PlayerPawn.Value;
         var services = pawn?.WeaponServices;
         if (pawn is not { IsValid: true } || services == null || !player.PawnIsAlive) return;
+        // A re-give is already on its way: its GiveNamedItem hook reads the loadout at give time, so it carries this
+        // change too. Running again would remove the doomed guns twice and give them twice (the second rifle drops).
+        if (!_refreshPending.Add(player.Slot)) return;
 
         var active = services.ActiveWeapon.Value?.DesignerName;
         var held = new List<(string Give, int Clip, int Reserve, bool Knife)>();
@@ -481,8 +491,10 @@ public partial class PracSkins : BasePlugin
             w.AddEntityIOEvent("Kill", w, null, "", 0.01f);
         }
 
+        var slot = player.Slot;
         AddTimer(0.1f, () =>
         {
+            _refreshPending.Remove(slot);
             if (!player.IsValid || !player.PawnIsAlive) return;
             foreach (var (give, clip, reserve, knife) in held)
             {

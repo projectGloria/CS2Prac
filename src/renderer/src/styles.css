@@ -275,6 +275,14 @@ button.extra-pick img { max-width: 100%; max-height: 100%; }
 .srv-group h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .srv-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
 .srv-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sky-picker { padding: 6px 0; border-top: 1px solid var(--border); }
+.sky-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.sky-tile { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; text-align: left; background: var(--bg); border: 2px solid var(--border); border-radius: 8px; }
+.sky-tile:hover:not(:disabled) { border-color: var(--muted); background: var(--bg); }
+.sky-tile.picked { border-color: var(--accent); }
+.sky-tile img, .sky-none { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.sky-none { display: grid; place-items: center; background: var(--hover); color: var(--muted); font-size: 12px; }
+.sky-label { padding: 5px 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tint-row {
   display: flex;

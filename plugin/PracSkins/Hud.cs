@@ -60,15 +60,73 @@ public partial class PracSkins
     // Both lists scroll with the mouse wheel; sized so nothing needs paging (35 guns, 61 AK-47 finishes + Default).
     private const int SideRows = 36;
     private const int GridCols = 4;
-    private const int GridTiles = GridCols * 16;
-    // CBasePlayerPawn.m_iHideHUD bits hidden while the window is open: weapon selection, crosshair, radar.
-    private const uint HudHideBits = (1u << 0) | (1u << 8) | (1u << 12);
+    private const int GridTiles = GridCols * 32; // 128: every music kit (~100) on one page
+    /// <summary>
+    /// CBasePlayerPawn.m_iHideHUD bits while the K or L window is open: the whole game HUD (user request). Weapon
+    /// selection 0, flashlight 1, health/armor 3, misc status 6, chat 7, crosshair 8, bonus progress 11, radar 12,
+    /// mini scoreboard 13. Not HIDEHUD_ALL (2): it might take our custom_hud_layout window with it (untested; try it
+    /// with `css_prac_hidebits`). The client's own cvars (cl_drawhud …) are tried too, see SetClientHud.
+    /// </summary>
+    // 4 (HIDEHUD_PLAYERDEAD) and 5 (HIDEHUD_NEEDSUIT) added for the money panel, which stayed with the rest (user
+    // report; the Source rule hid health/armor/money with them). Unverified in game: css_prac_hidebits tries others.
+    private const uint DefaultWindowHideBits = (1u << 0) | (1u << 1) | (1u << 3) | (1u << 4) | (1u << 5) | (1u << 6) |
+                                               (1u << 7) | (1u << 8) | (1u << 11) | (1u << 12) | (1u << 13);
+    private uint _windowHideBits = DefaultWindowHideBits;
+
+    /// <summary>Adds the window's hide bits the pawn lacks (also every tick: a respawn or the game may clear them).
+    /// Returns the bits we added so far, so close removes only those.</summary>
+    private uint HideWindowHud(CCSPlayerController player, uint added)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (pawn is not { IsValid: true }) return added;
+        var missing = _windowHideBits & ~pawn.HideHUD;
+        if (missing == 0) return added;
+        pawn.HideHUD |= missing;
+        Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
+        return added | missing;
+    }
+
+    private static void ShowWindowHud(CCSPlayerController player, uint added)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (added == 0 || pawn is not { IsValid: true }) return;
+        pawn.HideHUD &= ~added;
+        Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
+    }
+
+    [ConsoleCommand("css_prac_hidebits", "m_iHideHUD bits the K/L windows set (decimal or 0x hex; 'default'; no arg = show)")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnHideBitsCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        var arg = command.GetArg(1).Trim().ToLowerInvariant();
+        if (arg == "default") _windowHideBits = DefaultWindowHideBits;
+        else if (arg.Length > 0)
+        {
+            var ok = arg.StartsWith("0x")
+                ? uint.TryParse(arg[2..], System.Globalization.NumberStyles.HexNumber, null, out var v)
+                : uint.TryParse(arg, out v);
+            if (!ok) { command.ReplyToCommand("[PracSkins] usage: css_prac_hidebits <mask|0xhex|default>"); return; }
+            // open windows: drop what we added, the tick adds the new set
+            foreach (var (slot, s) in _hudSessions)
+                if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p) { ShowWindowHud(p, s.HudBitsAdded); s.HudBitsAdded = 0; }
+            foreach (var (slot, s) in _setSessions)
+                if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p) { ShowWindowHud(p, s.HudBitsAdded); s.HudBitsAdded = 0; }
+            _windowHideBits = v;
+        }
+        var bits = Enumerable.Range(0, 32).Where(i => (_windowHideBits & (1u << i)) != 0);
+        command.ReplyToCommand($"[PracSkins] window hide bits 0x{_windowHideBits:X} (bits {string.Join(",", bits)})");
+        foreach (var p in Utilities.GetPlayers().Where(p => (p is { IsValid: true } && !IsBotAny(p))))
+            if (p.PlayerPawn.Value is { IsValid: true } pawn)
+                command.ReplyToCommand($"[PracSkins]   {p.PlayerName}: m_iHideHUD 0x{pawn.HideHUD:X}");
+    }
 
     private static readonly string[] HudTabs = ["weapons", "knives", "gloves", "agents", "pins", "music", "graffiti", "stickers"];
 
     private CCSCustomHudLayout? _hud;
     private bool _hudWorldReady;
     private readonly Dictionary<int, HudSession> _hudSessions = new();
+    /// <summary>Where each player left the skin window (by SteamID: outlives map changes and reconnects).</summary>
+    private readonly Dictionary<ulong, (string Tab, int Selected, int Team, int Target)> _hudLast = new();
     private readonly Dictionary<int, HudSent> _hudSent = new();
 
     private void InitHud(bool hotReload)
@@ -145,9 +203,18 @@ public partial class PracSkins
     public void OnHudCommand(CCSPlayerController? player, CommandInfo command)
     {
         if (player == null) return;
-        if (_hudSessions.ContainsKey(player.Slot))
+        // "open" / "close" come from the client's K/L binds (Nihil.cfg), which also switch the client's HUD cvars;
+        // no argument toggles as before
+        var arg = command.GetArg(1).ToLowerInvariant();
+        if (arg == "close")
         {
             CloseHud(player);
+            CloseSettings(player);
+            return;
+        }
+        if (_hudSessions.ContainsKey(player.Slot))
+        {
+            if (arg != "open") CloseHud(player);
             return;
         }
         if (MenuOpen(player)) CloseMenu(player);
@@ -179,7 +246,7 @@ public partial class PracSkins
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnHudOpenTest(CCSPlayerController? caller, CommandInfo command)
     {
-        var bot = Utilities.GetPlayers().FirstOrDefault(p => p is { IsValid: true, IsBot: true, PawnIsAlive: true });
+        var bot = Utilities.GetPlayers().FirstOrDefault(p => (p is { IsValid: true, PawnIsAlive: true } && IsBotAny(p)));
         if (bot == null || !HudReady) { command.ReplyToCommand("[PracSkins] need a live bot and the entity"); return; }
         if (_hudSessions.ContainsKey(bot.Slot)) CloseHud(bot); else OpenHud(bot);
         command.ReplyToCommand($"[PracSkins] window {(_hudSessions.ContainsKey(bot.Slot) ? "open" : "closed")} for {bot.PlayerName}");
@@ -189,7 +256,7 @@ public partial class PracSkins
     [CommandHelper(minArgs: 1, usage: "<buttonId>", whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnHudClickTest(CCSPlayerController? caller, CommandInfo command)
     {
-        var bot = Utilities.GetPlayers().FirstOrDefault(p => p is { IsValid: true, IsBot: true, PawnIsAlive: true });
+        var bot = Utilities.GetPlayers().FirstOrDefault(p => (p is { IsValid: true, PawnIsAlive: true } && IsBotAny(p)));
         if (bot == null || !HudReady) return;
         OnHudClicked(bot, _hud!, command.GetArg(1));
     }
@@ -200,7 +267,7 @@ public partial class PracSkins
     public void OnHudEquipTest(CCSPlayerController? caller, CommandInfo command)
     {
         LoadCatalogIfChanged();
-        var bot = Utilities.GetPlayers().FirstOrDefault(p => p is { IsValid: true, IsBot: true, PawnIsAlive: true });
+        var bot = Utilities.GetPlayers().FirstOrDefault(p => (p is { IsValid: true, PawnIsAlive: true } && IsBotAny(p)));
         if (bot == null || !int.TryParse(command.GetArg(1), out var def) || _catalog.Weapon(def) is not { } weapon)
         {
             command.ReplyToCommand("[PracSkins] need a live bot and a catalog weapon def");
@@ -222,23 +289,72 @@ public partial class PracSkins
     {
         var s = new HudSession { Tab = "weapons", LastButtons = (ulong)player.Buttons, Team = player.TeamNum == 2 ? 2 : 3 };
         _hudSessions[player.Slot] = s;
-        SelectTab(player, s, "weapons");
+        // Holding a gun or knife: open on it (user request). Otherwise reopen where the player left it (tab, selection,
+        // sticker slot). The T/CT switch always starts on the player's own team: a stale switch saved edits to the
+        // other team, which looked like "the skin pick didn't work".
+        var held = HeldWeapon(player);
+        if (held is { Kind: "weapon" })
+        {
+            SelectTab(player, s, _hudLast.TryGetValue(player.SteamID, out var l) && l.Tab == "stickers" ? "stickers" : "weapons");
+        }
+        else if (held is { Kind: "knife" }) SelectTab(player, s, "knives");
+        else if (_hudLast.TryGetValue(player.SteamID, out var last) && HudTabs.Contains(last.Tab))
+        {
+            s.Target = last.Target;
+            SelectTab(player, s, last.Tab);
+            if (last.Selected > 0 && last.Tab is "weapons" or "knives" or "gloves" or "stickers")
+            {
+                s.Selected = last.Selected;
+                BuildHud(player, s);
+                var sideIndex = s.Side.FindIndex(x => x.Picked);
+                s.SidePage = sideIndex < 0 ? 0 : sideIndex / SideRows;
+                ShowCurrentTilePage(s);
+            }
+        }
+        else SelectTab(player, s, "weapons");
 
         var pawn = player.PlayerPawn.Value;
         if (pawn is { IsValid: true })
         {
             s.PreviousMoveType = pawn.MoveType;
             SetMoveType(pawn, MoveType_t.MOVETYPE_NONE);
-            s.HudBitsAdded = HudHideBits & ~pawn.HideHUD;
-            if (s.HudBitsAdded != 0)
-            {
-                pawn.HideHUD |= s.HudBitsAdded;
-                Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
-            }
         }
+        s.HudBitsAdded = HideWindowHud(player, 0);
+        // reopened on the agents tab with "Third person" picked: start the preview now, not only after the next click
+        SyncAgentView(player, s);
         RenderHud(player, s); // also shows the dim backdrop (not in third person)
         HudFlag(player, "pk_win", "shown", true);
         _hud!.SetInputCaptureEnabled(player, true);
+        SetClientHud(player, true);
+    }
+
+    /// <summary>
+    /// Client cvars for while the K or L window is open (the user's list; cl_drawhud 0 is not usable: it hides the
+    /// custom window too). The client refuses server-sent cvars and aliases (no alias ack ever came back), so the
+    /// user's Nihil.cfg switches them in its own K/L/Tab binds (cs2prac_k_open …, css_menu open|close). This only
+    /// tries the server routes too, in case a client accepts them.
+    /// </summary>
+    private static readonly (string Cvar, string Hidden, string Shown)[] ClientHudCvars =
+    [
+        ("cl_hud_telemetry_frametime_show", "0", "2"),
+        ("cl_hud_telemetry_ping_show", "0", "2"),
+        ("cl_hud_telemetry_net_misdelivery_show", "0", "2"),
+        ("cl_drawhud_force_radar", "-1", "0")
+    ];
+
+    private readonly HashSet<int> _clientHudHidden = new();
+
+    /// <summary>Hides (or brings back) the client's own HUD. Shown again only once neither window is open.</summary>
+    private void SetClientHud(CCSPlayerController player, bool hide)
+    {
+        if (!player.IsValid || IsBotAny(player)) return;
+        if (!hide && (_hudSessions.ContainsKey(player.Slot) || _setSessions.ContainsKey(player.Slot))) return;
+        if (hide ? !_clientHudHidden.Add(player.Slot) : !_clientHudHidden.Remove(player.Slot)) return;
+        foreach (var (cvar, hidden, shown) in ClientHudCvars)
+        {
+            var v = hide ? hidden : shown;
+            try { player.ReplicateConVar(cvar, v); } catch { /* not allowed */ }
+        }
     }
 
     private void CloseHud(CCSPlayerController player)
@@ -246,20 +362,19 @@ public partial class PracSkins
         if (!_hudSessions.Remove(player.Slot, out var s)) return;
         StopAgentView(player, s);
         if (!player.IsValid) return;
+        _hudLast[player.SteamID] = (s.Tab, s.Selected, s.Team, s.Target);
+        StopMusicPreview(player);
         if (HudReady)
         {
             HudFlag(player, "pk_dim", "shown", false);
             HudFlag(player, "pk_win", "shown", false);
             _hud!.SetInputCaptureEnabled(player, false);
         }
+        SetClientHud(player, false);
         var pawn = player.PlayerPawn.Value;
         if (pawn is not { IsValid: true }) return;
         SetMoveType(pawn, s.PreviousMoveType == MoveType_t.MOVETYPE_NONE ? MoveType_t.MOVETYPE_WALK : s.PreviousMoveType);
-        if (s.HudBitsAdded != 0)
-        {
-            pawn.HideHUD &= ~s.HudBitsAdded;
-            Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_iHideHUD");
-        }
+        ShowWindowHud(player, s.HudBitsAdded);
     }
 
     private void ResetHudFor(CCSPlayerController player)
@@ -289,6 +404,7 @@ public partial class PracSkins
                 CloseHud(p);
                 continue;
             }
+            s.HudBitsAdded = HideWindowHud(p, s.HudBitsAdded);
             if (s.View != null) AgentViewTick(p, s, buttons, pressed);
             if (s.Status.Length == 0 || now < s.StatusUntil) continue;
             s.Status = "";
@@ -383,7 +499,7 @@ public partial class PracSkins
                     var def = w.Def;
                     s.Side.Add(new HudSide(w.Name, SkinName(def, _loadout.WeaponPaint(def, team)?.PaintKit ?? 0), def == s.Selected, pl =>
                     {
-                        if (team == pl.TeamNum) EquipForHud(pl, w); // the other team's gun would not show the edit
+                        EquipForHud(pl, w); // any gun on either side (user request: AK/Glock as CT, M4/USP as T)
                         s.Selected = def;
                         BuildHud(pl, s);
                         ShowCurrentTilePage(s);
@@ -525,8 +641,27 @@ public partial class PracSkins
             }
             case "music":
             {
+                // left: listen to the picked kit (the parts the game plays: MVP, main menu, round start ...)
+                var kitDef = _loadout.MusicKit;
+                if (kitDef > 0 && MusicKitName(kitDef) != null)
+                {
+                    var playing = _musicPlaying.GetValueOrDefault(player.Slot, "");
+                    s.Side.Add(new HudSide("Stop", "stop the preview", false, pl =>
+                    {
+                        StopMusicPreview(pl);
+                        HudStatus(pl, s, "Preview stopped");
+                    }));
+                    foreach (var (label, part) in MusicParts)
+                        s.Side.Add(new HudSide(label, playing == part ? "playing" : "listen", playing == part, pl =>
+                        {
+                            PlayMusicPreview(pl, kitDef, part);
+                            var kitName = _catalog.MusicKits.FirstOrDefault(m => m.Def == kitDef)?.Name ?? "Music kit";
+                            HudStatus(pl, s, $"{kitName}: {label}");
+                        }, $"m{kitDef}"));
+                }
                 s.Tiles.Add(new HudTile("Default music", "", "", _loadout.MusicKit <= 0, pl =>
                 {
+                    StopMusicPreview(pl);
                     _loadout.MusicKit = 0;
                     CommitProfileItems(pl, "Default music");
                     HudStatus(pl, s, "Default music");
@@ -536,7 +671,8 @@ public partial class PracSkins
                     {
                         _loadout.MusicKit = m.Def;
                         CommitProfileItems(pl, $"{m.Name} applied");
-                        HudStatus(pl, s, $"{m.Name}: plays from the next round");
+                        PlayMusicPreview(pl, m.Def, "MVPAnthem");
+                        HudStatus(pl, s, $"{m.Name}: listen to it on the left");
                     }));
                 break;
             }
@@ -549,7 +685,7 @@ public partial class PracSkins
                         s.Side.Add(new HudSide(t.Name, _loadout.GraffitiTint == t.Id ? "in use" : "", _loadout.GraffitiTint == t.Id, pl =>
                         {
                             CommitGraffiti(pl, cur.Def, t.Id, $"{cur.Name} ({t.Name})");
-                            HudStatus(pl, s, $"{cur.Name} ({t.Name}): spray with css_spray");
+                            HudStatus(pl, s, $"{cur.Name} ({t.Name}): spray with T (css_spray)");
                         }));
                 s.Tiles.Add(new HudTile("No graffiti", "", "", _loadout.Graffiti <= 0, pl =>
                 {
@@ -561,7 +697,7 @@ public partial class PracSkins
                     {
                         var tint = g.Tinted ? (_loadout.GraffitiTint > 0 ? _loadout.GraffitiTint : 1) : 0;
                         CommitGraffiti(pl, g.Def, tint, $"{g.Name} picked");
-                        HudStatus(pl, s, g.Tinted ? $"{g.Name}: pick a colour on the left, spray with css_spray" : $"{g.Name}: spray with css_spray");
+                        HudStatus(pl, s, g.Tinted ? $"{g.Name}: pick a colour on the left, spray with T (css_spray)" : $"{g.Name}: spray with T (css_spray)");
                         }));
                 break;
             }
@@ -746,7 +882,7 @@ public partial class PracSkins
         }
 
         // left list
-        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" or "music" || (s.Tab == "graffiti" && s.Side.Count == 0));
+        HudFlag(player, "pk_side", "gone", s.Tab is "agents" or "pins" || (s.Tab is "graffiti" or "music" && s.Side.Count == 0));
         var sideStart = s.SidePage * SideRows;
         for (var i = 0; i < SideRows; i++)
         {
@@ -767,7 +903,7 @@ public partial class PracSkins
             "gloves" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Gloves",
             "pins" => "Pin (both teams)",
             "music" => "Music kit (both teams)",
-            "graffiti" => "Graffiti (spray: bind a key to css_spray)",
+            "graffiti" => "Graffiti (spray with css_spray: T after pracGloria)",
             "stickers" => s.Selected > 0 ? $"{_catalog.WeaponName(s.Selected)} · {(s.Target == 5 ? "charm" : $"sticker slot {s.Target + 1}")}" : "Stickers",
             _ => $"Agents ({(team == 2 ? "T" : "CT")})"
         });
@@ -800,7 +936,7 @@ public partial class PracSkins
         HudText(player, "pk_page", $"{s.GridPage + 1} / {pages}");
         HudFlag(player, "pk_prev", "off", s.GridPage == 0);
         HudFlag(player, "pk_next", "off", s.GridPage >= pages - 1);
-        // the grid scrolls; the pager only appears when a list ever outgrows the 64 tiles
+        // the grid scrolls; the pager only appears when a list ever outgrows the 128 tiles
         foreach (var id in new[] { "pk_prev", "pk_page", "pk_next" }) HudFlag(player, id, "gone", pages <= 1);
         HudText(player, "pk_status", s.Status);
 

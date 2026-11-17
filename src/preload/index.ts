@@ -77,7 +77,9 @@ const api: Api = {
   },
   models: {
     get: (className) => ipcRenderer.invoke(IPC.modelsGet, className),
-    image: (url) => ipcRenderer.invoke(IPC.modelsImage, url)
+    paint: (paintKit) => ipcRenderer.invoke(IPC.modelsPaint, paintKit),
+    image: (url) => ipcRenderer.invoke(IPC.modelsImage, url),
+    skies: () => ipcRenderer.invoke(IPC.modelsSkies)
   },
   skins: {
     getCatalog: (refresh) => ipcRenderer.invoke(IPC.skinsCatalog, refresh ?? false),

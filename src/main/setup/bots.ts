@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { deflateSync } from 'node:zlib'
 import { botAvatarId, botsHaveAvatars, normalizeBots, type BotsConfig } from '@shared/bots'
@@ -18,6 +18,8 @@ import { botAvatarId, botsHaveAvatars, normalizeBots, type BotsConfig } from '@s
 const PLUGIN_FILE = ['addons', 'counterstrikesharp', 'configs', 'plugins', 'PracSkins', 'bots.json']
 /** files we write in csgo/avatars carry ids from botAvatarId's range or the local accounts' ids; listed here */
 const OURS_FILE = 'cs2prac-avatars.json'
+/** the engine's size limit for one csgo/avatars/<steamid64>.png */
+export const AVATAR_MAX_BYTES = 16 * 1024
 
 export async function readBots(file: string): Promise<BotsConfig> {
   try {
@@ -48,7 +50,9 @@ export async function writeServerBots(
   csgoDir: string,
   bots: BotsConfig,
   steamDir: string,
-  localSteamIds: string[]
+  localSteamIds: string[],
+  /** shrinks a picture to fit AVATAR_MAX_BYTES (index.ts passes Electron's nativeImage; tests leave it out) */
+  shrink: (png: Buffer) => Buffer = (png) => png
 ): Promise<boolean> {
   const pluginFile = join(csgoDir, ...PLUGIN_FILE)
   await mkdir(join(pluginFile, '..'), { recursive: true })
@@ -69,7 +73,11 @@ export async function writeServerBots(
   if (avatars) {
     await mkdir(dir, { recursive: true })
     const put = async (name: string, data: Buffer) => {
-      await writeFile(join(dir, name), data)
+      // the engine drops override files over 16 KB (Steam's own 184×184 cache files are ~70 KB: the player then
+      // showed default.png's grey square)
+      const fit = data.length > AVATAR_MAX_BYTES ? shrink(data) : data
+      if (fit.length > AVATAR_MAX_BYTES) return
+      await writeFile(join(dir, name), fit)
       written.push(name)
     }
     // the server refuses to start the feature without a valid default image
@@ -79,10 +87,7 @@ export async function writeServerBots(
         if (e.avatar) await put(`${botAvatarId(team, i)}.png`, Buffer.from(e.avatar.split(',')[1], 'base64'))
     for (const id of localSteamIds) {
       const cached = join(steamDir, 'config', 'avatarcache', `${id}.png`)
-      if (/^\d{17}$/.test(id) && existsSync(cached)) {
-        await copyFile(cached, join(dir, `${id}.png`))
-        written.push(`${id}.png`)
-      }
+      if (/^\d{17}$/.test(id) && existsSync(cached)) await put(`${id}.png`, await readFile(cached))
     }
   }
   if (written.length || old.length) {

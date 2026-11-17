@@ -16,34 +16,39 @@ const TEAMS: { id: Team; label: string }[] = [
   { id: 'ct', label: 'Counter-Terrorists' }
 ]
 
+/** the file as a data: URL (the renderer's CSP allows data: images but not blob: URLs) */
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'))
+    reader.readAsDataURL(file)
+  })
+}
+
 /** reads an image file and scales it (centre crop) to a BOT_AVATAR_SIZE square PNG data URL */
 async function toAvatar(file: File): Promise<string> {
-  const url = URL.createObjectURL(file)
-  try {
-    const img = new Image()
-    img.src = url
-    await img.decode()
-    const side = Math.min(img.naturalWidth, img.naturalHeight)
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = BOT_AVATAR_SIZE
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('No canvas')
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(
-      img,
-      (img.naturalWidth - side) / 2,
-      (img.naturalHeight - side) / 2,
-      side,
-      side,
-      0,
-      0,
-      BOT_AVATAR_SIZE,
-      BOT_AVATAR_SIZE
-    )
-    return canvas.toDataURL('image/png')
-  } finally {
-    URL.revokeObjectURL(url)
-  }
+  const img = new Image()
+  img.src = await readDataUrl(file)
+  await img.decode()
+  const side = Math.min(img.naturalWidth, img.naturalHeight)
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = BOT_AVATAR_SIZE
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('No canvas')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(
+    img,
+    (img.naturalWidth - side) / 2,
+    (img.naturalHeight - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    BOT_AVATAR_SIZE,
+    BOT_AVATAR_SIZE
+  )
+  return canvas.toDataURL('image/png')
 }
 
 /**
@@ -106,6 +111,11 @@ export default function Bots({ onClose }: { onClose: () => void }) {
       <p className="muted small">
         Names, clan tags and pictures for bots, in the order they join a team. Bots beyond the list keep the game's
         names. Names change at once on a running server; pictures need a server restart the first time one is added.
+      </p>
+      <p className="muted small">
+        No pictures in game? CS2 hides the avatars of players who aren't your Steam friends when{' '}
+        <code>cl_hide_avatar_images</code> is 2 (also the scoreboard's "hide avatars" toggle). Set it to 0 in the
+        client console or your cfg.
       </p>
       {bots &&
         TEAMS.map(({ id, label }) => (

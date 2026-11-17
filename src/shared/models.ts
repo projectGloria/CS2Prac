@@ -51,6 +51,36 @@ export interface WeaponModelData {
 
 export type ModelResult = { ok: true; model: WeaponModelData } | { ok: false; error: string }
 
+/**
+ * paint_<kit>.json written by `ModelExport paint`: the finish's pattern texture and parameters, from the kit's
+ * composite material (csgo_customweapon). `style` is the material's F_PAINT_STYLE (items_game style − 1):
+ * 0 solid, 1 hydrographic, 2 spray, 3 anodized, 4 anodized multicolour, 5 anodized airbrushed, 6 custom,
+ * 7 antiqued (patina), 8 gunsmith.
+ */
+export interface PaintMarkup {
+  paintKit: number
+  name: string
+  style: number
+  /** pattern texture file next to the json, or null */
+  pattern: string | null
+  /** g_vColor0..3, 0..1 rgb */
+  colors: [number, number, number][]
+  scale: number
+  /** degrees */
+  rotation: number
+  offset: [number, number]
+  brightness: number
+  ignoreWeaponSize: boolean
+  weaponLength: number
+  uvScale: number
+}
+
+/** what models.paint hands the renderer: the markup plus the pattern as a data URL */
+export type PaintResult = { ok: true; paint: PaintMarkup; pattern: string | null } | { ok: false; error: string }
+
+/** custom and gunsmith finishes are whole-weapon albedo maps in uv0; the others tile a mask over it */
+export const paintIsAlbedo = (style: number) => style === 6 || style === 8
+
 /** model filenames that are attachments or variants, not the weapon itself */
 const NOT_A_WEAPON = /_(mag|ag2|dropped|world|display|broken_glass)/
 

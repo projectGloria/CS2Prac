@@ -199,7 +199,7 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [x] `plugin/PracSkins/SettingsHud.cs`: the settings window (`ps_win`) lives in the same `custom_hud_layout` as the
   skin window (one entity, one input capture; `ps_` click ids are routed to it, opening one closes the other). Layout
   fragment `scripts/hud/cs2prac_settings.xml/.css`, merged by `npm run build:hud` at `<!--SETTINGS_WINDOW-->`.
-  `css_settings` / `.settings` toggles it (`bind l css_settings`; text-menu fallback while the entity doesn't exist
+  `css_pracmenu` / `.settings` toggles it (`bind l css_pracmenu`; text-menu fallback while the entity doesn't exist
   yet). Tab closes it, as do death and K.
 - [x] Toggles: bot glow, spawn markers, bot radio (`bot_chatter`), infinite ammo, buy anywhere, grenade trajectory,
   impacts, no-flash, god mode, auto bunnyhop, friendly fire, fall damage.
@@ -214,7 +214,7 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
   edits the global values and clears per-map ones; changes made in game show up live (watcher).
 - [x] Spots tab: movement mode on/off and "Go" per movement spot of the map (v1 "maybe later"). The lineup page
   comes with Phase 12.
-- [ ] **User check:** restart CS2 (new layout), `bind l css_settings`, every tab and setting, This map vs Every map.
+- [ ] **User check:** restart CS2 (new layout), `bind l css_pracmenu`, every tab and setting, This map vs Every map.
 
 ## Phase 8: Pins and music kits (req 3 + extra)
 - [x] Data spike: pins (ByMykel collectibles) and music kits with def_index + images; extend `catalog.ts` /
@@ -294,3 +294,38 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [ ] **User check:** open a gun in the Loadout tab (first open exports the model, a few seconds), drag stickers and
   the charm, then F-inspect in game: does the spot match? Unverified: sticker image orientation, how scale maps,
   charm spot. In game: restart CS2 (new layout), K → Stickers, T/CT switch.
+
+## v2 fixes after the first in-game test (2026-11-17)
+- [x] L window: clicks show at once (pending value while the queued cvar command runs, redraw after it ran).
+- [x] L window: sky no longer black (a new env_sky's tint defaulted to black; the map sky's tint/fog are copied).
+- [x] L window: round time changes the running round too (GameRules.RoundTime), not only the next one.
+- [x] L window: icons from the game's own SVGs on tabs, rows, chips and the footer (On/Off etc. icon only).
+- [x] K window: graffiti tiles filled (tournament *_graffiti kits added to the image classes).
+- [x] K window: T sprays the picked graffiti (Nihil.cfg `bind T css_spray`; the game's spray wheel never reaches us).
+- [x] K window: music tab side list plays the picked kit's parts (MVP, main menu, round start …) for you only.
+- [x] K and L windows reopen where you left them (per SteamID, survives map changes).
+- [x] 3D viewer shows the picked finish (approximation: pattern + colours, no wear; `ModelExport paint`).
+- [x] Bot picture: "Could not read that image" fixed (data URL instead of a blocked blob: URL).
+- [x] Nihil.cfg pracGloria: numpad plus places one bot with `css_bot` (MatchZy .bot) instead of bot_add.
+- [ ] **User check:** restart CS2 (new layout) and go through every item above in game.
+
+## v2 fixes after the second in-game test (2026-11-17)
+- [x] Server crash (0xC0000005) on "Kick all" right after `.bot`: MatchZy's collision timer read the kicked bot.
+      PracSkins holds every `bot_kick` 0.35 s (SafeKick.cs: bots frozen and lifted away first). Live-tested on 27115.
+- [x] Music kits: the 7 kits ByMykel lacks (defs 32–38) added to the catalog (no image in the app, icon in the K window);
+      the K window grid is 128 tiles now, so every music kit is on one page.
+- [x] L window Spots tab: "Add here" (new start point), per spot Go / End here / Fall floor / Delete (asks once).
+      Live-tested on a bot.
+- [ ] Bot pictures: Nihil.cfg has `cl_hide_avatar_images 2` (hides non-friends' avatars, bots too). User: set 0 and check.
+- [ ] Sky: server side verified (our env_sky has the material, the map's skies are disabled), yet no change in game.
+      Needs the user's report: unchanged sky or black/empty, and which map. (Replaced, see below.)
+
+## v2 fixes after the third in-game test (2026-11-17)
+- [x] Sky: new technique, the material pointer written into the map's env_sky (FindOrCreateMaterialFromResource).
+- [ ] **User check:** change the sky in the L window on a couple of maps.
+- [x] Missing music kits (Starjunk 95, Industrial Sunset Memories …): they're in the 128-tile grid; CS2 still had the
+      old 64-tile layout cached. The Play page now says when CS2 needs a restart for a new layout.
+- [x] L window hides the whole HUD while open; window bigger (1400px, 48 rows).
+- [x] Spots: start and end point on their own rows, each renamed (via chat) and removed separately.
+- [x] Sky thumbnails in the app (Play → Server settings), rendered from the user's own CS2 files.
+- [ ] **User check:** restart CS2, then all of the above in game.

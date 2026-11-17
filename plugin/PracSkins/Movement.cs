@@ -23,12 +23,18 @@ public class MoveSpot
     public float Pitch { get; set; }
     public float Yaw { get; set; }
     public float FailZ { get; set; }
+    /// <summary>Saved while crouching (e.g. on the Mirage window sill): the start puts the player back crouched, or a
+    /// standing hull ends up inside the wall above.</summary>
+    public bool Crouch { get; set; }
     /// <summary>Where the jump ends (.movement end): standing on it counts as made. Null until recorded.</summary>
     public float? EndX { get; set; }
     public float? EndY { get; set; }
     public float? EndZ { get; set; }
+    /// <summary>The end point's own name (the L window's Rename on the end row); null = "&lt;name&gt; end".</summary>
+    public string? EndName { get; set; }
 
     [JsonIgnore] public bool HasEnd => EndX != null && EndY != null && EndZ != null;
+    [JsonIgnore] public string EndLabel => string.IsNullOrWhiteSpace(EndName) ? Name + " end" : EndName;
 }
 
 /// <summary>One player's movement practice: current spot and per-spot made/attempt counters.</summary>
@@ -119,7 +125,10 @@ public partial class PracSkins
         foreach (var say in new[] { "say", "say_team" })
             AddCommandListener(say, (player, info) =>
             {
-                if (player is not { IsValid: true, IsBot: false }) return HookResult.Continue;
+                if (player is not { IsValid: true }) return HookResult.Continue;
+                // a pending L window rename (bots only have one in server tests)
+                if (TakeRename(player, info.ArgCount > 2 ? info.ArgString : info.GetArg(1))) return HookResult.Handled;
+                if (IsBotAny(player)) return HookResult.Continue;
                 var words = info.GetArg(1).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (words.Length == 0) return HookResult.Continue;
                 var first = words[0].ToLowerInvariant();
@@ -247,6 +256,17 @@ public partial class PracSkins
         GoToSpot(player, session, announce: true);
     }
 
+    /// <summary>StartMovement a moment after a window closed: the window's freeze (MOVETYPE_NONE) is lifted in the same
+    /// tick, and a teleport in that tick left the player without collision under the map (user report, Mirage).</summary>
+    private void StartMovementLater(CCSPlayerController player, int? spot)
+    {
+        var slot = player.Slot;
+        AddTimer(0.1f, () =>
+        {
+            if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } p && !WindowOpen(p)) StartMovement(p, spot);
+        });
+    }
+
     private void StopMovement(CCSPlayerController player)
     {
         _move.Remove(player.Slot);
@@ -314,6 +334,40 @@ public partial class PracSkins
 
     private static bool OnGround(CCSPlayerPawn pawn) => (pawn.Flags & (uint)PlayerFlags.FL_ONGROUND) != 0;
 
+    private static bool IsCrouched(CCSPlayerPawn pawn)
+    {
+        if ((pawn.Flags & (uint)PlayerFlags.FL_DUCKING) != 0) return true;
+        return pawn.MovementServices is { } ms && new CCSPlayer_MovementServices(ms.Handle).DuckAmount > 0.5f;
+    }
+
+    /// <summary>Whether a standing player hull (32 × 32 × 72) fits at <paramref name="at"/> (feet). True when the trace fails.</summary>
+    private static bool StandingRoom(Vector at)
+    {
+        try
+        {
+            var options = new TraceOptions { InteractsWith = Masks.PlayerSolidBrushOnly };
+            var hit = Trace.TraceHullShape(new Vector(at.X, at.Y, at.Z + 2), new Vector(at.X, at.Y, at.Z + 3),
+                new Vector(-16, -16, 0), new Vector(16, 16, 72), null!, options);
+            return !hit.DidHit() && !hit.IsAllSolid;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>Puts the pawn fully crouched (as AgentView's crouch pose). The game only stands it up again where
+    /// there is room, so under a low ceiling the player stays crouched until they move out.</summary>
+    private static void SetCrouch(CCSPlayerPawn pawn, bool crouch)
+    {
+        if (!crouch || pawn.MovementServices is not { } ms) return;
+        var move = new CCSPlayer_MovementServices(ms.Handle);
+        move.DuckAmount = 1f;
+        move.Ducked = true;
+        move.DesiresDuck = true;
+        pawn.Flags |= (uint)PlayerFlags.FL_DUCKING;
+    }
+
     private void SaveSpot(CCSPlayerController player, string raw)
     {
         var name = SpotName(raw);
@@ -331,7 +385,8 @@ public partial class PracSkins
         var o = pawn.AbsOrigin!;
         var spot = new MoveSpot
         {
-            Name = name, X = o.X, Y = o.Y, Z = o.Z, Pitch = pawn.EyeAngles.X, Yaw = pawn.EyeAngles.Y, FailZ = o.Z - DefaultFailDrop
+            Name = name, X = o.X, Y = o.Y, Z = o.Z, Pitch = pawn.EyeAngles.X, Yaw = pawn.EyeAngles.Y, FailZ = o.Z - DefaultFailDrop,
+            Crouch = IsCrouched(pawn)
         };
         var index = _moveSpots.FindIndex(s => s.Name == name);
         var replaced = index >= 0;
@@ -339,7 +394,7 @@ public partial class PracSkins
         {
             // a new start keeps the end that was recorded
             var old = _moveSpots[index];
-            (spot.EndX, spot.EndY, spot.EndZ) = (old.EndX, old.EndY, old.EndZ);
+            (spot.EndX, spot.EndY, spot.EndZ, spot.EndName) = (old.EndX, old.EndY, old.EndZ, old.EndName);
             _moveSpots[index] = spot;
         }
         else
@@ -372,12 +427,19 @@ public partial class PracSkins
             player.PrintToChat($"{ChatTag} Turn on .movement and pick the spot first.");
             return;
         }
-        var spot = _moveSpots[Math.Clamp(session.Spot, 0, _moveSpots.Count - 1)];
+        SetEndAt(player, session.Spot, goBack: true);
+    }
+
+    /// <summary>Records where the player stands as the end of spot <paramref name="index"/> (the L window's "End here").</summary>
+    private bool SetEndAt(CCSPlayerController player, int index, bool goBack)
+    {
+        if (index < 0 || index >= _moveSpots.Count) return false;
+        var spot = _moveSpots[index];
         var pawn = AlivePawn(player);
         if (pawn == null || !OnGround(pawn))
         {
             player.PrintToChat($"{ChatTag} Stand on the ground where the jump ends, then type .movement end.");
-            return;
+            return false;
         }
         var o = pawn.AbsOrigin!;
         var dx = o.X - spot.X;
@@ -385,19 +447,24 @@ public partial class PracSkins
         if (MathF.Sqrt(dx * dx + dy * dy) <= RearmDistance)
         {
             player.PrintToChat($"{ChatTag} That's too close to the start of {spot.Name}. Stand where the jump lands.");
-            return;
+            return false;
         }
         if (o.Z < spot.FailZ)
         {
             player.PrintToChat($"{ChatTag} That's below the fail height of {spot.Name}. Stand where the jump lands.");
-            return;
+            return false;
         }
         (spot.EndX, spot.EndY, spot.EndZ) = (o.X, o.Y, o.Z);
         SaveMoveSpots();
         foreach (var s in _move.Values) s.Counts.Remove(spot.Name);
         DrawMoveMarkers();
         player.PrintToChat($"{ChatTag} {spot.Name}: end saved. Land on the gold square to make it.");
-        GoToSpot(player, session);
+        if (goBack && _move.TryGetValue(player.Slot, out var session))
+        {
+            session.Spot = index;
+            GoToSpot(player, session);
+        }
+        return true;
     }
 
     private static bool OnEnd(MoveSpot spot, Vector o) =>
@@ -411,24 +478,85 @@ public partial class PracSkins
             player.PrintToChat($"{ChatTag} Turn on .movement and pick the spot first.");
             return;
         }
-        var spot = _moveSpots[Math.Clamp(session.Spot, 0, _moveSpots.Count - 1)];
+        SetFailAt(player, session.Spot, goBack: true);
+    }
+
+    /// <summary>The floor the player stands on becomes the fall height of spot <paramref name="index"/>.</summary>
+    private bool SetFailAt(CCSPlayerController player, int index, bool goBack)
+    {
+        if (index < 0 || index >= _moveSpots.Count) return false;
+        var spot = _moveSpots[index];
         var pawn = AlivePawn(player);
         if (pawn == null || !OnGround(pawn))
         {
             player.PrintToChat($"{ChatTag} Stand on the floor you'd fall onto, then type .movement fail.");
-            return;
+            return false;
         }
         var floor = pawn.AbsOrigin!.Z;
         if (floor >= spot.Z - 8)
         {
             player.PrintToChat($"{ChatTag} That floor isn't below the start of {spot.Name}. Stand on the floor you'd fall onto.");
-            return;
+            return false;
         }
         // a little above that floor, so landing anywhere on it counts, but never as high as the start
         spot.FailZ = MathF.Min(floor + 16, spot.Z - 8);
         SaveMoveSpots();
         player.PrintToChat($"{ChatTag} {spot.Name}: landing at this height or lower now counts as a fall.");
-        GoToSpot(player, session);
+        if (goBack && _move.TryGetValue(player.Slot, out var session))
+        {
+            session.Spot = index;
+            GoToSpot(player, session);
+        }
+        return true;
+    }
+
+    /// <summary>The first free "spot-N" name (the L window's "Add start point").</summary>
+    private string NextSpotName()
+    {
+        for (var n = _moveSpots.Count + 1; ; n++)
+            if (_moveSpots.All(s => s.Name != $"spot-{n}")) return $"spot-{n}";
+    }
+
+    /// <summary>Renames the start point (the spot's name, also used by .movement go/delete). Null = done, else why not.</summary>
+    private string? RenameStart(int index, string raw)
+    {
+        if (index < 0 || index >= _moveSpots.Count) return "That spot is gone.";
+        var name = SpotName(raw);
+        if (name.Length == 0 || MoveWords.Contains(name)) return "Use letters, digits, - or _ (one word, like window-short).";
+        var spot = _moveSpots[index];
+        if (name == spot.Name) return null;
+        if (_moveSpots.Any(s => s.Name == name)) return $"There already is a spot called {name}.";
+        foreach (var s in _move.Values)
+            if (s.Counts.Remove(spot.Name, out var c)) s.Counts[name] = c;
+        spot.Name = name;
+        SaveMoveSpots();
+        if (_move.Count > 0) DrawMoveMarkers();
+        return null;
+    }
+
+    /// <summary>Renames the end point only (shown on its marker and in the L window). Empty = back to "&lt;name&gt; end".</summary>
+    private string? RenameEnd(int index, string raw)
+    {
+        if (index < 0 || index >= _moveSpots.Count) return "That spot is gone.";
+        var spot = _moveSpots[index];
+        if (!spot.HasEnd) return "That spot has no end point yet.";
+        var name = Regex.Replace(raw.Trim(), @"[\p{C}""<>]", "");
+        if (name.Length > 32) name = name[..32];
+        spot.EndName = name.Length == 0 ? null : name;
+        SaveMoveSpots();
+        if (_move.Count > 0) DrawMoveMarkers();
+        return null;
+    }
+
+    /// <summary>Removes only the end point of a spot (the start stays, nothing counts as made until a new end).</summary>
+    private void RemoveEnd(int index)
+    {
+        if (index < 0 || index >= _moveSpots.Count) return;
+        var spot = _moveSpots[index];
+        (spot.EndX, spot.EndY, spot.EndZ, spot.EndName) = (null, null, null, null);
+        SaveMoveSpots();
+        foreach (var s in _move.Values) s.Counts.Remove(spot.Name);
+        if (_move.Count > 0) DrawMoveMarkers();
     }
 
     private void DeleteSpot(CCSPlayerController player, string raw)
@@ -458,11 +586,23 @@ public partial class PracSkins
         var spot = _moveSpots[session.Spot];
         var pawn = AlivePawn(player);
         if (pawn == null) return;
-        pawn.Teleport(new Vector(spot.X, spot.Y, spot.Z), new QAngle(spot.Pitch, spot.Yaw, 0), new Vector(0, 0, 0));
+        var at = new Vector(spot.X, spot.Y, spot.Z);
+        // only a spot saved crouched starts crouched (a standing hull there sits inside the wall above: "inside
+        // something" at Mirage window). Never guess it from a room trace: a faked duck right after a teleport (ground
+        // cleared) makes the game un-duck "in the air", which lowers the feet by the crouch height into the floor
+        // (user: under the map after Go on a standing spot).
+        SetCrouch(pawn, spot.Crouch);
+        // walking with collision whatever the player had (a window's freeze, noclip): the teleport needs the floor
+        if (pawn.MoveType != MoveType_t.MOVETYPE_WALK && !WindowOpen(player)) SetMoveType(pawn, MoveType_t.MOVETYPE_WALK);
+        // a hair above the saved floor height, so the hull never starts touching the ground brush
+        pawn.Teleport(new Vector(at.X, at.Y, at.Z + 1), new QAngle(spot.Pitch, spot.Yaw, 0), new Vector(0, 0, 0));
         session.Armed = true;
         session.LeftGround = false;
         session.ReturnAt = 0;
         session.IgnoreUntil = Server.CurrentTime + 0.3f;
+        if (announce)
+            Logger.LogInformation("movement: {Player} to {Spot} ({X:F0} {Y:F0} {Z:F0}, crouch {Crouch}, standing room {Room})",
+                player.PlayerName, spot.Name, at.X, at.Y, at.Z, spot.Crouch, StandingRoom(at));
         if (announce) Banner(player, $"<font color='#50e678'>{spot.Name}</font>", session, spot);
     }
 
@@ -495,6 +635,8 @@ public partial class PracSkins
 
             if (!OnGround(pawn))
             {
+                // fell out of the world (through a floor): back to the start instead of falling forever
+                if (o.Z < spot.FailZ - 1024) { GoToSpot(player, session); continue; }
                 session.LeftGround = true;
                 continue;
             }
@@ -593,7 +735,7 @@ public partial class PracSkins
         for (var i = 0; i < 4; i++) AddBeam(corners[i], corners[(i + 1) % 4], EndColor, _moveMarkers);
         var text = Utilities.CreateEntityByName<CPointWorldText>("point_worldtext");
         if (text == null) return;
-        text.MessageText = spot.Name + " end";
+        text.MessageText = spot.EndLabel;
         text.Enabled = true;
         text.Fullbright = true;
         text.FontSize = 40;

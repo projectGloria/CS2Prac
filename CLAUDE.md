@@ -71,6 +71,10 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
 - **Live tests: never use port 27015.** The user's server may be running there; wrong-password RCON attempts get
   127.0.0.1 rcon-banned on it ("Banning 127.0.0.1 for rcon hacking attempts"), which breaks the app until a restart.
   Start test servers on another port (e.g. 27115) and send all commands over one authenticated RCON connection.
+- **Never kick a bot MatchZy's `.bot` just placed while it overlaps a player.** `.bot` starts a 0.1 s collision timer
+  per (player, bot) that reads the bot until they stop overlapping; kicking it first crashed the server (NRE every tick,
+  then 0xC0000005). SafeKick.cs catches every `bot_kick` (AddCommandListener), lifts the bots away and re-runs it 0.35 s
+  later; our own kicks of bots known to stand apart use `ExecKickNow`.
 - **`play <sound>` crashes the dedicated server** (access violation 0xC0000005; no sound system). Client cfgs run with
   `!cmd exec` often contain it. PracSkins swallows the sound commands with AddCommandListener (`SoundCommands`).
 - **Never plain `SetModel` on an entity before `DispatchSpawn`.** It trips an engine assert (EF_IN_STAGING_LIST); the
@@ -107,17 +111,26 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   econ/status_icons/…, `.pk-img.m<def>` from music_definitions). Text menu: `!pin`, `!music` and root entries.
   Live-tested on 27115 (status shows pin/music per player, survives mp_restartgame).
 
+- ByMykel lacks music kits 32–38: `EXTRA_MUSIC_KITS` (catalog.ts) adds them without an image. The K window grid is
+  GridCols × 32 = 128 tiles (build-hud GRID_ROWS 32) so all music kits fit on one page.
+- Bot/human avatars in game depend on the client's `cl_hide_avatar_images` (2 = friends only; the user's Nihil.cfg has 2).
+- Music previews (MusicPreview.cs): the music tab's side list plays the picked kit's parts (MVP, main menu, round
+  start …) as `Music.<Part>.<kit>` sound events (soundevents/music/<kit>/game_sounds_music.vsndevts_c) for the clicking
+  player only; a new preview first stops the old one (client stopsound; sv_cheats 1).
+
 ## Graffiti (Phase 9, loadout schema 5)
 - plugin/PracSkins/Graffiti.cs: `css_spray` (client; bind a key, or `!spray`) traces from the eye (200 units,
   `Masks.PlayerSolidBrushOnly`, rejects angles flatter than dot −0.2) and spawns `player_spray_decal` itself:
   UniqueID = sticker kit def, TintID 1–19 (items_game graffiti_tints; 0 = untinted), EndPos/Normal/Left (left in the
-  surface: horizontal on walls, from yaw on floors), AccountID, Player = controller index, then DispatchSpawn +
+  surface: horizontal on walls, from yaw on floors), AccountID, Player = controller index, Version (default 1, `css_prac_sprayversion`), Start = eye, then DispatchSpawn +
   Teleport to the hit. The decal's `Entity` field clashes with CEntityInstance.Entity (read-only): not set.
 - **No GC signing:** the game's own spray asks the Steam GC to sign the decal (account involved); we never touch
   that path. Whether the client draws an unsigned decal is for the user to check in game.
 - Catalog `graffiti` (ByMykel graffiti.json; one entry per def, `tints` = tint id → image from `graffiti-<def>_<tint>`).
   loadout.json `graffiti` / `graffitiTint` (both teams). K window tab `graffiti` (tints in the side list, icons
-  `.pk-img.g<def>` from sticker_kits spray_* `econ/stickers/<sticker_material>_png`). 3 s cooldown, 5 sprays per player.
+  `.pk-img.g<def>` from sticker_kits spray_* and tournament *_graffiti kits, `econ/stickers/<sticker_material>_png`; most tiles were
+  empty before the *_graffiti ones were added). 3 s cooldown, 5 sprays per player. The game's own T (spray wheel) never
+  reaches the plugin: the user's Nihil.cfg binds T to `css_spray`.
 - Server test: `css_prac_spray [def] [tint]` (first live bot; aims down if it looks at the horizon; prints every decal).
 
 ## Bot names and pictures (Phase 10)
@@ -132,6 +145,36 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   any issued account) and we fire `EventPlayerConnectFull` for it. With the cvar on, humans need a file too: the app
   copies the local accounts' `<steam>/config/avatarcache/<id>.png`. Files written are listed in
   avatars/cs2prac-avatars.json and removed next time. The cvar is only set when some bot has a picture.
+- The picked picture is read with FileReader as a data URL (the renderer CSP blocks blob: URLs: that was "Could not
+  read that image"), drawn to a canvas and saved as PNG.
+- Override files over 16 KB are dropped (the player then shows default.png's grey square): Steam's avatarcache files
+  are 184×184 (~70 KB), so `put` shrinks anything larger to 64×64 with nativeImage (`shrinkAvatar`, index.ts).
+- **The client draws its own Avatar__Bot picture (and drops the clan tag) for controllers with FL_FAKECLIENT**
+  (user-confirmed with a flag-off experiment: our pictures and clan tags on the scoreboard). Server code reads
+  the flag too (CSS IsBot; MatchZy respawns practice bots at their spot and kicks untracked bots by it; the engine's
+  bot_kick). **Our own code must use `IsBotAny(p)`, never `p.IsBot`** (it misses shown bots).
+- **MatchZy's `GetTrackedBotCount()` permanently drops tracked bots that aren't IsBot** (then bot_quota too low, bots
+  kicked as untracked, "run .nobots", and a kick during `.bot`'s collision timer crashed the server, 0xC0000005).
+  The engine's bot_quota does not count by the flag (live-tested).
+- **Flag off only for the snapshot** (BotNames.cs): holding the flag around MatchZy's reads failed both ways (a
+  networked hold took every bot's picture away on each `.bot`/death; a memory-only one leaked into the next packed
+  snapshot, user test 2026-11-17: clients see whatever m_fFlags holds when the entity is packed). Measured frame
+  order (probe on 27115, per tick): pre-entity-think > post-think > timers > OnTick > NextFrame > pre-world-update >
+  command buffer (rcon, ExecuteCommand, bot_add, put-in-server, spawn/team events); CheckTransmit only runs with a
+  human client (assumed: right before packing). So CheckTransmit clears the flag on `_botShown` bots (SetStateChanged
+  only the first time), and OnServerPreEntityThink / pre-world-update / OnTick, Pre listeners for say/say_team/jointeam
+  and MatchZy's bot/match css_ commands, connect/put-in-server/disconnect set it back in memory. Shown = team 2/3,
+  not a stand-in, has a picture id, not held; OnBotPictureTick (0.1 s) updates the set. HoldBotFlag only remains for
+  SafeKick's held bot_kick (engine kick goes by the flag). User-confirmed in game 2026-11-17: pictures right away,
+  no reset when another bot joins, kept on respawn, clan tags shown, no "(BOT)" in the kill feed (not even for
+  bots without a clan tag).
+- **The top bar picks stock vs our picture when it rebuilds (spawns, deaths …), not when the flag changes**, so 0.1 s
+  after a bot is first shown AnnounceBotPicture sends its player_spawn again to the human clients only
+  (FireEventToClient).
+- **The engine adds a SteamID's avatar to ServerAvatarOverrides only the first time it sees that id** (a second bot
+  on the same entry showed the stock picture). Each assignment gets a fresh id: CopyAvatar copies `<entry id>.png` to
+  `<AvatarCopyBase + seq>.png` (deleted 10 s later; leftovers removed at plugin load). Live-tested on 27115.
+- Clan tags: after setting m_szClan, `nextlevel_changed` is fired (RefreshScoreboard) so the scoreboard redraws.
 - Possible issue (untested): MatchZy match mode might treat a bot with a SteamID as an unknown player.
 
 ## !gen codes and inspect links (Phase 11)
@@ -183,8 +226,8 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   custom_game/ (user's choice: local loose files, no Workshop addon/MultiAddonManager). This is the one place the app
   writes into the game client folder (two new files only). Panorama caches layouts: restart CS2 after a change.
 - Hud.cs sends only changed texts/classes per slot (HudSent cache); tile images are class "variants" (old one removed).
-- Lists scroll (`overflow: squish scroll`, user-confirmed): 36 side rows, 64 tiles (16 rows; empty rows get class
-  gone); the pager only shows (class gone otherwise) if a list ever outgrows 64. Side rows carry an icon panel
+- Lists scroll (`overflow: squish scroll`, user-confirmed): 36 side rows, 128 tiles (32 rows; empty rows get class
+  gone); the pager only shows (class gone otherwise) if a list ever outgrows 128. Side rows carry an icon panel
   (`pk_side_<i>_img`, classes pk-img pk-row-img + the b<def> icon; gloves have no base icon, so the worn finish or the
   type's first finish).
 - **The client validates the layout and silently drops a rejected one** ("Layout xml did not pass CustomHud
@@ -200,9 +243,13 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   `use` only switches while something is in hand, so: knife out (if the replaced gun is held), 0.15 s, remove the
   slot's gun, GiveNamedItem, `use <DesignerName>` (M4A1-S is weapon_m4a1 there). Bots don't follow `use` reliably, so
   `css_prac_hudequip <def>` (server test on the first bot) only proves the slot swap, not the switch.
+  Every gun equips on either side (AK/Glock as CT …). K opens on the held gun (weapons tab, or stickers if that was
+  last) or knife; the T/CT switch always starts on the player's own team (a stale switch saved picks to the other
+  team). The Zeus is re-given on refresh too, and RefreshPlayer skips while one is pending (`_refreshPending`).
+  Reopening on agents with Third person starts the preview (SyncAgentView in OpenHud). Stand-in bots never glow.
 
 ## Server settings window (plugin/PracSkins/SettingsHud.cs, Phase 7)
-- L = `css_settings` (`.settings` in chat, @css/root). The window `ps_win` is part of the skin window's layout (one
+- L = `css_pracmenu` (@css/root). **MatchZy owns `css_settings`/`.settings`** (prints its "Current Settings"), so L must not use it; css_settings stays as a compat alias. The window `ps_win` is part of the skin window's layout (one
   `custom_hud_layout`, one input capture): Hud.cs routes click ids starting `ps_` to OnSettingsClicked; opening one
   window closes the other. Source fragment scripts/hud/cs2prac_settings.xml/.css, inserted by build-hud.mjs at
   `<!--SETTINGS_WINDOW-->` (rows/chips counts = SetRows/RowChips).
@@ -211,8 +258,32 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   by the window (scope chips) and the app's Play page "Server settings" (global only + clear a map). Applied 2.5 s
   after map start, by `css_prac_settings_apply` (prac_override.cfg; the app after saving). The app's loadout watcher
   also watches this file (`server:prefsChanged`). `maps.json` (written by the app) = recent workshop maps for the Map tab.
-- Sky: a new `env_sky` with the material (CEntityKeyValues), the map's own skies get `Disable`; materials precached.
-- Server tests: `css_prac_settings` (live values, saved values, env_skies), `css_prac_set <id> <value>`,
+- Sky: the map's own `env_sky` gets the new material pointer written into `m_hSkyMaterial` and
+  `m_hSkyMaterialLightingOnly` (+ SetStateChanged), the pointer from VMaterialSystem2_001's
+  FindOrCreateMaterialFromResource (vtable 14, Windows; as CS2-SkyboxChanger). The older ways (a new env_sky with the
+  material keyvalue + Disable on the map's, its tint black by default) changed the server state but never the
+  client's sky. Materials precached. Not yet confirmed in game.
+- The client refuses server-sent HUD cvars AND aliases (ExecuteClientCommand/ReplicateConVar; an alias ack never
+  arrived), and **cl_drawhud 0 hides the custom window too** (user-tested): never send it. So the user's Nihil.cfg
+  owns it: K/L/Tab binds keep a none/k/l state (cs2prac_k_open/_close/_from_l …) that switches the three
+  cl_hud_telemetry_*_show 0/2 + cl_drawhud_force_radar -1/0 and sends `css_menu open|close` / `css_pracmenu
+  open|close` (no argument = old toggle). The window's X leaves the HUD off until the next K/L press. SetClientHud
+  still tries ReplicateConVar. Windows scaled up 2026-11-17 (pk-win 1475px, ps-win 1610px).
+- K and L hide the same HUD parts while open (Hud.cs `HideWindowHud`: `_windowHideBits` added to `pawn.HideHUD`, re-added
+  every tick if the game cleared them, only the bits we added are removed on close; HIDEHUD_ALL is avoided; bits 4/5
+  added for the money panel, unverified). The telemetry panels are the client's own and stay unless it accepts the cvars.
+  `css_prac_hidebits <mask|0xhex|default>` (server; in game via `!cmd`) tries other masks live and prints each player's m_iHideHUD. Panel size: cs2prac_settings.css (1400px), 48 rows (SET_ROWS/SetRows).
+- After a server start whose HUD files differ from the client's copy, `ServerHealth.hudUpdated` shows a "restart CS2"
+  notice on the Play page (Panorama keeps the old layout cached until then).
+- Cvar changes are queued (Server.ExecuteCommand), so the cvar reads the old value for a frame or two: `_pendingSet`
+  shows the clicked value for 1 s and the window redraws after the commands ran (the "click doesn't show" bug).
+- Round time: mp_roundtime only counts from the next round, so the running round's `GameRules.RoundTime` is set too.
+- Icons: row/tab/chip panels `ps-ic` + `ic-<name>` (panorama/images/icons/ui/<name>.vsvg) or `ie-<name>`
+  (icons/equipment). build-hud.mjs generates the rules for every such class quoted in cs2prac_settings.xml,
+  SettingsHud.cs and Lineups.cs (warns on a missing icon). Row icons: SetIcons (by setting id) / SetRow.Icon; chip
+  icons by label (ChipIcons; On/Off/Yes/No/Use/Go show the icon only, class `iconly`).
+- Both windows reopen where the player left them (`_setLast` / the skin window's equivalent, keyed by SteamID).
+- Live-tested 2026-11-17 on 27115: start and end renames save (`css_prac_botsay <text>` after a Rename click; the window doesn't reopen for bots). Server tests: `css_prac_settings` (live values, saved values, env_skies), `css_prac_set <id> <value>`,
   `css_prac_setopen` (first bot), `css_prac_hudclick ps_…`. Verified live on 27115 (2026-11-16).
 
 ## Third-person agent preview (plugin/PracSkins/AgentView.cs)
@@ -333,8 +404,23 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   ground on the end square (±24 units, ±32 high) after leaving the ground → made, back to the start 1.5 s later.
   Landing anywhere else above failZ counts as nothing (user: "made" fired too early when any landing >80 units away
   counted). Back within 80 units re-arms.
+  L window Spots tab (BuildSpotRows): "Add here" (SaveSpot with NextSpotName spot-N); per spot a start row (Go /
+  Rename / Fall floor (SetFailAt) / Delete = whole spot) and an end row (End here (SetEndAt) / Rename / Remove =
+  RemoveEnd, start kept); deletes ask once. They use where the player stands when L was opened. Rename: Panorama has
+  no text input, so SetSession.Rename swaps the Spots rows for an on-screen keyboard (BuildRenameRows: Save / Cancel /
+  Back / Clear (+ Shift / Space for end names) and KeyRows as chips; existing rows/chips, no layout change). A chat
+  line or `!name <text>` (css_name) while it is open saves that text (TakeRename). Empty end name = "<spot> end".
+  MoveSpot `endName` (null = default label). Not live-tested yet.
   Banner via PrintToCenterHtml (skipped while the K menu is open). Fall damage: `sv_falldamage_scale 0` while anyone
   is in the mode. Server test: `css_prac_movement [markers]` lists the map's spots.
+- MoveSpot `crouch`: saved when the player crouched at `save`; GoToSpot then puts them in fully crouched (also when a
+  standing hull doesn't fit there, TraceHullShape), else a standing hull ends up inside the wall above (user report:
+  "inside something" at Mirage window).
+- The L window's Go/On start movement 0.1 s after the window closes (StartMovementLater): teleporting in the tick the
+  freeze (MOVETYPE_NONE) is lifted left the user under Mirage without collision. GoToSpot forces MOVETYPE_WALK,
+  teleports 1 unit above the saved floor, and a fall 1024 units below failZ puts the player back. Crouch only for spots
+  saved crouched: guessing it from StandingRoom faked a duck right after the teleport (ground cleared), the game
+  un-ducked "in the air" and dropped the feet 18 units into the floor (under the map / inside things).
 
 ## User cfgs with server commands
 - A client can't run server commands on our dedicated server: the client refuses replicated cvars (sv_cheats,
@@ -360,7 +446,19 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Stickers live in uv1: centre u = offset[0] + x + 0.5, v = offset[1] + y + 0.5, size = scale / anchor.scale,
   rot = −rotation. Every slot of a body shares one polygon region (drags clamp to it). On the AK slot 0 sits at the
   receiver, slot 3 at the handguard, +u towards the stock. Charm x/y/z = absolute Source inches; 0,0,0 = default quad
-  centre. The finish is not rendered.
+  centre.
+- Finish (approximation): `ModelExport paint <csgo> <out> <kit…>` reads items_game paint_kits, walks the kit's
+  composite material (`weapons/paints/legacy/<name>.vcompmat_c` or its composite_material_path: SPECIFIC_MATERIAL
+  vmats + LOOSE_VARIABLES, later ones win; falls back to paints/vmats/<name>.vmat) and writes `paint_<kit>.json`
+  (style = vmat F_PAINT_STYLE: 0 solid … 6 custom, 7 patina, 8 gunsmith; colours, pattern scale/rotation/offset,
+  brightness) + `paint_<kit>.webp` (g_tPattern, resized to ≤1024: some patterns have no mips). ModelStore.paint caches
+  them in <build>/paints. The shader: styles 6/8 = pattern as albedo in uv0; others = pattern channels mixing
+  g_vColor0..3 over the base. No wear, masks, roughness or metalness: F-inspect in game for the real look.
+- Sky thumbnails: `ModelExport sky <csgo> <out> <material…>` renders each sky material's texture (cubemap faces →
+  lat-long via TextureExtract, LDR faces copied to RgbaF32; HDR tone-mapped) to a 320×180 `sky_<name>.jpg` (the
+  horizon band). ModelStore.skies (models:skies) renders the missing ones in one run (~37 s for all 22) into
+  <build>/skies; the Play page's Server settings shows them as a tile picker. The L window can't show them (Panorama
+  images must be compiled resources and nothing of Valve's ships), so it keeps names.
 - Renderer CSP blocks blob: URLs and fetches: glb bytes, the jpg and sticker/charm images (`models.image`, only
   steamstatic / raw.githubusercontent) come through main as bytes/data URLs.
 - three.js sanitizes node names (dots/slashes dropped, `_1`/`_2` per primitive): match bodies against markup.meshes,

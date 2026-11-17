@@ -85,7 +85,12 @@ describe('pins and music kits', () => {
       { id: 'music_kit-3', name: 'Music Kit | Daniel Sadowski, Crimson Assault', def_index: '3', image: 'a' },
       { id: 'music_kit-3_st', name: 'StatTrak™ Music Kit | Daniel Sadowski, Crimson Assault', def_index: '3', image: 'b' }
     ])
-    expect(kits).toEqual([{ defIndex: 3, name: 'Daniel Sadowski, Crimson Assault', image: 'a', rarityColor: '#b0c3d9' }])
+    expect(kits.find((k) => k.defIndex === 3)).toEqual({ defIndex: 3, name: 'Daniel Sadowski, Crimson Assault', image: 'a', rarityColor: '#b0c3d9' })
+    // the kits ByMykel lacks are added (no image), each once
+    expect(kits.filter((k) => k.defIndex === 3)).toHaveLength(1)
+    expect(kits.find((k) => k.defIndex === 32)).toEqual({ defIndex: 32, name: 'Beartooth, Aggressive', image: '', rarityColor: '#b0c3d9' })
+    expect(kits).toHaveLength(8)
+    expect(buildMusicKits([])).toEqual([])
     const pins = buildPins([
       { name: 'Alyx Pin', def_index: '6034', type: 'Pin', image: 'x', rarity: { color: '#fff' } },
       { name: 'Coin', def_index: '874', type: null, image: 'y' },

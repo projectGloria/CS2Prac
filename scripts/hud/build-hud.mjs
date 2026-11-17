@@ -13,7 +13,7 @@
 //   .pk-bar.s<def>_<paint>    rarity colour
 //   .pk-img.p<def>            pin/coin/medal (items' image_inventory econ/status_icons/…)
 //   .pk-img.m<def>            music kit (music_definitions' image_inventory econ/music_kits/…)
-//   .pk-img.g<def>            graffiti (sticker_kits spray_*: econ/stickers/<sticker_material>_png)
+//   .pk-img.g<def>            graffiti (sticker_kits spray_* and *_graffiti: econ/stickers/<sticker_material>_png)
 //   .pk-img.a<def>            agent portrait (econ/characters/customplayer_<model>[_square]_png)
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -35,9 +35,9 @@ const ADDON = 'cs2prac'
 // Keep in sync with plugin/PracSkins/Hud.cs (SideRows, GridCols, GridRows).
 const SIDE_ROWS = Number(process.env.HUD_SIDE_ROWS ?? 36)
 const GRID_COLS = 4
-const GRID_ROWS = Number(process.env.HUD_GRID_ROWS ?? 16)
+const GRID_ROWS = Number(process.env.HUD_GRID_ROWS ?? 32)
 // Keep in sync with plugin/PracSkins/SettingsHud.cs (SetRows, RowChips).
-const SET_ROWS = 32
+const SET_ROWS = 48
 const SET_CHIPS = 6
 const SET_XML_SRC = join(here, 'cs2prac_settings.xml')
 const SET_CSS_SRC = join(here, 'cs2prac_settings.css')
@@ -110,10 +110,12 @@ function buildSettings() {
     for (let j = 0; j < SET_CHIPS; j++)
       chips.push(
         `${t}\t\t\t<Button id="ps_row_${i}_opt_${j}" class="pk-chip ps-chip">` +
+          `<Panel id="ps_row_${i}_opt_${j}_ic" class="ps-ic ps-chip-ic" hittest="false" />` +
           `<Label id="ps_row_${i}_opt_${j}_text" class="pk-chip-text" text="{s:text}" hittest="false" /></Button>`
       )
     rows.push(
       `${t}<Panel id="ps_row_${i}" class="ps-row" hittest="false">\n` +
+        `${t}\t<Panel id="ps_row_${i}_ic" class="ps-ic ps-row-ic" hittest="false" />\n` +
         `${t}\t<Panel class="ps-row-text" hittest="false">\n` +
         `${t}\t\t<Label id="ps_row_${i}_name" class="ps-row-name" text="{s:text}" hittest="false" />\n` +
         `${t}\t\t<Label id="ps_row_${i}_sub" class="ps-row-sub" text="{s:text}" hittest="false" />\n` +
@@ -125,10 +127,31 @@ function buildSettings() {
   return readFileSync(SET_XML_SRC, 'utf8').replace('<!--PS_ROWS-->', rows.join('\n'))
 }
 
+// Icons of the settings window: every ic-<name> (panorama/images/icons/ui/<name>.vsvg) and ie-<name>
+// (icons/equipment/<name>.vsvg) class named in its sources, plus the grenades Lineups.cs builds as "ie-" + weapon.
+function buildIconCss(has) {
+  const sources = [SET_XML_SRC, join(root, 'plugin', 'PracSkins', 'SettingsHud.cs'), join(root, 'plugin', 'PracSkins', 'Lineups.cs')]
+  const names = new Set(['ie-smokegrenade', 'ie-flashbang', 'ie-hegrenade', 'ie-molotov', 'ie-decoy'])
+  for (const f of sources) for (const m of readFileSync(f, 'utf8').matchAll(/"(i[ce]-[a-z0-9_]+)"/g)) names.add(m[1])
+  for (const m of readFileSync(SET_XML_SRC, 'utf8').matchAll(/\b(i[ce]-[a-z0-9_]+)\b/g)) names.add(m[1])
+  const rules = []
+  for (const cls of [...names].sort()) {
+    const path = `panorama/images/icons/${cls.startsWith('ic-') ? 'ui' : 'equipment'}/${cls.slice(3)}.vsvg`
+    if (!has(path)) {
+      console.warn(`icon missing in the VPK: ${path}`)
+      continue
+    }
+    rules.push(`.ps-ic.${cls}\n{\n\tbackground-image: url("s2r://${path}");\n}`)
+  }
+  console.log(`icons: ${rules.length}`)
+  return rules
+}
+
 function buildImageCss(cs2) {
   const vpk = join(cs2, 'game', 'csgo', 'pak01_dir.vpk')
   const files = readVpkDir(vpk)
   const has = (p) => files.has(p + '_c')
+  const icons = buildIconCss(has)
   const ig = parseKv(readVpkFile(vpk, files.get('scripts/items/items_game.txt')).toString('utf8'))
   const game = get(ig, 'items_game')
 
@@ -175,8 +198,13 @@ function buildImageCss(cs2) {
     }
   for (const section of all(game, 'sticker_kits'))
     for (const [def, body] of section) {
-      if (!Array.isArray(body) || !String(get(body, 'name') ?? '').startsWith('spray_')) continue
+      if (!Array.isArray(body)) continue
+      // graffiti kits: the standard ones are spray_*, tournament ones <event>_team_<x>_graffiti (material too)
+      const name = String(get(body, 'name') ?? '')
       const mat = get(body, 'sticker_material')
+      const graffiti = name.startsWith('spray_') || String(get(body, 'item_name') ?? '').startsWith('#SprayKit')
+        || /graffiti/i.test(name) || /graffiti/i.test(String(mat ?? ''))
+      if (!graffiti) continue
       const img = mat && `panorama/images/econ/stickers/${mat}_png.vtex`
       if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.g${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
     }
@@ -209,7 +237,7 @@ function buildImageCss(cs2) {
   }
   console.log(`images: ${base.length} base weapons, ${skins.length} skins, ${agents.length} agents, ${extras.length} pins/music kits (${unmatched} icons unmatched)`)
   // base first: a tile carries b<def> and s<def>_<paint>; the skin rule comes later and wins when it exists
-  return [...base, ...agents, ...extras, ...skins].join('\n\n') + '\n'
+  return [...icons, ...base, ...agents, ...extras, ...skins].join('\n\n') + '\n'
 }
 
 const cs2 = findCs2()

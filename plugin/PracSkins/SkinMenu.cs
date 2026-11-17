@@ -70,7 +70,7 @@ public partial class PracSkins
             else player?.PrintToChat(m);
         }
 
-        if (player is not { IsValid: true } || player.IsBot) return false;
+        if (player is not { IsValid: true } || IsBotAny(player)) return false;
         if (_loadout.Owner != null && player.SteamID.ToString() != _loadout.Owner)
         {
             Reply($"{Tag} Skins are set up for another Steam account (CS2Prac app > Loadout > Skins for).");

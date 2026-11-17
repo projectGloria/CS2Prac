@@ -54,7 +54,7 @@ public partial class PracSkins
         RegisterEventHandler<EventPlayerSpawn>((e, _) =>
         {
             var player = e.Userid;
-            if (_glowOn && player is { IsValid: true, IsBot: true })
+            if (_glowOn && (player is { IsValid: true } && IsBotAny(player)))
                 AddTimer(0.2f, () =>
                 {
                     if (player.IsValid) GlowBot(player);
@@ -269,7 +269,7 @@ public partial class PracSkins
         if (!_spawnsOn || _spawns.Count == 0) return;
         foreach (var player in Utilities.GetPlayers())
         {
-            if (player is not { IsValid: true, IsBot: false }) continue;
+            if ((player is not { IsValid: true } || IsBotAny(player))) continue;
             var buttons = (ulong)player.Buttons;
             var last = _practiceButtons.GetValueOrDefault(player.Slot);
             _practiceButtons[player.Slot] = buttons;
@@ -326,7 +326,7 @@ public partial class PracSkins
     private void GlowAllBots()
     {
         foreach (var player in Utilities.GetPlayers())
-            if (player is { IsValid: true, IsBot: true, PawnIsAlive: true }) GlowBot(player);
+            if ((player is { IsValid: true, PawnIsAlive: true } && IsBotAny(player))) GlowBot(player);
     }
 
     /// <summary>
@@ -359,6 +359,7 @@ public partial class PracSkins
         var pawn = bot.PlayerPawn.Value;
         if (pawn is not { IsValid: true, LifeState: (byte)LifeState_t.LIFE_ALIVE }) return;
         RemoveGlow(pawn.Index);
+        if (IsStandIn(bot)) return; // the third-person preview's stand-in (AgentView.cs) never glows
         var color = bot.Team == CsTeam.CounterTerrorist ? CtColor : Color.FromArgb(255, 255, 60, 60);
         var model = pawn.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName;
         if (string.IsNullOrEmpty(model)) return;

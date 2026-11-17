@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { modelPathFor, type ModelMarkup, type ModelResult } from '@shared/models'
+import { modelPathFor, type ModelMarkup, type ModelResult, type PaintMarkup, type PaintResult } from '@shared/models'
 import { log } from '../logger'
 
 export interface ModelEnv {
@@ -41,11 +41,19 @@ function run(exe: string, args: string[]): Promise<string> {
 
 const MAX_IMAGES = 200
 
+/** the thumbnail file ModelExport `sky` writes for a material (same rule as ExportSky in Program.cs) */
+export function skyThumbName(material: string): string {
+  const base = material.split('/').pop()!.replace(/\.[^.]*$/, '')
+  return 'sky_' + base.replace(/[^A-Za-z0-9]/g, '_') + '.jpg'
+}
+
 export class ModelStore {
   private list: Promise<string[]> | null = null
   private exports = new Map<string, Promise<void>>()
   private queue: Promise<unknown> = Promise.resolve()
   private images = new Map<string, string>()
+  private skyFailed = new Set<string>()
+  private skyJob: Promise<void> | null = null
 
   constructor(
     private readonly root: string,
@@ -121,6 +129,83 @@ export class ModelStore {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
+  }
+
+  /** a paint kit's finish; exported once per CS2 build into <dir>/paints (the queue keeps one VPK reader at a time) */
+  async paint(paintKit: number): Promise<PaintResult> {
+    if (!(paintKit > 0)) return { ok: false, error: 'No finish.' }
+    try {
+      const env = await this.env()
+      const dir = join(await this.dir(env), 'paints')
+      await mkdir(dir, { recursive: true })
+      const json = join(dir, `paint_${paintKit}.json`)
+      if (!existsSync(json)) {
+        const key = `paint:${paintKit}`
+        let job = this.exports.get(key)
+        if (!job) {
+          job = this.queue.then(async () => {
+            const { exe, dll } = await this.tool(env)
+            const out = await run(exe, [dll, 'paint', env.csgoDir, dir, String(paintKit)])
+            const line = out
+              .split(/\r?\n/)
+              .filter((l) => l.startsWith('{"paintKit"'))
+              .map((l) => JSON.parse(l) as { ok: boolean; error?: string })[0]
+            if (!line?.ok) throw new Error('Finish export failed: ' + (line?.error ?? 'no result'))
+          })
+          this.queue = job.catch(() => {})
+          this.exports.set(key, job)
+          job.catch(() => {}).finally(() => this.exports.delete(key))
+        }
+        await job
+      }
+      const paint = JSON.parse(await readFile(json, 'utf8')) as PaintMarkup
+      const pattern = paint.pattern
+        ? 'data:image/webp;base64,' + (await readFile(join(dir, paint.pattern))).toString('base64')
+        : null
+      return { ok: true, paint, pattern }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  /**
+   * Sky thumbnails (320×180 jpeg) for the given sky materials, rendered once per CS2 build into <dir>/skies in one
+   * tool run. Skies that failed once aren't retried until the app restarts.
+   */
+  async skies(materials: string[]): Promise<Record<string, string>> {
+    const env = await this.env()
+    const dir = join(await this.dir(env), 'skies')
+    await mkdir(dir, { recursive: true })
+    await this.skyJob?.catch(() => {}) // a render already running (the window opened twice)
+    const missing = materials.filter((m) => !existsSync(join(dir, skyThumbName(m))) && !this.skyFailed.has(m))
+    if (missing.length > 0) {
+      const job = this.queue.then(async () => {
+        const { exe, dll } = await this.tool(env)
+        const t0 = Date.now()
+        const out = await run(exe, [dll, 'sky', env.csgoDir, dir, ...missing])
+        for (const l of out.split(/\r?\n/).filter((l) => l.startsWith('{"material"'))) {
+          const r = JSON.parse(l) as { material: string; ok: boolean; error?: string }
+          if (!r.ok) {
+            this.skyFailed.add(r.material)
+            log('models', `sky ${r.material}: ${r.error}`)
+          }
+        }
+        log('models', `rendered ${missing.length} sky thumbnails in ${Date.now() - t0} ms`)
+      })
+      this.queue = job.catch(() => {})
+      this.skyJob = job
+      try {
+        await job
+      } finally {
+        if (this.skyJob === job) this.skyJob = null
+      }
+    }
+    const result: Record<string, string> = {}
+    for (const m of materials) {
+      const file = join(dir, skyThumbName(m))
+      if (existsSync(file)) result[m] = 'data:image/jpeg;base64,' + (await readFile(file)).toString('base64')
+    }
+    return result
   }
 
   private async export(env: ModelEnv, dir: string, model: string) {

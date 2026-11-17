@@ -728,6 +728,7 @@ function WeaponPanel(props: {
           <SkinViewer3D
             className={weapon.className}
             legacy={!!base.legacyModel}
+            paintKit={sel?.paintKit ?? 0}
             stickers={Array.from({ length: STICKER_SLOTS }, (_, i) => base.stickers?.[i] ?? null)}
             keychain={base.keychain ?? null}
             stickerImage={(d) => props.stickerByDef.get(d)?.image}

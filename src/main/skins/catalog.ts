@@ -160,6 +160,20 @@ export function buildPins(raw: ApiCollectible[]): CatalogPin[] {
   return out.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
 }
 
+/**
+ * Kits the game has (items_game music_definitions, names from csgo_english) that ByMykel's music_kits.json lacks.
+ * No image there: the Loadout tile shows a placeholder; the K window takes its icon from the game files.
+ */
+export const EXTRA_MUSIC_KITS: { defIndex: number; name: string }[] = [
+  { defIndex: 32, name: 'Beartooth, Aggressive' },
+  { defIndex: 33, name: 'Blitz Kids, The Good Youth' },
+  { defIndex: 34, name: 'Hundredth, FREE' },
+  { defIndex: 35, name: "Neck Deep, Life's Not Out To Get You" },
+  { defIndex: 36, name: 'Roam, Backbone' },
+  { defIndex: 37, name: 'Twin Atlantic, GLA' },
+  { defIndex: 38, name: 'Skog, III-Arena' }
+]
+
 /** StatTrak copies ("…_st") share the def index of the plain kit and are skipped. */
 export function buildMusicKits(raw: ApiMusicKit[]): CatalogMusicKit[] {
   const out: CatalogMusicKit[] = []
@@ -169,6 +183,11 @@ export function buildMusicKits(raw: ApiMusicKit[]): CatalogMusicKit[] {
     if (!defIndex || m.id.endsWith('_st') || seen.has(defIndex)) continue
     seen.add(defIndex)
     out.push({ defIndex, name: m.name.replace(/^Music Kit \| /, ''), image: m.image, rarityColor: m.rarity?.color ?? GREY })
+  }
+  if (out.length > 0) {
+    for (const k of EXTRA_MUSIC_KITS) {
+      if (!seen.has(k.defIndex)) out.push({ ...k, image: '', rarityColor: GREY })
+    }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }

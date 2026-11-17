@@ -106,17 +106,17 @@ public partial class PracSkins
             var type = k.Type;
             chips.Add(($"{k.Label} ({all.Count(l => l.Type == type)})", s.NadeFilter == type, _ => s.NadeFilter = type));
         }
-        s.Rows.Add(new SetRow($"Lineups on {CurrentMap}", ".savenade <name> [description] saves where you stand (MatchZy practice)", chips));
+        s.Rows.Add(new SetRow($"Lineups on {CurrentMap}", ".savenade <name> [description] saves where you stand (MatchZy practice)", chips) { Icon = "ic-filter" });
         var shown = all.Where(l => s.NadeFilter.Length == 0 || l.Type == s.NadeFilter).ToList();
         if (shown.Count == 0)
             s.Rows.Add(new SetRow(all.Count == 0 ? "No lineups saved on this map" : "None of this type",
-                "The app's Play page > Lineups imports shared lineup files", []));
+                "The app's Play page > Lineups imports shared lineup files", []) { Icon = "ic-info" });
         foreach (var l in shown.Take(SetRows - 1))
         {
             var lineup = l;
             var type = NadeKinds.FirstOrDefault(k => k.Type == l.Type).Label ?? "Nade";
             var sub = $"{type}{(l.Owner == "default" ? " · everyone" : "")}{(l.Desc.Length > 0 ? $" · {l.Desc}" : "")}";
-            s.Rows.Add(new SetRow(l.Name, sub, [("Go", false, pl => { CloseSettings(pl); LoadLineup(pl, lineup); })]));
+            s.Rows.Add(new SetRow(l.Name, sub, [("Go", false, pl => { CloseSettings(pl); LoadLineup(pl, lineup); })]) { Icon = "ie-" + (NadeKinds.FirstOrDefault(k => k.Type == l.Type).Weapon ?? "weapon_smokegrenade")["weapon_".Length..] });
         }
     }
 
@@ -124,7 +124,7 @@ public partial class PracSkins
     [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnPracLineups(CCSPlayerController? _, CommandInfo command)
     {
-        var p = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && !x.IsBot) ?? Utilities.GetPlayers().FirstOrDefault(x => x.IsValid);
+        var p = Utilities.GetPlayers().FirstOrDefault(x => x.IsValid && !IsBotAny(x)) ?? Utilities.GetPlayers().FirstOrDefault(x => x.IsValid);
         if (p == null)
         {
             command.ReplyToCommand("no players");

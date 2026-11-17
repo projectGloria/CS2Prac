@@ -50,8 +50,23 @@ public partial class PracSkins
         var now = Server.CurrentTime;
         if (_nextSpray.TryGetValue(player.Slot, out var next) && now < next) return;
         var error = Spray(player, _loadout.Graffiti, _loadout.GraffitiTint);
-        if (error != null) player.PrintToCenter(error);
-        else _nextSpray[player.Slot] = now + SprayCooldown;
+        if (error != null) player.PrintToChat($"{ChatTag} {error}.");
+        else
+        {
+            _nextSpray[player.Slot] = now + SprayCooldown;
+            player.PrintToChat($"{ChatTag} Graffiti sprayed.");
+        }
+    }
+
+    /// <summary>m_nVersion of the decal (the game's own sprays carry 1; settable with css_prac_sprayversion for tests)</summary>
+    private static int SprayVersion = 1;
+
+    [ConsoleCommand("css_prac_sprayversion", "Test: m_nVersion for new sprays")]
+    [CommandHelper(minArgs: 1, usage: "<n>", whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnSprayVersionTest(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (int.TryParse(command.GetArg(1), out var v)) SprayVersion = v;
+        command.ReplyToCommand($"[PracSkins] spray version {SprayVersion}");
     }
 
     [ConsoleCommand("css_prac_spray", "Test: spray [def] [tint] for the first live bot (or player) where it looks")]
@@ -66,7 +81,7 @@ public partial class PracSkins
         var error = Spray(p, def, tint, testAnyAngle: true);
         command.ReplyToCommand(error != null ? $"[PracSkins] spray failed: {error}" : $"[PracSkins] sprayed {def} tint {tint} for {p.PlayerName}");
         foreach (var e in Utilities.FindAllEntitiesByDesignerName<CPlayerSprayDecal>("player_spray_decal"))
-            command.ReplyToCommand($"  #{e.Index} id {e.UniqueID} tint {e.TintID} player {e.Player} acct {e.AccountID} end {e.EndPos} " +
+            command.ReplyToCommand($"  #{e.Index} v{e.Version} id {e.UniqueID} tint {e.TintID} player {e.Player} acct {e.AccountID} start {e.Start} end {e.EndPos} " +
                                    $"normal {e.Normal} left {e.Left} origin {e.AbsOrigin} created {e.CreationTime:0.0}");
     }
 
@@ -111,6 +126,9 @@ public partial class PracSkins
             decal.Player = (int)player.Index;
             decal.Hitbox = 0;
             decal.CreationTime = Server.CurrentTime;
+            decal.Version = (byte)SprayVersion;
+            // the trace start (the eye): the client re-traces start → end to find the surface to project onto
+            decal.Start.X = eye.X; decal.Start.Y = eye.Y; decal.Start.Z = eye.Z;
             decal.EndPos.X = hit.EndPos.X; decal.EndPos.Y = hit.EndPos.Y; decal.EndPos.Z = hit.EndPos.Z;
             decal.Normal.X = n.X; decal.Normal.Y = n.Y; decal.Normal.Z = n.Z;
             decal.Left.X = left.X; decal.Left.Y = left.Y; decal.Left.Z = left.Z;
