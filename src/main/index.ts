@@ -1,9 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import {
   IPC,
   type ServerHealth,
@@ -24,10 +24,11 @@ import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
 import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
 import { installClientHud, installGraffitiTextures, installSkyThumbs } from './setup/clientHud'
+import { SOUND_ADDON, installSoundPack, installedSoundPack, legacySoundRecord, toSoundPack, type SoundPack } from './setup/clientSounds'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
-import { killStaleServers, parseHealth } from './server/health'
+import { cs2Pids, killStaleServers, parseHealth } from './server/health'
 import { cachedCatalog, getCatalog } from './skins/catalog'
 import { exportLoadout, importLoadoutFile, loadStore, pluginConfigDir, saveStore } from './skins/loadoutStore'
 import { exportPluginCatalog } from './skins/pluginCatalog'
@@ -148,22 +149,84 @@ async function installSkinWindow() {
   }
 }
 
+/** Runs CS2's resourcecompiler (it reports errors on stdout and may exit non-zero after compiling). */
+function runCompiler(exe: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) =>
+    execFile(exe, args, { windowsHide: true, timeout: 300_000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) =>
+      err && !stdout ? reject(err) : resolve()
+    )
+  )
+}
+
+/** A sound-pack message in the Console and, while the server runs, in every player's chat. */
+function soundNotice(text: string) {
+  send(IPC.serverLog, `[cs2prac] ${text}`)
+  if (server.getStatus().state === 'running')
+    server.exec(`css_prac_notice ${text.replace(/[";]/g, '')}`).catch((e) => logError('sounds', e))
+}
+
+/**
+ * CS 1.6 sounds (L window, Server tab "Sounds"): rebuilds the local addon cs2prac16 for the picked pack (Off = no
+ * events). Runs one at a time; a newer pick waits for the running one, then the latest pick wins.
+ */
+let soundJob: Promise<void> = Promise.resolve()
+let soundWanted: SoundPack | null = null
+function applySoundPack(pack: SoundPack) {
+  soundWanted = pack
+  soundJob = soundJob.then(async () => {
+    if (soundWanted !== pack) return
+    try {
+      const client = await findCs2Install()
+      if (!client) return
+      if (pack === 'off' && (await installedSoundPack(client.dir)) === 'off' && !existsSync(legacySoundRecord(client.dir))) return
+      const r = await installSoundPack(client.dir, pack, runCompiler, () => models().soundEventsDir())
+      if (r.status === 'unchanged') log('sounds', `1.6 sound addon already holds ${pack}`)
+      else if (r.status === 'installed')
+        soundNotice(
+          pack === 'off'
+            ? 'Stock sounds back (CS2 started with 1.6 sounds switches live).'
+            : `1.6 sounds (${pack.toUpperCase()}) ready: ${r.sounds} sounds, ${r.events} events. Heard in CS2 started with "Start CS2 with 1.6 sounds" (switches live there).`
+        )
+      else if (r.status === 'nocompiler')
+        soundNotice('1.6 sounds need the CS2 Workshop Tools (resourcecompiler.exe). Install them from Steam.')
+      else if (r.status === 'missing') soundNotice('1.6 sound files are missing from the app.')
+    } catch (e) {
+      logError('sounds', e)
+      soundNotice(`Could not install the 1.6 sounds: ${e instanceof Error ? e.message : e}`)
+    }
+  })
+  return soundJob
+}
+
+/**
+ * "Start CS2 with 1.6 sounds": the player's own cs2.exe in tools mode (`-tools -addon cs2prac16`), the only way the
+ * retail client mounts a local addon. Tools mode is insecure (no VAC servers), so it joins our server right away;
+ * the player closes it and starts CS2 from Steam before playing online.
+ */
+async function launchCs2Sounds() {
+  const client = await findCs2Install()
+  if (!client) throw new Error('CS2 was not found in your Steam library.')
+  const exe = join(client.dir, 'game', 'bin', 'win64', 'cs2.exe')
+  if (!existsSync(exe)) throw new Error(`cs2.exe not found in ${client.dir}`)
+  if ((await cs2Pids(exe)).length > 0) throw new Error('CS2 is already running. Close it first, then press the button again.')
+  const { installDir } = await loadSettings()
+  const prefs = installDir ? await readServerPrefs(layout(installDir).csgoDir) : null
+  await applySoundPack(toSoundPack(prefs?.global.sounds)) // the addon folder must exist before CS2 mounts it
+  const args = ['-steam', '-tools', '-addon', SOUND_ADDON]
+  // the user's own cfg (aliases, binds); CS2 just runs it, the app never touches the file
+  if (existsSync(join(client.dir, 'game', 'csgo', 'cfg', 'Nihil.cfg'))) args.push('+exec', 'Nihil')
+  if (server.getStatus().state === 'running') args.push('+connect', `127.0.0.1:${SERVER_PORT}`)
+  log('sounds', `starting CS2 in tools mode: ${args.join(' ')}`)
+  spawn(exe, args, { cwd: dirname(exe), detached: true, stdio: 'ignore' }).unref()
+}
+
 /** The L window's sky thumbnails (rendered and compiled once, in the background; ~40 s the first time). */
 let skyImagesJob: Promise<void> | null = null
 function installSkyImages(cs2Dir: string) {
   skyImagesJob ??= (async () => {
     try {
       const jpgs = await models().skyFiles(SKIES.map((s) => s.value).filter(Boolean))
-      const r = await installSkyThumbs(
-        cs2Dir,
-        jpgs,
-        (exe, args) =>
-          new Promise((resolve, reject) =>
-            execFile(exe, args, { windowsHide: true, timeout: 300_000 }, (err, stdout) =>
-              err && !stdout ? reject(err) : resolve()
-            )
-          )
-      )
+      const r = await installSkyThumbs(cs2Dir, jpgs, runCompiler)
       if (r === 'installed') {
         hudUpdated = true
         send(IPC.serverLog, '[cs2prac] sky thumbnails installed for the L window – restart CS2 to see them')
@@ -217,7 +280,13 @@ function watchLoadout(csgoDir: string) {
       // the in-game settings window (L) saved; our own saves just send the same prefs again
       clearTimeout(prefsPending)
       prefsPending = setTimeout(() => {
-        readServerPrefs(csgoDir).then((p) => send(IPC.serverPrefsChanged, p), (e) => logError('server prefs', e))
+        readServerPrefs(csgoDir).then(
+          (p) => {
+            send(IPC.serverPrefsChanged, p)
+            void applySoundPack(toSoundPack(p.global.sounds))
+          },
+          (e) => logError('server prefs', e)
+        )
       }, 300)
       return
     }
@@ -403,6 +472,7 @@ function registerIpc() {
     await rememberWorkshop(opts.map)
     await writeRecentWorkshop(csgoDir)
     watchLoadout(csgoDir)
+    void readServerPrefs(csgoDir).then((p) => applySoundPack(toSoundPack(p.global.sounds)), (e) => logError('sounds', e))
     // Every Steam account that has logged in on this PC is a root admin on the server.
     const accounts = await listSteamAccounts()
     await ensureAdmins(csgoDir, accounts.map((a) => a.steamId))
@@ -436,6 +506,7 @@ function registerIpc() {
   ipcMain.handle(IPC.serverPrefsSave, async (_e, prefs: ServerPrefs) => {
     const saved = await writeServerPrefs(layout(await requireInstallDir()).csgoDir, prefs)
     if (server.getStatus().state === 'running') await server.exec(APPLY_SETTINGS_CMD).catch((e) => logError('server prefs', e))
+    void applySoundPack(toSoundPack(saved.global.sounds))
     return saved
   })
   ipcMain.handle(IPC.modelsGet, (_e, className: string) => models().get(String(className ?? '')))
@@ -515,6 +586,7 @@ function registerIpc() {
     await shell.openPath(userCfgDir())
   })
   ipcMain.handle(IPC.serverExec, (_e, cmd: string) => server.exec(cmd))
+  ipcMain.handle(IPC.serverLaunchCs2Sounds, launchCs2Sounds)
 
   // --- skins / loadout ---
   ipcMain.handle(IPC.skinsCatalog, async (_e, refresh: boolean) => {

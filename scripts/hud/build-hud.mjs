@@ -51,6 +51,35 @@ const GW_SLOTS = 8
 const GW_TINTS = 19
 const GW_XML_SRC = join(here, 'cs2prac_graffiti.xml')
 const GW_CSS_SRC = join(here, 'cs2prac_graffiti.css')
+// Our own images (class ix-<name> on .ps-ic panels): assets/version-icons/<file> -> panorama/images/custom_game/cs2prac/
+// <name>.<ext>, compiled with the style (-r) and shipped in resources/hud/images (the app copies them into the client).
+// Flags keep their colours: no wash (.ps-ic and the picked chip tint the white game icons).
+const OWN_IMG_DIR = 'custom_game/cs2prac'
+const OWN_IMAGES = [
+  { cls: 'ix-cs16', from: 'cs1.6.png', name: 'cs16.png', built: 'cs16_png.vtex_c', colour: false },
+  { cls: 'ix-flag_tr', from: 'TR-panorama.svg', name: 'flag_tr.svg', built: 'flag_tr.vsvg_c', colour: true },
+  { cls: 'ix-flag_uk', from: 'UK.svg', name: 'flag_uk.svg', built: 'flag_uk.vsvg_c', colour: true }
+]
+
+/** Copies our images into the addon's content folder; returns their CSS rules. */
+function buildOwnImages(content) {
+  const dir = join(content, 'images', ...OWN_IMG_DIR.split('/'))
+  mkdirSync(dir, { recursive: true })
+  const rules = []
+  for (const img of OWN_IMAGES) {
+    copyFileSync(join(root, 'assets', 'version-icons', img.from), join(dir, img.name))
+    const url = `url("file://{images}/${OWN_IMG_DIR}/${img.name}")`
+    if (!img.colour) {
+      rules.push(`.ps-ic.${img.cls}\n{\n\tbackground-image: ${url};\n}`)
+      continue
+    }
+    rules.push(`.ps-ic.${img.cls}\n{\n\tbackground-image: ${url};\n\twash-color: none;\n}`)
+    // 3:2 flags, wider than the square chip icons
+    rules.push(`.pk-chip.has-ic .ps-chip-ic.${img.cls}\n{\n\twidth: 42px;\n}`)
+    rules.push(`.pk-chip.picked .ps-chip-ic.ps-ic.${img.cls}\n{\n\twash-color: none;\n}`)
+  }
+  return rules
+}
 
 function findCs2() {
   if (process.env.CS2_DIR) return process.env.CS2_DIR
@@ -343,10 +372,12 @@ mkdirSync(dirname(layoutSrc), { recursive: true })
 mkdirSync(dirname(styleSrc), { recursive: true })
 writeFileSync(layoutSrc, buildLayout())
 let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8') + '\n' + readFileSync(GW_CSS_SRC, 'utf8')
-writeFileSync(styleSrc, css + '\n' + buildImageCss(cs2))
+writeFileSync(styleSrc, css + '\n' + buildImageCss(cs2) + '\n' + buildOwnImages(content).join('\n\n') + '\n')
 
+// -f: without it the compiler skips an unchanged style and a child image whose output exists, even when the
+// image's source changed (a new flag kept the old drawing)
 for (const src of [layoutSrc, styleSrc]) {
-  const out = execFileSync(compiler, ['-i', src, '-r'], { encoding: 'utf8' })
+  const out = execFileSync(compiler, ['-i', src, '-r', '-f'], { encoding: 'utf8' })
   if (/error/i.test(out)) {
     console.error(out)
     process.exit(1)
@@ -361,6 +392,13 @@ for (const [sub, ext] of [['layout', 'vxml_c'], ['styles', 'vcss_c']]) {
   if (!existsSync(built)) throw new Error(`compiler produced no ${built}`)
   copyFileSync(built, join(outDir, `${NAME}.${ext}`))
   console.log(`resources/hud/${NAME}.${ext}`)
+}
+mkdirSync(join(outDir, 'images'), { recursive: true })
+for (const img of OWN_IMAGES) {
+  const built = join(game, 'images', ...OWN_IMG_DIR.split('/'), img.built)
+  if (!existsSync(built)) throw new Error(`compiler produced no ${built}`)
+  copyFileSync(built, join(outDir, 'images', img.built))
+  console.log(`resources/hud/images/${img.built}`)
 }
 writeFileSync(join(outDir, 'graffiti.json'), JSON.stringify(graffitiTextures) + '\n')
 console.log(`resources/hud/graffiti.json (${Object.keys(graffitiTextures).length} graffiti)`)

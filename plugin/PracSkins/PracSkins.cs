@@ -175,14 +175,44 @@ public partial class PracSkins : BasePlugin
     }
 
     /// <summary>
+    /// @css/root check used instead of [RequiresPermissions]. CSS trusts only Steam-verified ids, and a tools-mode
+    /// client (the app's "Start CS2 with 1.6 sounds") fails the ticket check ("STEAMAUTH: Client … received failure
+    /// code 8; ignoring because local connection"), so it would lose admin. A player connected from this PC
+    /// (loopback) is checked by its unverified SteamID; anyone else still needs a verified one. null = server console.
+    /// </summary>
+    internal static bool IsAdmin(CCSPlayerController? p)
+    {
+        if (p == null) return true;
+        if (AdminManager.PlayerHasPermissions(p, "@css/root")) return true;
+        if (!p.IsValid || p.SteamID == 0) return false;
+        // AuthorizedSteamID isn't checked: an unverified player may report a zero id instead of null
+        var ip = p.IpAddress ?? "";
+        var local = ip.StartsWith("127.0.0.1") || ip.StartsWith("loopback");
+        var ok = local && AdminManager.PlayerHasPermissions(new CounterStrikeSharp.API.Modules.Entities.SteamID(p.SteamID), "@css/root");
+        if (!ok && _adminDenyLogged.Add(p.SteamID))
+            Console.WriteLine($"[PracSkins] admin denied: {p.PlayerName} steam {p.SteamID} authorized " +
+                              $"{p.AuthorizedSteamID?.SteamId64.ToString() ?? "null"} ip '{ip}' local {local}");
+        return ok;
+    }
+
+    private static readonly HashSet<ulong> _adminDenyLogged = new();
+
+    internal static bool AdminOrReply(CCSPlayerController? p, CommandInfo command)
+    {
+        if (IsAdmin(p)) return true;
+        command.ReplyToCommand("[CSS] You do not have the correct permissions to execute this command.");
+        return false;
+    }
+
+    /// <summary>
     /// Runs any server command for a root admin (every Steam account on the PC, set up by the app):
     /// <c>!cmd sv_cheats 1</c> in chat or <c>css_cmd exec mycfg</c> in the console.
     /// </summary>
     [ConsoleCommand("css_cmd", "Run a server console command")]
-    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<command…>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnCmdCommand(CCSPlayerController? caller, CommandInfo command)
     {
+        if (!AdminOrReply(caller, command)) return;
         var line = command.ArgString.Trim();
         if (line.Length >= 2 && line[0] == '"' && line[^1] == '"') line = line[1..^1];
         Logger.LogInformation("{Player} ran: {Command}", caller?.PlayerName ?? "console", line);

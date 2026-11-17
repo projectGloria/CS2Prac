@@ -93,7 +93,7 @@ public partial class PracSkins
         ["glow"] = "ic-enemyspotted", ["spawns"] = "ic-pin", ["ammo"] = "ic-bullet", ["buyanywhere"] = "ic-shoppingcart",
         ["trajectory"] = "ie-hegrenade", ["impacts"] = "ic-crosshair", ["noflash"] = "ie-flashbang", ["god"] = "ic-shield",
         ["bhop"] = "ic-fast", ["spraycooldown"] = "ic-timer",["friendlyfire"] = "ic-kill", ["falldamage"] = "ic-health", ["roundtime"] = "ic-timer",
-        ["freezetime"] = "ic-hourglass", ["gravity"] = "ic-parachute", ["timescale"] = "ic-clock",
+        ["freezetime"] = "ic-hourglass", ["gravity"] = "ic-parachute", ["timescale"] = "ic-clock", ["sounds"] = "ix-cs16",
         ["botradio"] = "ic-chatwheel_affirmative", ["botdifficulty"] = "ic-stats", ["botshoot"] = "ie-ak47",
         ["botstop"] = "ic-pause", ["botcrouch"] = "ic-bot"
     };
@@ -105,9 +105,18 @@ public partial class PracSkins
         ["Play"] = "ic-play", ["Go"] = "ic-play", ["Reload"] = "ic-refresh", ["Restart"] = "ic-refresh",
         ["Add"] = "ic-plus", ["Kick all"] = "ic-trash",
         ["Add here"] = "ic-plus", ["End here"] = "ic-crosshair", ["Fall floor"] = "ic-warning", ["Delete"] = "ic-trash", ["Sure?"] = "ic-trash",
-        ["Rename"] = "ic-edit", ["Remove"] = "ic-trash", ["Save"] = "ic-check", ["Cancel"] = "ic-cancel", ["Clear"] = "ic-trash"
+        ["Rename"] = "ic-edit", ["Remove"] = "ic-trash", ["Save"] = "ic-check", ["Cancel"] = "ic-cancel", ["Clear"] = "ic-trash",
+        // our own images (build-hud: assets/version-icons, compiled into panorama/images/custom_game/cs2prac)
+        ["TR"] = "ix-flag_tr", ["UK"] = "ix-flag_uk"
     };
-    private static readonly HashSet<string> IconOnly = ["On", "Off", "Yes", "No", "Use", "Go"];
+    private static readonly HashSet<string> IconOnly = ["On", "Off", "Yes", "No", "Use", "Go", "TR", "UK"];
+
+    /// <summary>
+    /// CS 1.6 sound pack (off / tr / uk). The server only stores it: the app sees server_prefs.json change and rebuilds
+    /// the local addon cs2prac16 in the player's own CS2 (heard when CS2 runs in tools mode), so it is always global.
+    /// </summary>
+    private string _soundPack = "off";
+    private static readonly SetOpt[] SoundPacks = [new("Off", "off"), new("TR", "tr"), new("UK", "uk")];
 
     private static string ChipIcon(string label) =>
         ChipIcons.TryGetValue(label, out var ic) ? ic :
@@ -187,6 +196,8 @@ public partial class PracSkins
         new("gravity", "server", "Gravity", "sv_gravity (800 is normal)", [new("200", "200"), new("400", "400"), new("600", "600"), new("800", "800")], ["sv_gravity"]),
         new("timescale", "server", "Game speed", "host_timescale",
             [new("0.25×", "0.25"), new("0.5×", "0.5"), new("1×", "1"), new("1.5×", "1.5"), new("2×", "2")], ["host_timescale"]),
+        new("sounds", "server", "Sounds", "CS 1.6 sound pack: heard in CS2 started with the app's \"Start CS2 with 1.6 sounds\" (switches live)", SoundPacks, [],
+            () => _soundPack, v => _soundPack = SoundPacks.Any(o => o.Value == v) ? v : "off"),
 
         new("botradio", "bots", "Bot radio", "Bot voice and radio calls (bot_chatter)",
             [new("Off", "off"), new("Radio", "radio"), new("Minimal", "minimal"), new("Normal", "normal")], ["bot_chatter"]),
@@ -276,7 +287,17 @@ public partial class PracSkins
         if (player != null) ToggleSettings(player, command);
     }
 
-    [ConsoleCommand("css_prac_botsay", "Test: the first bot says <text> in chat (goes through the say listeners)")]
+    /// <summary>The app's messages to the players (e.g. "1.6 sounds installed – restart CS2").</summary>
+    [ConsoleCommand("css_prac_notice", "Prints <text> to every player's chat")]
+    [CommandHelper(minArgs: 1, usage: "<text>", whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnNotice(CCSPlayerController? caller, CommandInfo command)
+    {
+        var text = command.ArgString.Trim().Trim('"');
+        Server.PrintToChatAll($"{ChatTag} {text}");
+        command.ReplyToCommand($"[PracSkins] notice: {text}");
+    }
+
+    [ConsoleCommand("css_prac_botsay","Test: the first bot says <text> in chat (goes through the say listeners)")]
     [CommandHelper(minArgs: 1, usage: "<text>", whoCanExecute: CommandUsage.SERVER_ONLY)]
     public void OnBotSayTest(CCSPlayerController? caller, CommandInfo command)
     {
@@ -347,7 +368,7 @@ public partial class PracSkins
             return;
         }
         if (IsBotAny(player)) return;
-        if (!AdminManager.PlayerHasPermissions(player, "@css/root"))
+        if (!IsAdmin(player))
         {
             var msg = $"{Tag} Server settings need admin (@css/root).";
             if (command != null) command.ReplyToCommand(msg); else player.PrintToChat(msg);
@@ -884,6 +905,13 @@ public partial class PracSkins
     {
         SetValue(d, value);
         LoadServerPrefs();
+        if (d.Id == "sounds")
+        {
+            mapOnly = false; // lives in the player's CS2, not per map
+            Server.PrintToChatAll(value == "off"
+                ? $"{ChatTag} Sounds: switching back to the stock sounds …"
+                : $"{ChatTag} Sounds: building the CS 1.6 sounds ({value.ToUpperInvariant()}) …");
+        }
         if (mapOnly)
         {
             if (!_serverPrefs.Maps.TryGetValue(CurrentMap, out var map)) _serverPrefs.Maps[CurrentMap] = map = new();

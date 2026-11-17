@@ -171,49 +171,49 @@ english/player/pl_wade2.wav	player	pcm	22050	1	8	0.90	19910	ct_wade.StepLeft / t
 english/player/pl_wade3.wav	player	pcm	22050	1	8	1.18	26100	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
 english/player/pl_wade4.wav	player	pcm	22050	1	8	1.16	25814	ct_wade.StepLeft / t_wade.StepLeft / Player.Wade
 english/player/sprayer.wav	player	pcm	11025	1	8	0.91	10128	SprayCan.Paint (our graffiti)
-english/radio/blow.wav	radio	pcm	22050	1	8	1.91	42144	agent ct_bombexploding
+english/radio/blow.wav	radio	pcm	22050	1	8	1.91	42144	agent ct_bombexploding / bomb_pre_explosion + talker Radio.GetOutOfThere
 english/radio/bombdef.wav	radio	pcm	22050	1	8	1.78	39288	announcer Event.BombDefused
 english/radio/bombpl.wav	radio	pcm	22050	1	8	1.51	33400	announcer Event.BombPlanted
 english/radio/circleback.wav	radio	pcm	22050	1	8	1.15	25586	none
-english/radio/clear.wav	radio	pcm	22050	1	8	1.08	23932	agent clearedarea / bombsite_clear
-english/radio/com_followcom.wav	radio	pcm	22050	1	8	2.02	44572	agent radio_followme
-english/radio/com_getinpos.wav	radio	pcm	22050	1	8	2.22	49108	agent radiobothold
-english/radio/com_go.wav	radio	pcm	22050	1	8	1.33	29436	agent radio_letsgo / radio_go
-english/radio/com_reportin.wav	radio	pcm	22050	1	8	1.52	33670	agent requestreport
-english/radio/ct_affirm.wav	radio	pcm	22050	1	8	0.93	20714	agent affirmative
-english/radio/ct_backup.wav	radio	pcm	22050	1	8	1.32	29270	agent radio_needbackup
-english/radio/ct_coverme.wav	radio	pcm	22050	1	8	0.91	20226	agent coverme
-english/radio/ct_enemys.wav	radio	pcm	22050	1	8	1.24	27462	agent radio_enemyspotted
-english/radio/ct_fireinhole.wav	radio	pcm	22050	1	8	1.43	31674	agent t_grenade / t_flashbang / t_smoke / t_molotov / t_decoy
-english/radio/ct_imhit.wav	radio	pcm	22050	1	8	0.62	13830	agent help / pinneddown
-english/radio/ct_inpos.wav	radio	pcm	22050	1	8	1.05	23256	agent inposition
-english/radio/ct_point.wav	radio	pcm	22050	1	8	1.32	29222	agent radio_letsgo (no point line)
-english/radio/ct_reportingin.wav	radio	pcm	22050	1	8	1.10	24434	agent reportingin
+english/radio/clear.wav	radio	pcm	22050	1	8	1.08	23932	agent clearedarea / bombsite_clear / sees_area_clear / radiobotclear + talker Radio.SectorClear / Clear / ClearedArea / TLK_CW.SectorClear / BombsiteClear / BombsiteSecure / TLK_CW.BombsiteClear / TLK_Radio.BombsiteClear / NoEnemiesLeft
+english/radio/com_followcom.wav	radio	pcm	22050	1	8	2.02	44572	agent radio_followme / request_follow_me / radiobotfollowme + talker Radio.FollowMe / TLK_CW.FollowMe
+english/radio/com_getinpos.wav	radio	pcm	22050	1	8	2.22	49108	agent radiobothold / request_hold
+english/radio/com_go.wav	radio	pcm	22050	1	8	1.33	29436	agent radio_letsgo / radio_go / request_move / radiobotgo + talker Radio.GoGoGo / TLK_CW.GoGoGo / radio.letsgo / radio.go / radio.moveout
+english/radio/com_reportin.wav	radio	pcm	22050	1	8	1.52	33670	agent requestreport / request_report + talker Radio.ReportInTeam / RequestReport
+english/radio/ct_affirm.wav	radio	pcm	22050	1	8	0.93	20714	agent affirmative / affirmation / radiobotreponsepositive + talker Affirmative / Agree / Radio.Affirmitive / Radio.Roger / TLK_CW.Agree
+english/radio/ct_backup.wav	radio	pcm	22050	1	8	1.32	29270	agent radio_needbackup / request_backup + talker Radio.NeedBackup / TLK_CW.NeedBackup
+english/radio/ct_coverme.wav	radio	pcm	22050	1	8	0.91	20226	agent coverme / request_coverme + talker Radio.CoverMe
+english/radio/ct_enemys.wav	radio	pcm	22050	1	8	1.24	27462	agent radio_enemyspotted / sees_enemy / sees_one_enemy / sees_multiple_enemies / radiobottarget + talker Radio.EnemySpotted / TLK_CW.SeesEnemy / TLK_CW.SeesEnemiesMultiple / TLK_CW.SeesSingleEnemy / TLK_Radio.SeesEnemiesMultiple / TLK_Radio.SeesSingleEnemy / SniperWarning / TLK_CW.SniperWarning
+english/radio/ct_fireinhole.wav	radio	pcm	22050	1	8	1.43	31674	agent t_grenade / t_flashbang / t_smoke / t_molotov / t_decoy / ct_grenade / ct_flashbang / ct_smoke / ct_molotov / ct_decoy / throwing_grenade / throwing_flashbang / throwing_smoke / throwing_molotov / throwing_fire / throwing_decoy + talker Radio.FireInTheHole / Radio.Flashbang / Radio.Smoke / Radio.Molotov / Radio.Incendiary / Radio.Decoy
+english/radio/ct_imhit.wav	radio	pcm	22050	1	8	0.62	13830	agent help / pinneddown / pinned / request_help + talker help / PinnedDown
+english/radio/ct_inpos.wav	radio	pcm	22050	1	8	1.05	23256	agent inposition / in_position + talker Radio.InPosition / TLK_CW.InPosition / Radio.ImAtLoc*
+english/radio/ct_point.wav	radio	pcm	22050	1	8	1.32	29222	agent radio_letsgo / request_move (no point line) + talker Radio.GoA / Radio.GoB / TLK_CW.GoA / TLK_CW.GoB / Radio.GoToLoc* / TLK_CW.GoToLoc* / CW.GoToLoc*
+english/radio/ct_reportingin.wav	radio	pcm	22050	1	8	1.10	24434	agent reportingin / reporting_in / radiobotreport + talker Radio.ReportingIn / ReportingIn / OnMyWay / TLK_CW.OMW / Radio.OMWLoc*
 english/radio/ctwin.wav	radio	pcm	22050	1	8	1.88	41458	announcer Event.CTWin
 english/radio/elim.wav	radio	pcm	22050	1	8	2.51	55548	agent (enemy eliminated; check list)
-english/radio/enemydown.wav	radio	pcm	22050	1	8	1.22	27082	agent enemydown
-english/radio/fallback.wav	radio	pcm	22050	1	8	1.44	31914	agent radiobotfallback
-english/radio/fireassis.wav	radio	pcm	22050	1	8	2.54	56132	agent radio_takingfire
+english/radio/enemydown.wav	radio	pcm	22050	1	8	1.22	27082	agent enemydown / i_killed_enemy / radiobotkill + talker EnemyDown / KilledMyEnemy / Radio.EnemyDown / TLK_Radio.MyHeadshot / SniperKilled / TLK_Radio.IKilledSniper
+english/radio/fallback.wav	radio	pcm	22050	1	8	1.44	31914	agent radiobotfallback / request_fallback + talker Radio.TeamFallBack / TLK_CW.TeamFallBack
+english/radio/fireassis.wav	radio	pcm	22050	1	8	2.54	56132	agent radio_takingfire / takingfire / radiobotunderfire + talker radio.takingfire
 english/radio/flankthem.wav	radio	pcm	22050	1	8	0.78	17252	none
-english/radio/followme.wav	radio	pcm	22050	1	8	1.12	24752	agent radio_followme
+english/radio/followme.wav	radio	pcm	22050	1	8	1.12	24752	agent radio_followme / request_follow_me / radiobotfollowme + talker Radio.FollowMe / TLK_CW.FollowMe
 english/radio/getout.wav	radio	pcm	22050	1	8	1.93	42774	none
-english/radio/go.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo
-english/radio/hitassist.wav	radio	pcm	22050	1	8	2.04	45188	agent radio_takingfire
+english/radio/go.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo / request_move / radiobotgo + talker Radio.GoGoGo / TLK_CW.GoGoGo / radio.letsgo / radio.go / radio.moveout
+english/radio/hitassist.wav	radio	pcm	22050	1	8	2.04	45188	agent radio_takingfire / takingfire / radiobotunderfire + talker radio.takingfire
 english/radio/hosdown.wav	radio	pcm	22050	1	8	1.85	40940	none (hostage killed; no announcer line)
-english/radio/letsgo.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo
-english/radio/locknload.wav	radio	pcm	22050	1	8	1.22	27064	agent radio_locknload
-english/radio/matedown.wav	radio	pcm	22050	1	8	1.54	34136	agent (teammate down; check list)
+english/radio/letsgo.wav	radio	pcm	22050	1	8	1.37	30308	agent radio_letsgo / request_move / radiobotgo + talker Radio.GoGoGo / TLK_CW.GoGoGo / radio.letsgo / radio.go / radio.moveout
+english/radio/locknload.wav	radio	pcm	22050	1	8	1.22	27064	agent radio_locknload / round_start / radiobotstart + talker radio.locknload
+english/radio/matedown.wav	radio	pcm	22050	1	8	1.54	34136	agent sees_friend_killed + talker CommanderDown
 english/radio/meetme.wav	radio	pcm	22050	1	8	1.65	36534	none
-english/radio/moveout.wav	radio	pcm	22050	1	8	1.54	34044	agent radio_letsgo
-english/radio/negative.wav	radio	pcm	22050	1	8	0.97	21496	agent negative / disagree
-english/radio/position.wav	radio	pcm	22050	1	8	1.39	30832	agent radiobothold
-english/radio/regroup.wav	radio	pcm	22050	1	8	1.54	34190	agent radiobotregroup
+english/radio/moveout.wav	radio	pcm	22050	1	8	1.54	34044	agent radio_letsgo / request_move / radiobotgo + talker Radio.GoGoGo / TLK_CW.GoGoGo / radio.letsgo / radio.go / radio.moveout
+english/radio/negative.wav	radio	pcm	22050	1	8	0.97	21496	agent negative / disagree / negativeno / radiobotreponsenegative + talker Negative / Disagree / Radio.Negative / TLK_CW.Disagree
+english/radio/position.wav	radio	pcm	22050	1	8	1.39	30832	agent radiobothold / request_hold + talker Radio.HoldPosition / TLK_CW.HoldPosition / WaitingHere
+english/radio/regroup.wav	radio	pcm	22050	1	8	1.54	34190	agent radiobotregroup / request_regroup + talker Radio.Regroup / TLK_CW.Regroup / TLK_Radio.Regroup
 english/radio/rescued.wav	radio	pcm	22050	1	8	2.06	45578	announcer Event.HostageRescued
-english/radio/roger.wav	radio	pcm	22050	1	8	0.88	19640	agent agree / affirmative
+english/radio/roger.wav	radio	pcm	22050	1	8	0.88	19640	agent agree / affirmative / affirmation + talker Affirmative / Agree / Radio.Affirmitive / Radio.Roger / TLK_CW.Agree
 english/radio/rounddraw.wav	radio	pcm	22050	1	8	1.19	26386	announcer Event.RoundDraw
-english/radio/sticktog.wav	radio	pcm	22050	1	8	1.58	34952	agent radiobotregroup
+english/radio/sticktog.wav	radio	pcm	22050	1	8	1.58	34952	agent radiobotregroup / request_stick_together + talker Radio.StickTogether / TLK_CW.StickTogether
 english/radio/stormfront.wav	radio	pcm	22050	1	8	1.14	25248	none
-english/radio/takepoint.wav	radio	pcm	22050	1	8	1.24	27492	agent radio_followme (no take-point line)
+english/radio/takepoint.wav	radio	pcm	22050	1	8	1.24	27492	agent radio_followme / request_follow_me (no take-point line) + talker Radio.YouTakeThePoint
 english/radio/terwin.wav	radio	pcm	22050	1	8	1.64	36394	announcer Event.TERWin
 english/radio/vip.wav	radio	pcm	22050	1	8	2.52	55598	none (VIP mode)
 english/sentences.txt	data file						21148	

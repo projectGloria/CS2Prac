@@ -168,9 +168,9 @@ public partial class PracSkins
     /// </summary>
     [ConsoleCommand("css_knifebody", "Test: set the held weapon's body group: 0 (new) or 1 (legacy)")]
     [CommandHelper(minArgs: 1, usage: "<0|1>", whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    [RequiresPermissions("@css/root")]
     public void OnKnifeBody(CCSPlayerController? player, CommandInfo command)
     {
+        if (!AdminOrReply(player, command)) return;
         var w = player?.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
         if (player == null || w is not { IsValid: true }) return;
         var body = command.GetArg(1) == "1" ? 1 : 0;
@@ -183,9 +183,9 @@ public partial class PracSkins
 
     [ConsoleCommand("css_decaltest","Test: put an env_decal where you look: [index|material] [size]")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    [RequiresPermissions("@css/root")]
     public void OnDecalTest(CCSPlayerController? player, CommandInfo command)
     {
+        if (!AdminOrReply(player, command)) return;
         if (player?.PlayerPawn.Value is not { IsValid: true } pawn || !player.PawnIsAlive || pawn.AbsOrigin is not { } o) return;
         var arg = command.ArgCount > 1 ? command.GetArg(1) : "0";
         var material = int.TryParse(arg, out var i) && i >= 0 && i < DecalTestMaterials.Length ? DecalTestMaterials[i] : arg;

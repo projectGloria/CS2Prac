@@ -1,4 +1,7 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Admin;
+using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -78,5 +81,30 @@ public partial class PracSkins
     {
         if (!_musicPlaying.Remove(player.Slot)) return;
         if (player.IsValid && !IsBotAny(player)) player.ExecuteClientCommand("stopsound");
+    }
+
+    /// <summary>
+    /// Test for custom sounds (1.6 pack): `css_soundtest &lt;event&gt;` plays any sound event for the caller only, e.g. a
+    /// stock one (`Weapon_AK47.Single`) or one only a loose client file defines (`CS2Prac.Test.AK`).
+    /// </summary>
+    [ConsoleCommand("css_soundtest", "Test: play a sound event for yourself: <event>")]
+    [CommandHelper(minArgs: 1, usage: "<event>", whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public void OnSoundTest(CCSPlayerController? player, CommandInfo command)
+    {
+        if (!AdminOrReply(player, command)) return;
+        if (player?.PlayerPawn.Value is not { IsValid: true } pawn) return;
+        var ev = command.GetArg(1);
+        try
+        {
+            var filter = new RecipientFilter();
+            filter.Add(player);
+            var guid = pawn.EmitSound(ev, filter, 1f, 1f);
+            player.PrintToChat($"{ChatTag} sound {ev}: {guid}");
+            Logger.LogInformation("soundtest {Event}: {Guid}", ev, guid);
+        }
+        catch (Exception e)
+        {
+            player.PrintToChat($"{ChatTag} sound {ev} failed: {e.Message}");
+        }
     }
 }

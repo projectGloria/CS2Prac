@@ -52,6 +52,7 @@ const api: Api = {
     onHealth: (cb) => subscribe<ServerHealth>(IPC.serverHealth, cb),
     openCfgFolder: () => ipcRenderer.invoke(IPC.serverOpenCfg),
     exec: (cmd) => ipcRenderer.invoke(IPC.serverExec, cmd),
+    launchCs2Sounds: () => ipcRenderer.invoke(IPC.serverLaunchCs2Sounds),
     onStatus: (cb) => subscribe<ServerStatus>(IPC.serverStatus, cb),
     onLog: (cb) => subscribe<string>(IPC.serverLog, cb),
     getPrefs: () => ipcRenderer.invoke(IPC.serverPrefsGet),

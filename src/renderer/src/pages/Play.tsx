@@ -15,6 +15,7 @@ import {
   Bot as BotIcon,
   Bomb,
   Globe,
+  Volume2,
   type LucideIcon
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
@@ -331,6 +332,19 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                 You are admin: <code>css_cmd &lt;command&gt;</code> in the console or <code>!cmd &lt;command&gt;</code> in chat runs any
                 server command.
               </p>
+              <details>
+                <summary className="muted small">With CS 1.6 sounds</summary>
+                <p className="muted small">
+                  Pick TR or UK in the L window (Server → Sounds), then start CS2 from here: it opens in Valve's tools mode with the
+                  local 1.6 sound addon and joins this server. Switching TR / UK / Off in L changes the sounds live. Tools mode can't
+                  join online (VAC) servers, so close it and start CS2 from Steam before playing online. It runs your Nihil.cfg at
+                  start; its console is the separate VConsole window (~), where you type pracGloria once you're in.
+                </p>
+                <button disabled={busy} onClick={() => run(() => window.api.server.launchCs2Sounds())}>
+                  <Volume2 size={15} aria-hidden />
+                  Start CS2 with 1.6 sounds
+                </button>
+              </details>
             </div>
           )}
         </section>

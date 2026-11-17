@@ -419,6 +419,14 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [x] 4b Bots get random guns too (BotLoadouts.cs GiveBotGuns: a rolled primary + pistol per bot and team, 0.2 s
       after each spawn, not for stand-ins). **User check in game, also with MatchZy `.bot` bots.**
 - [ ] **User check in game** of 3, 4b, 5.
+## CS 1.6 sounds (L window, Server tab "Sounds")
+- [x] TR/UK packs mapped onto CS2 sound files (assets/sounds/1.6/cs2map.json).
+- [x] Local addon `cs2prac16` (loose files) with a soundevents_addon file built from the user's own stock events
+      (ModelExport `soundevents`); TR/UK/Off rebuild only what changed. Live build tested (UK 12 s, switch 4–7 s).
+- [x] Play page "Start CS2 with 1.6 sounds": tools-mode client (`-tools -addon cs2prac16`, +connect when running).
+      User-confirmed: 1.6 AK sound in game.
+- [ ] **User check in game:** switch TR/UK/Off in L while tools-mode CS2 runs (heard live?), Off back to stock,
+      K/L/T binds from Nihil.cfg in tools mode, the Play page button itself.
 ---
 # v3: our own tooling (planned 2026-11-17)
 Replace ByMykel/CSGO-API and MatchZy with our own code. Metamod and CounterStrikeSharp stay (engine hooks, rebuilt

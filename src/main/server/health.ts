@@ -36,14 +36,19 @@ export function matchingPids(lines: string, exe: string): number[] {
  * Kills cs2.exe processes started from our server folder (left over after the app crashed or was killed).
  * Never touches the player's own game, which runs from the Steam folder.
  */
-export async function killStaleServers(exe: string): Promise<number[]> {
+/** pids of the running cs2.exe processes started from exactly this file */
+export async function cs2Pids(exe: string): Promise<number[]> {
   const script = `Get-CimInstance Win32_Process -Filter "Name='cs2.exe'" | ForEach-Object { "$($_.ProcessId)|$($_.ExecutablePath)" }`
   const out = await new Promise<string>((res) =>
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, timeout: 20_000 }, (_e, stdout) =>
       res(stdout ?? '')
     )
   )
-  const pids = matchingPids(out, exe)
+  return matchingPids(out, exe)
+}
+
+export async function killStaleServers(exe: string): Promise<number[]> {
+  const pids = await cs2Pids(exe)
   for (const pid of pids) {
     await new Promise<void>((res) => execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => res()))
   }

@@ -24,6 +24,8 @@ export function buildLaunchArgs(opts: StartOptions & { port: number; rconPasswor
     '-ip',
     '127.0.0.1',
     '-port', String(opts.port),
+    // VConsole: the server would otherwise take 29000, the port a tools-mode client's console (~) uses
+    '-vconport', '29100',
     '+sv_lan', '1',
     '+sv_cheats', '1',
     // an empty server would otherwise hibernate, which stops plugin timers

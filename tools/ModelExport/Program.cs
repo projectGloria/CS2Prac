@@ -102,6 +102,54 @@ if (args[0] == "sky")
     return bad == 0 ? 0 : 2;
 }
 
+if (args[0] == "kv3dump")
+{
+    // ModelExport kv3dump <csgoDir> <outDir> <ext> <pathPrefix>: research helper, every <ext> resource under the prefix
+    // as KV3 text (e.g. vrr_c scripts/talker/ = the agents' response rules)
+    if (args.Length < 5) return Fail("usage: ModelExport kv3dump <csgoDir> <outDir> <ext> <pathPrefix>");
+    var n = 0;
+    if (pak.Entries != null && pak.Entries.TryGetValue(args[3], out var list))
+        foreach (var e in list)
+        {
+            var path = e.GetFullPath();
+            if (!path.StartsWith(args[4], StringComparison.Ordinal)) continue;
+            pak.ReadEntry(e, out var bytes);
+            using var res = new Resource { FileName = path };
+            res.Read(new MemoryStream(bytes));
+            var dest = Path.Combine(args[2], path[..^2].Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            File.WriteAllText(dest, res.DataBlock is BinaryKV3 kv ? kv.ToString() : res.DataBlock?.ToString() ?? "");
+            n++;
+        }
+    Console.WriteLine(new JsonObject { ["files"] = n }.ToJsonString());
+    return n > 0 ? 0 : 2;
+}
+
+if (args[0] == "soundevents")
+{
+    // ModelExport soundevents <csgoDir> <outDir>: every soundevents/**.vsndevts_c as KV3 text under <outDir> (same
+    // relative path, without _c); prints {"files": n}. The 1.6 sound pack rewrites copies of these events.
+    if (args.Length < 3) return Fail("usage: ModelExport soundevents <csgoDir> <outDir>");
+    var eOut = args[2];
+    var n = 0;
+    if (pak.Entries != null && pak.Entries.TryGetValue("vsndevts_c", out var evs))
+        foreach (var e in evs)
+        {
+            var path = e.GetFullPath();
+            if (!path.StartsWith("soundevents/", StringComparison.Ordinal)) continue;
+            pak.ReadEntry(e, out var bytes);
+            using var res = new Resource { FileName = path };
+            res.Read(new MemoryStream(bytes));
+            if (res.DataBlock is not BinaryKV3 kv) continue;
+            var dest = Path.Combine(eOut, path[..^2].Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            File.WriteAllText(dest, kv.ToString());
+            n++;
+        }
+    Console.WriteLine(new JsonObject { ["files"] = n }.ToJsonString());
+    return n > 0 ? 0 : 2;
+}
+
 if (args[0] != "export" || args.Length < 4) return Fail("usage: ModelExport export <csgoDir> <outDir> <model>...");
 var outDir = args[2];
 Directory.CreateDirectory(outDir);

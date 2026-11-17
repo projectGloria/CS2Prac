@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { skyThumbName } from '../skins/models'
@@ -82,17 +82,22 @@ export async function installSkyThumbs(
   return 'installed'
 }
 
-/** Copies the compiled layout + styles into <cs2>/game/csgo/panorama/... when they differ. */
+/** Our own window images (build-hud OWN_IMAGES: the 1.6 icon, flags): resources/hud/images -> this client folder. */
+export const HUD_IMG_DIR = ['panorama', 'images', 'custom_game', 'cs2prac'] as const
+
+/** Copies the compiled layout + styles (and images) into <cs2>/game/csgo/panorama/... when they differ. */
 export async function installClientHud(cs2Dir: string, srcDir = bundledHudDir()): Promise<HudInstall> {
   if (HUD_FILES.some((h) => !existsSync(join(srcDir, h.file)))) return 'missing'
+  const imgDir = join(srcDir, 'images')
+  const images = existsSync(imgDir) ? readdirSync(imgDir).map((file) => ({ from: join(imgDir, file), file, dir: HUD_IMG_DIR })) : []
   let changed = false
-  for (const h of HUD_FILES) {
+  for (const h of [...HUD_FILES.map((h) => ({ ...h, from: join(srcDir, h.file) })), ...images]) {
     const destDir = join(cs2Dir, 'game', 'csgo', ...h.dir)
     const dest = join(destDir, h.file)
-    const src = await readFile(join(srcDir, h.file))
+    const src = await readFile(h.from)
     if (existsSync(dest) && src.equals(await readFile(dest))) continue
     await mkdir(destDir, { recursive: true })
-    await copyFile(join(srcDir, h.file), dest)
+    await copyFile(h.from, dest)
     changed = true
   }
   return changed ? 'installed' : 'unchanged'

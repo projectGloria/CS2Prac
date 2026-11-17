@@ -158,6 +158,8 @@ export interface Api {
     onHealth(cb: (h: ServerHealth) => void): () => void
     openCfgFolder(): Promise<void>
     exec(command: string): Promise<string>
+    /** starts the player's CS2 in tools mode with the local 1.6 sound addon, joining our server */
+    launchCs2Sounds(): Promise<void>
     onStatus(cb: (s: ServerStatus) => void): () => void
     onLog(cb: (line: string) => void): () => void
     /** server_prefs.json (in-game L window settings) */
@@ -260,6 +262,7 @@ export const IPC = {
   serverHealth: 'server:health',
   serverOpenCfg: 'server:openCfg',
   serverExec: 'server:exec',
+  serverLaunchCs2Sounds: 'server:launchCs2Sounds',
   serverStatus: 'server:status',
   serverLog: 'server:log',
   serverPrefsGet: 'server:prefsGet',

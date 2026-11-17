@@ -703,7 +703,7 @@ public partial class PracSkins
                     var on = SameValue(timerNow, o.Value);
                     s.Side.Add(new HudSide($"Timer: {o.Label}", on ? "in use" : "", on, pl =>
                     {
-                        if (!AdminManager.PlayerHasPermissions(pl, "@css/root"))
+                        if (!IsAdmin(pl))
                         {
                             HudStatus(pl, s, "Only admins can change the graffiti timer");
                             return;

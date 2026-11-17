@@ -135,6 +135,18 @@ export const SETTINGS: SettingDef[] = [
     sub: 'host_timescale',
     options: ['0.25', '0.5', '1', '1.5', '2'].map((v) => ({ label: `${v}×`, value: v }))
   },
+  {
+    // the app copies the pack into the player's own CS2 (setup/clientSounds.ts); global only
+    id: 'sounds',
+    tab: 'server',
+    name: 'Sounds',
+    sub: 'CS 1.6 sound pack: heard in CS2 started with the app\'s "Start CS2 with 1.6 sounds" (switches live)',
+    options: [
+      { label: 'Off', value: 'off' },
+      { label: 'TR', value: 'tr' },
+      { label: 'UK', value: 'uk' }
+    ]
+  },
 
   {
     id: 'botradio',
