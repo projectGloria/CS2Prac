@@ -20,6 +20,8 @@ public class HudPrefs
     public bool Crouch { get; set; }
     public float Dist { get; set; } = AgentViewDefaults.Dist;
     public float Elev { get; set; } = AgentViewDefaults.Elev;
+    /// <summary>graffiti picked last (newest first), shown on the hold-T wheel (GraffitiWheel.cs)</summary>
+    public List<int> Graffiti { get; set; } = new();
 }
 
 public static class AgentViewDefaults
@@ -842,10 +844,37 @@ public partial class PracSkins
     private static List<CBasePlayerWeapon> Carried(CCSPlayerPawn pawn) =>
         pawn.WeaponServices?.MyWeapons.Select(h => h.Value).Where(w => w is { IsValid: true }).Select(w => w!).ToList() ?? [];
 
+    /// <summary>
+    /// Puts a weapon in hand. The client refuses a server-sent `use` ("[InputService] Cannot execute concommand 'use',
+    /// missing required FCVAR flag", user's console 2026-11-17) and a server-side `use` doesn't move the client's own
+    /// predicted weapon, so humans get the slot key of the weapon's gear slot (slot1 rifle … slot5 C4), which the
+    /// client accepts from the server like `lastinv`. Bots still get the server-side `use`.
+    /// </summary>
     private void UseWeapon(CCSPlayerController player, string name)
     {
-        if (!IsBotAny(player)) player.ExecuteClientCommand($"use {name}");
-        player.ExecuteClientCommandFromServer($"use {name}");
+        if (IsBotAny(player))
+        {
+            player.ExecuteClientCommandFromServer($"use {name}");
+            return;
+        }
+        var key = SlotKey(player, name);
+        if (key != null) player.ExecuteClientCommand(key);
+    }
+
+    private static string? SlotKey(CCSPlayerController player, string name)
+    {
+        if (name == "weapon_knife" || IsKnifeName(name)) return "slot3";
+        var w = player.PlayerPawn.Value?.WeaponServices?.MyWeapons.Select(h => h.Value)
+            .FirstOrDefault(x => x is { IsValid: true } && x.DesignerName == name);
+        return (w?.As<CCSWeaponBase>().VData?.GearSlot) switch
+        {
+            gear_slot_t.GEAR_SLOT_RIFLE => "slot1",
+            gear_slot_t.GEAR_SLOT_PISTOL => "slot2",
+            gear_slot_t.GEAR_SLOT_KNIFE => "slot3",
+            gear_slot_t.GEAR_SLOT_GRENADES => "slot4",
+            gear_slot_t.GEAR_SLOT_C4 => "slot5",
+            _ => Pistols.Contains(name) ? "slot2" : "slot1"
+        };
     }
 
     /// <summary>

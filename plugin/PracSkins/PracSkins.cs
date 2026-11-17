@@ -64,6 +64,7 @@ public partial class PracSkins : BasePlugin
         InitPractice();
         InitMovement();
         InitHud(hotReload);
+        InitWheel();
         InitSettings();
         InitBots();
         InitSafeKick();
@@ -88,6 +89,7 @@ public partial class PracSkins : BasePlugin
             LoadCatalogIfChanged();
             foreach (var model in _loadout.Precache.Concat(AgentModels()).Concat(_catalog.Agents.Select(a => a.Model)).Distinct())
                 manifest.AddResource(model);
+            PrecacheGraffiti(manifest);
         });
         RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn);
         RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
@@ -397,7 +399,7 @@ public partial class PracSkins : BasePlugin
             weapon.FallbackWear = paint.Wear;
             SetTexture(item, paint.PaintKit, paint.Seed, paint.Wear);
             // Legacy (CS:GO-era) finishes are mapped to the old model's body group.
-            weapon.AcceptInput("SetBodygroup", value: $"body,{(paint.LegacyModel ? 1 : 0)}");
+            weapon.AcceptInput("SetBodygroup", value: $"body,{(paint.LegacyModel || ForceLegacy(item.ItemDefinitionIndex, paint.PaintKit) ? 1 : 0)}");
         }
 
         if (!IsKnife(weapon))
@@ -454,49 +456,85 @@ public partial class PracSkins : BasePlugin
     // The Zeus is refreshed too (it was listed here, so a Zeus skin pick never showed until the next spawn).
     private static readonly string[] NotRefreshed = { "weapon_c4", "grenade", "flashbang", "decoy", "molotov", "weapon_healthshot" };
 
-    /// <summary>Slots with a re-give still pending: a second pick within 0.1 s must not remove and give twice.</summary>
-    private readonly HashSet<int> _refreshPending = new();
+    /// <summary>A re-give on its way (0.1 s): the weapons taken away so far and what ends up in hand.</summary>
+    private sealed class PendingRefresh
+    {
+        public readonly List<(string Give, int Clip, int Reserve, bool Knife, int Def)> Held = new();
+        public int ActiveDef; // in hand when the refresh started (-1 = knife, 0 = nothing)
+        public int Focus;     // the def just picked (-1 = knife), 0 = none
+        public bool Gloves;
+    }
+
+    /// <summary>Slots with a re-give still pending: a second pick within 0.1 s joins it instead of giving twice.</summary>
+    private readonly Dictionary<int, PendingRefresh> _refreshPending = new();
+
+    // Paracord, Survival, Nomad and Skeleton (2019 knives) got the Doppler family and Ultraviolet in a later case.
+    // Like that case's Marble Fade / Tiger Tooth / Damascus / Rust Coat (use_legacy_model 1) they draw on the
+    // body_legacy mesh, but items_game and ByMykel don't flag them: on body 0 the knife shows vanilla (user test
+    // 2026-11-17: Nomad Ruby fixed with body 1, Skeleton Ruby also broken). Keep in sync with catalog.ts.
+    private static readonly HashSet<int> LateChromaKnives = [517, 518, 521, 525];
+    private static bool ForceLegacy(int def, int paint) =>
+        LateChromaKnives.Contains(def) && (paint is >= 415 and <= 421 || paint == 98);
 
     private static bool IsKnifeName(string name) => name.Contains("knife") || name.Contains("bayonet");
 
+    private static int WeaponKey(CBasePlayerWeapon w) => IsKnife(w) ? -1 : w.AttributeManager.Item.ItemDefinitionIndex;
+
     /// <summary>
-    /// Applies a changed loadout right away: re-gives the player's guns and knife (keeping ammo and the active weapon)
-    /// so the client drops the old skin, then re-applies agent and gloves.
+    /// Applies a changed loadout right away by re-giving weapons (the client keeps an old skin otherwise), then
+    /// re-applies agent and gloves. A pick (focusDef) re-gives only the picked weapon: the others keep their skin and
+    /// stay where they are, so the hands play one draw animation. A reload or a glove change re-gives everything
+    /// (keeping ammo), since the re-give is what redraws the hands.
     /// </summary>
-    private void RefreshPlayer(CCSPlayerController player)
+    /// <param name="focusDef">the weapon def just picked (-1 = the knife): it ends up in hand if the player carries it</param>
+    private void RefreshPlayer(CCSPlayerController player, int focusDef = 0)
     {
         ApplyProfileItems(player);
         var pawn = player.PlayerPawn.Value;
         var services = pawn?.WeaponServices;
         if (pawn is not { IsValid: true } || services == null || !player.PawnIsAlive) return;
-        // A re-give is already on its way: its GiveNamedItem hook reads the loadout at give time, so it carries this
-        // change too. Running again would remove the doomed guns twice and give them twice (the second rifle drops).
-        if (!_refreshPending.Add(player.Slot)) return;
+        var slot = player.Slot;
+        var fresh = !_refreshPending.TryGetValue(slot, out var p);
+        if (p == null)
+        {
+            var aw = services.ActiveWeapon.Value;
+            p = new PendingRefresh { ActiveDef = aw is { IsValid: true } ? WeaponKey(aw) : 0 };
+            _refreshPending[slot] = p;
+        }
+        if (focusDef != 0) p.Focus = focusDef;
+        // Gloves only when they changed (re-applying them on every pick with `lastinv` switches was the "hands
+        // refresh twice"). Cleared now, set before the give.
+        if (GlovesChanged(player))
+        {
+            p.Gloves = true;
+            ClearGloves(pawn);
+        }
+        var all = focusDef == 0 || p.Gloves;
 
-        var active = services.ActiveWeapon.Value?.DesignerName;
-        var held = new List<(string Give, int Clip, int Reserve, bool Knife)>();
-        var remove = new List<CBasePlayerWeapon>();
         foreach (var h in services.MyWeapons)
         {
             if (h.Value is not { IsValid: true } w || w.DesignerName is not { } name) continue;
             if (NotRefreshed.Any(name.Contains)) continue;
-            var knife = IsKnife(w);
-            held.Add((knife ? (player.TeamNum == 2 ? "weapon_knife_t" : "weapon_knife") : GiveName(w), w.Clip1, w.ReserveAmmo[0], knife));
-            remove.Add(w);
-        }
-
-        foreach (var w in remove)
-        {
-            if (pawn.WeaponServices!.ActiveWeapon.Value?.Index == w.Index) pawn.WeaponServices.ActiveWeapon.Raw = uint.MaxValue;
+            var key = WeaponKey(w);
+            // a weapon already taken by this refresh is still listed until its Kill runs
+            if (!all && key != focusDef || p.Held.Any(e => e.Def == key)) continue;
+            var knife = key == -1;
+            p.Held.Add((knife ? (player.TeamNum == 2 ? "weapon_knife_t" : "weapon_knife") : GiveName(w), w.Clip1,
+                w.ReserveAmmo[0], knife, key));
+            if (services.ActiveWeapon.Value?.Index == w.Index) services.ActiveWeapon.Raw = uint.MaxValue;
             w.AddEntityIOEvent("Kill", w, null, "", 0.01f);
         }
+        if (!fresh) return;
 
-        var slot = player.Slot;
         AddTimer(0.1f, () =>
         {
             _refreshPending.Remove(slot);
             if (!player.IsValid || !player.PawnIsAlive) return;
-            foreach (var (give, clip, reserve, knife) in held)
+            if (p.Gloves || GlovesChanged(player)) SetGloves(player);
+            // what ends up in hand: the def just picked, else what was in hand before
+            var want = p.Focus != 0 ? p.Focus : p.ActiveDef;
+            // Given last: with nothing in hand (the held weapon was killed) the engine draws the first weapon given.
+            foreach (var (give, clip, reserve, knife, _) in p.Held.OrderBy(e => e.Def == want ? 1 : 0))
             {
                 var w = player.GiveNamedItem<CBasePlayerWeapon>(give);
                 if (w is not { IsValid: true } || knife) continue;
@@ -505,9 +543,28 @@ public partial class PracSkins : BasePlugin
                 w.ReserveAmmo[0] = reserve;
                 Utilities.SetStateChanged(w, "CBasePlayerWeapon", "m_pReserveAmmo");
             }
-            if (active != null) player.ExecuteClientCommand($"use {(IsKnifeName(active) ? "weapon_knife" : active)}");
             ApplyAgent(player);
-            ApplyGloves(player);
+            if (want != 0) SwitchTo(player, want, 0.1f, true);
+        }, TimerFlags.STOP_ON_MAPCHANGE);
+    }
+
+    /// <summary>
+    /// Puts weapon <paramref name="key"/> (def, -1 = knife) in hand after <paramref name="delay"/>, once the client has
+    /// the given entity (a slot key sent in the give's own tick found nothing to switch to). Nothing is sent when it
+    /// is already in hand (slot3/slot4 cycle: a second press would switch away); one check follows 0.3 s later.
+    /// </summary>
+    private void SwitchTo(CCSPlayerController player, int key, float delay, bool recheck)
+    {
+        AddTimer(delay, () =>
+        {
+            if (!player.IsValid || !player.PawnIsAlive || _refreshPending.ContainsKey(player.Slot)) return;
+            var services = player.PlayerPawn.Value?.WeaponServices;
+            if (services == null) return;
+            if (services.ActiveWeapon.Value is { IsValid: true } now && WeaponKey(now) == key) return;
+            var w = services.MyWeapons.Select(h => h.Value).FirstOrDefault(x => x is { IsValid: true } && WeaponKey(x) == key);
+            if (w == null) return;
+            UseWeapon(player, key == -1 ? "weapon_knife" : w.DesignerName);
+            if (recheck) SwitchTo(player, key, 0.3f, false);
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
@@ -539,39 +596,76 @@ public partial class PracSkins : BasePlugin
         }
     }
 
-    private void ApplyGloves(CCSPlayerController player)
+    /// <summary>slot -> the gloves last set on that slot's pawn (pawn index, def, paint, seed, wear)</summary>
+    private readonly Dictionary<int, (uint Pawn, int Def, int Paint, int Seed, float Wear)> _glovesSet = new();
+
+    private (uint, int, int, int, float)? GloveSig(CCSPlayerController player)
+    {
+        var glove = _loadout.Gloves.For(SkinTeam(player));
+        var pawn = player.PlayerPawn.Value;
+        if (glove is not { PaintKit: > 0 } || pawn is not { IsValid: true }) return null;
+        return (pawn.Index, glove.DefIndex, glove.PaintKit, glove.Seed, glove.Wear);
+    }
+
+    /// <summary>True when the loadout's gloves differ from the ones on the pawn (or the pawn is new).</summary>
+    private bool GlovesChanged(CCSPlayerController player) =>
+        GloveSig(player) is { } sig && (!_glovesSet.TryGetValue(player.Slot, out var cur) || cur != sig);
+
+    private static void ClearGloves(CCSPlayerPawn pawn)
+    {
+        var item = pawn.EconGloves;
+        item.NetworkedDynamicAttributes.Attributes.RemoveAll();
+        item.AttributeList.Attributes.RemoveAll();
+    }
+
+    /// <summary>Writes the loadout's gloves onto the pawn (attributes cleared beforehand).</summary>
+    private void SetGloves(CCSPlayerController player)
     {
         var glove = _loadout.Gloves.For(SkinTeam(player));
         var pawn = player.PlayerPawn.Value;
         if (glove is not { PaintKit: > 0 } || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
+        try
+        {
+            ClearGloves(pawn);
+            var item = pawn.EconGloves;
+            item.ItemDefinitionIndex = (ushort)glove.DefIndex;
+            NewItemId(item);
+            SetTexture(item, glove.PaintKit, glove.Seed, glove.Wear);
+            item.Initialized = true;
+            _glovesSet[player.Slot] = (pawn.Index, glove.DefIndex, glove.PaintKit, glove.Seed, glove.Wear);
+            Logger.LogDebug("{Player}: gloves -> def {Def}, paint {Paint}", player.PlayerName, glove.DefIndex, glove.PaintKit);
 
-        var item = pawn.EconGloves;
-        item.NetworkedDynamicAttributes.Attributes.RemoveAll();
-        item.AttributeList.Attributes.RemoveAll();
-        player.ExecuteClientCommand("lastinv"); // forces a model refresh so old and new gloves don't overlap
+            pawn.AcceptInput("SetBodygroup", value: "first_or_third_person,0");
+            AddTimer(0.2f, () =>
+            {
+                if (pawn.IsValid) pawn.AcceptInput("SetBodygroup", value: "first_or_third_person,1");
+            }, TimerFlags.STOP_ON_MAPCHANGE);
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning("SetGloves: {Error}", e);
+        }
+    }
+
+    /// <summary>
+    /// Gloves outside a re-give (spawn, wear changes, stand-ins): cleared, one weapon switch away and back so the client
+    /// redraws the hands without the old gloves overlapping. The way back is an explicit `use` of the weapon that was
+    /// in hand (a second `lastinv` could land on the wrong one).
+    /// </summary>
+    private void ApplyGloves(CCSPlayerController player)
+    {
+        var pawn = player.PlayerPawn.Value;
+        if (GloveSig(player) == null || pawn is not { IsValid: true } || !player.PawnIsAlive) return;
+
+        var active = pawn.WeaponServices?.ActiveWeapon.Value?.DesignerName;
+        ClearGloves(pawn);
+        if (!IsBotAny(player)) player.ExecuteClientCommand("lastinv");
 
         AddTimer(0.08f, () =>
         {
-            try
-            {
-                if (!player.IsValid || !player.PawnIsAlive || !pawn.IsValid) return;
-                item.ItemDefinitionIndex = (ushort)glove.DefIndex;
-                NewItemId(item);
-                SetTexture(item, glove.PaintKit, glove.Seed, glove.Wear);
-                item.Initialized = true;
-                Logger.LogDebug("{Player}: gloves -> def {Def}, paint {Paint}", player.PlayerName, glove.DefIndex, glove.PaintKit);
-
-                player.ExecuteClientCommand("lastinv");
-                pawn.AcceptInput("SetBodygroup", value: "first_or_third_person,0");
-                AddTimer(0.2f, () =>
-                {
-                    if (pawn.IsValid) pawn.AcceptInput("SetBodygroup", value: "first_or_third_person,1");
-                }, TimerFlags.STOP_ON_MAPCHANGE);
-            }
-            catch (Exception e)
-            {
-                Logger.LogWarning("ApplyGloves: {Error}", e);
-            }
+            if (!player.IsValid || !player.PawnIsAlive || !pawn.IsValid) return;
+            SetGloves(player);
+            if (active != null && !IsBotAny(player)) UseWeapon(player, IsKnifeName(active) ? "weapon_knife" : active);
         }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 

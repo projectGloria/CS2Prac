@@ -363,6 +363,7 @@ public partial class PracSkins
 
     private void OpenSettings(CCSPlayerController player)
     {
+        DismissWheel(player);
         var s = new SetSession { LastButtons = (ulong)player.Buttons };
         if (_setLast.TryGetValue(player.SteamID, out var last))
         {

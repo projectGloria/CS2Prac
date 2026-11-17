@@ -287,6 +287,7 @@ public partial class PracSkins
 
     private void OpenHud(CCSPlayerController player)
     {
+        DismissWheel(player);
         var s = new HudSession { Tab = "weapons", LastButtons = (ulong)player.Buttons, Team = player.TeamNum == 2 ? 2 : 3 };
         _hudSessions[player.Slot] = s;
         // Holding a gun or knife: open on it (user request). Otherwise reopen where the player left it (tab, selection,
@@ -386,6 +387,7 @@ public partial class PracSkins
         _hud!.SetHasClassForPlayer(player, "pk_dim", "shown", false);
         _hud!.SetHasClassForPlayer(player, "pk_win", "shown", false);
         _hud!.SetHasClassForPlayer(player, "ps_win", "shown", false);
+        _hud!.SetHasClassForPlayer(player, "gw_win", "shown", false);
         _hud!.SetInputCaptureEnabled(player, false);
     }
 
@@ -685,7 +687,7 @@ public partial class PracSkins
                         s.Side.Add(new HudSide(t.Name, _loadout.GraffitiTint == t.Id ? "in use" : "", _loadout.GraffitiTint == t.Id, pl =>
                         {
                             CommitGraffiti(pl, cur.Def, t.Id, $"{cur.Name} ({t.Name})");
-                            HudStatus(pl, s, $"{cur.Name} ({t.Name}): spray with T (css_spray)");
+                            HudStatus(pl, s, $"{cur.Name} ({t.Name}): tap T to spray, hold T for the wheel");
                         }));
                 s.Tiles.Add(new HudTile("No graffiti", "", "", _loadout.Graffiti <= 0, pl =>
                 {
@@ -697,7 +699,7 @@ public partial class PracSkins
                     {
                         var tint = g.Tinted ? (_loadout.GraffitiTint > 0 ? _loadout.GraffitiTint : 1) : 0;
                         CommitGraffiti(pl, g.Def, tint, $"{g.Name} picked");
-                        HudStatus(pl, s, g.Tinted ? $"{g.Name}: pick a colour on the left, spray with T (css_spray)" : $"{g.Name}: spray with T (css_spray)");
+                        HudStatus(pl, s, g.Tinted ? $"{g.Name}: pick a colour on the left, tap T to spray" : $"{g.Name}: tap T to spray, hold T for the wheel");
                         }));
                 break;
             }
@@ -903,7 +905,7 @@ public partial class PracSkins
             "gloves" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Gloves",
             "pins" => "Pin (both teams)",
             "music" => "Music kit (both teams)",
-            "graffiti" => "Graffiti (spray with css_spray: T after pracGloria)",
+            "graffiti" => "Graffiti (tap T to spray, hold T for the wheel)",
             "stickers" => s.Selected > 0 ? $"{_catalog.WeaponName(s.Selected)} · {(s.Target == 5 ? "charm" : $"sticker slot {s.Target + 1}")}" : "Stickers",
             _ => $"Agents ({(team == 2 ? "T" : "CT")})"
         });
@@ -960,6 +962,12 @@ public partial class PracSkins
         if (id.StartsWith("ps_")) // the settings window lives in the same layout (SettingsHud.cs)
         {
             OnSettingsClicked(player, id);
+            return;
+        }
+        if (id.StartsWith("gw_")) // and the graffiti wheel (GraffitiWheel.cs)
+        {
+            try { OnWheelClicked(player, id); }
+            catch (Exception e) { Logger.LogWarningSafe($"graffiti wheel click '{id}': {e}"); }
             return;
         }
         if (!_hudSessions.TryGetValue(player.Slot, out var s)) return;
@@ -1047,9 +1055,8 @@ public partial class PracSkins
             .FirstOrDefault(w => w is { IsValid: true } && w.AttributeManager.Item.ItemDefinitionIndex == weapon.Def);
         // the entity's own name: the M4A1-S is weapon_m4a1 there, which is what the server's "use" matches
         var useName = owned?.DesignerName;
-        // Run as the player on the server (works for bots too). Two engine rules shape the order: one gun per slot
-        // (giving a second rifle drops it on the floor), and "use" only switches while something is in hand.
-        // So: knife out, old gun of that slot removed, new gun given, switch to it.
+        // One gun per slot (giving a second rifle drops it on the floor), so the slot's old gun is removed before
+        // the new one is given.
         void Use(string name) => UseWeapon(player, name);
         if (owned != null)
         {
@@ -1061,23 +1068,19 @@ public partial class PracSkins
         var replaced = slot == null ? [] : services.MyWeapons.Select(h => h.Value)
             .Where(w => w is { IsValid: true } && GearSlot(w) == slot).ToList();
 
-        void Swap()
+        // The old gun leaves the inventory at once (RemovePlayerItem frees the slot in this tick, a plain Remove only at
+        // the end of the frame) and the new one is given in the same tick: with the hands empty the engine deploys it,
+        // so one draw animation. Taking the knife out first was a second draw (user report 2026-11-17).
+        foreach (var w in replaced)
         {
-            if (!player.IsValid || !player.PawnIsAlive) return;
-            foreach (var w in replaced)
-                if (w is { IsValid: true }) w.Remove();
-            var given = player.GiveNamedItem<CBasePlayerWeapon>(weapon.Cls);
-            if (given is { IsValid: true }) Use(given.DesignerName);
+            if (w is not { IsValid: true }) continue;
+            if (services.ActiveWeapon.Value?.Index == w.Index) services.ActiveWeapon.Raw = uint.MaxValue;
+            pawn.RemovePlayerItem(w);
+            w.Remove();
         }
-
-        // Holding the gun that goes: take the knife out first and swap once that switch has happened.
-        if (replaced.Any(w => w!.Index == services.ActiveWeapon.Value?.Index)
-            && services.MyWeapons.Select(h => h.Value).FirstOrDefault(w => w is { IsValid: true } && IsKnife(w)) is { } knife)
-        {
-            Use(knife.DesignerName);
-            AddTimer(0.15f, Swap, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-        }
-        else Swap();
+        var given = player.GiveNamedItem<CBasePlayerWeapon>(weapon.Cls);
+        // only sends a slot key if the engine didn't deploy it (once the client has the entity)
+        if (given is { IsValid: true }) SwitchTo(player, WeaponKey(given), 0.1f, true);
     }
 
     private static bool TryIndex(string id, string prefix, out int index)

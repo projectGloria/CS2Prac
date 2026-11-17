@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ApiBaseWeapon, ApiSkin } from './catalog'
 
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
-const { buildCatalog } = await import('./catalog')
+const { buildCatalog, forceLegacy } = await import('./catalog')
 
 const skin = (over: Partial<ApiSkin> & Pick<ApiSkin, 'weapon'>): ApiSkin => ({
   id: `skin-${Math.random()}`,
@@ -113,5 +113,15 @@ describe('graffiti', () => {
       { defIndex: 1653, name: '8-Ball (Unique)', image: 'b', rarityColor: '#fff', tints: {} },
       { defIndex: 1697, name: 'Recoil AK-47', image: 'a2', rarityColor: '#b0c3d9', tints: { '2': 'a2', '5': 'a5' } }
     ])
+  })
+})
+
+describe('forceLegacy', () => {
+  it('puts Doppler and Ultraviolet on the 2019 knives on the legacy body only', () => {
+    expect(forceLegacy(521, 415)).toBe(true) // Nomad Ruby
+    expect(forceLegacy(525, 418)).toBe(true) // Skeleton Phase 1
+    expect(forceLegacy(517, 98)).toBe(true) // Paracord Ultraviolet
+    expect(forceLegacy(505, 415)).toBe(false) // Flip Ruby
+    expect(forceLegacy(521, 38)).toBe(false) // Nomad Fade
   })
 })

@@ -1010,8 +1010,10 @@ function GraffitiPanel(props: {
       <div className="panel-main">
         <h2>Graffiti</h2>
         <p className="muted small">
-          Spray it in game with a key bound to <code>css_spray</code> (for example <code>bind t css_spray</code> in your
-          client console). Only our server draws it; Steam is never asked.
+          In game, tap T to spray it and hold T for the graffiti wheel (needs <code>+cs2prac_spray</code> on T: alias
+          <code>+cs2prac_spray</code> to <code>css_spraywheel open</code> and <code>-cs2prac_spray</code> to{' '}
+          <code>css_spraywheel close</code>; a plain <code>css_spray</code> bind also sprays). Only our server draws
+          it; Steam is never asked.
         </p>
         {tinted && (
           <div className="tint-row">

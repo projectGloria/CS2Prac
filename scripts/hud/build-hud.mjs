@@ -41,6 +41,11 @@ const SET_ROWS = 48
 const SET_CHIPS = 6
 const SET_XML_SRC = join(here, 'cs2prac_settings.xml')
 const SET_CSS_SRC = join(here, 'cs2prac_settings.css')
+// Keep in sync with plugin/PracSkins/GraffitiWheel.cs (WheelSlots; tints = items_game graffiti_tints 1-19).
+const GW_SLOTS = 8
+const GW_TINTS = 19
+const GW_XML_SRC = join(here, 'cs2prac_graffiti.xml')
+const GW_CSS_SRC = join(here, 'cs2prac_graffiti.css')
 
 function findCs2() {
   if (process.env.CS2_DIR) return process.env.CS2_DIR
@@ -97,7 +102,8 @@ function buildLayout() {
   }
   xml = xml.replace('<!--SIDE_ROWS-->', rows.join('\n')).replace('<!--GRID_ROWS-->', grid.join('\n'))
   xml = xml.replace('<!--SETTINGS_WINDOW-->', buildSettings())
-  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS)-->/.test(xml)) throw new Error('layout markers missing')
+  xml = xml.replace('<!--GRAFFITI_WHEEL-->', buildWheel())
+  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS|GRAFFITI_WHEEL|GW_SLOTS|GW_TINTS)-->/.test(xml)) throw new Error('layout markers missing')
   return xml
 }
 
@@ -125,6 +131,17 @@ function buildSettings() {
     )
   }
   return readFileSync(SET_XML_SRC, 'utf8').replace('<!--PS_ROWS-->', rows.join('\n'))
+}
+
+// The graffiti wheel (hold T): also a fragment of the same layout.
+function buildWheel() {
+  const t = '\t\t\t\t'
+  const slots = []
+  for (let i = 0; i < GW_SLOTS; i++)
+    slots.push(`${t}<Button id="gw_slot_${i}" class="gw-slot gw-s${i}"><Panel id="gw_slot_${i}_img" class="pk-img gw-slot-img" hittest="false" /></Button>`)
+  const tints = []
+  for (let i = 1; i <= GW_TINTS; i++) tints.push(`${t}<Button id="gw_tint_${i}" class="gw-tint gt${i}"><Panel class="gw-tint-in" hittest="false" /></Button>`) // never a self-closing Button (a rejected layout, CLAUDE.md)
+  return readFileSync(GW_XML_SRC, 'utf8').replace('<!--GW_SLOTS-->', slots.join('\n')).replace('<!--GW_TINTS-->', tints.join('\n'))
 }
 
 // Icons of the settings window: every ic-<name> (panorama/images/icons/ui/<name>.vsvg) and ie-<name>
@@ -207,6 +224,19 @@ function buildImageCss(cs2) {
       if (!graffiti) continue
       const img = mat && `panorama/images/econ/stickers/${mat}_png.vtex`
       if (img && /^\d+$/.test(def) && has(img)) extras.push(`.pk-img.g${def}\n{\n\tbackground-image: url("s2r://${img}");\n}`)
+      // the decal's own textures: the client loads them when a spray appears, so the plugin precaches them
+      if (mat && /^\d+$/.test(def)) {
+        const tex = [`materials/decals/sprays/${mat}.vtex`, `materials/decals/sprays/${mat}_nodrips.vtex`].filter(has)
+        if (tex.length) graffitiTextures[def] = tex
+      }
+    }
+  // graffiti tints: the wheel's colour swatches and the wash on a tinted graffiti's (grey) icon
+  for (const section of all(game, 'graffiti_tints'))
+    for (const [, body] of section) {
+      const id = Array.isArray(body) && get(body, 'id')
+      const hex = Array.isArray(body) && get(body, 'hex_color')
+      if (id && /^#[0-9a-f]{6}$/i.test(hex))
+        extras.push(`.gw-tint.gt${id}\n{\n\tbackground-color: ${hex};\n}\n\n.pk-img.gw-wash-${id}\n{\n\twash-color: ${hex};\n}`)
     }
 
   // default_generated/<item>_<codename>_light_png: split at the longest item name that leaves a known codename
@@ -240,6 +270,9 @@ function buildImageCss(cs2) {
   return [...icons, ...base, ...agents, ...extras, ...skins].join('\n\n') + '\n'
 }
 
+/** sticker kit def -> spray decal textures (resources/hud/graffiti.json, precached by PracSkins Graffiti.cs) */
+const graffitiTextures = {}
+
 const cs2 = findCs2()
 const compiler = join(cs2, 'game', 'bin', 'win64', 'resourcecompiler.exe')
 if (!existsSync(compiler)) {
@@ -253,7 +286,7 @@ const styleSrc = join(content, 'styles', 'custom_game', `${NAME}.css`)
 mkdirSync(dirname(layoutSrc), { recursive: true })
 mkdirSync(dirname(styleSrc), { recursive: true })
 writeFileSync(layoutSrc, buildLayout())
-let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8')
+let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8') + '\n' + readFileSync(GW_CSS_SRC, 'utf8')
 writeFileSync(styleSrc, css + '\n' + buildImageCss(cs2))
 
 for (const src of [layoutSrc, styleSrc]) {
@@ -273,3 +306,5 @@ for (const [sub, ext] of [['layout', 'vxml_c'], ['styles', 'vcss_c']]) {
   copyFileSync(built, join(outDir, `${NAME}.${ext}`))
   console.log(`resources/hud/${NAME}.${ext}`)
 }
+writeFileSync(join(outDir, 'graffiti.json'), JSON.stringify(graffitiTextures) + '\n')
+console.log(`resources/hud/graffiti.json (${Object.keys(graffitiTextures).length} graffiti)`)

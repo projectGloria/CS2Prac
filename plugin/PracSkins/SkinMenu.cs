@@ -259,14 +259,14 @@ public partial class PracSkins
         if (paint.PaintKit <= 0 && !paint.HasExtras && paint.StatTrak < 0 && string.IsNullOrEmpty(paint.NameTag)) map.Remove(key);
         else map[key] = paint;
         SaveLoadout();
-        RefreshPlayer(player);
+        RefreshPlayer(player, def);
     }
 
     private void CommitKnife(CCSPlayerController player, KnifePaint? knife)
     {
         SetFor(_loadout.Knife, player, knife);
         SaveLoadout();
-        RefreshPlayer(player);
+        RefreshPlayer(player, -1);
     }
 
     private string SkinName(int def, int paint) =>
@@ -627,6 +627,7 @@ public partial class PracSkins
         _loadout.Graffiti = def;
         _loadout.GraffitiTint = tint;
         SaveLoadout();
+        RememberGraffiti(player, def);
         Flash(player, flash);
     }
 
@@ -643,7 +644,7 @@ public partial class PracSkins
                 items.Add(new(g.Tinted ? $"{g.Name} (tints)" : g.Name, pl =>
                 {
                     if (g.Tinted) PushPage(pl, TintPage(g));
-                    else CommitGraffiti(pl, g.Def, 0, $"{g.Name}: spray with css_spray");
+                    else CommitGraffiti(pl, g.Def, 0, $"{g.Name}: tap T to spray");
                 }, Current: _loadout.Graffiti == g.Def));
             return items;
         }
@@ -652,7 +653,7 @@ public partial class PracSkins
     private MenuPage TintPage(CatalogGraffiti g) => new()
     {
         Title = g.Name,
-        Build = () => GraffitiTints.Select(t => new MenuItem(t.Name, pl => CommitGraffiti(pl, g.Def, t.Id, $"{g.Name} ({t.Name}): spray with css_spray"),
+        Build = () => GraffitiTints.Select(t => new MenuItem(t.Name, pl => CommitGraffiti(pl, g.Def, t.Id, $"{g.Name} ({t.Name}): tap T to spray"),
             Current: _loadout.Graffiti == g.Def && _loadout.GraffitiTint == t.Id)).ToList()
     };
 

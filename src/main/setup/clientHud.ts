@@ -20,6 +20,18 @@ export function bundledHudDir(): string {
 
 export type HudInstall = 'installed' | 'unchanged' | 'missing'
 
+/**
+ * graffiti.json (sticker kit def -> spray decal textures, from `npm run build:hud`) goes into the plugin's config
+ * folder: PracSkins precaches those textures, else the client draws a sprayed decal as the missing-texture checkerboard.
+ */
+export async function installGraffitiTextures(pluginConfigDir: string, srcDir = bundledHudDir()): Promise<boolean> {
+  const src = join(srcDir, 'graffiti.json')
+  if (!existsSync(src)) return false
+  await mkdir(pluginConfigDir, { recursive: true })
+  await copyFile(src, join(pluginConfigDir, 'graffiti.json'))
+  return true
+}
+
 /** Copies the compiled layout + styles into <cs2>/game/csgo/panorama/... when they differ. */
 export async function installClientHud(cs2Dir: string, srcDir = bundledHudDir()): Promise<HudInstall> {
   if (HUD_FILES.some((h) => !existsSync(join(srcDir, h.file)))) return 'missing'

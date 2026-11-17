@@ -1,0 +1,24 @@
+<!--
+  CS2Prac graffiti wheel (hold T = +cs2prac_spray: css_spraywheel open|close), driven by plugin/PracSkins/GraffitiWheel.cs.
+  Like the settings window it is a fragment of cs2prac_skins.xml (build-hud.mjs inserts it at GRAFFITI_WHEEL and fills
+  GW_SLOTS / GW_TINTS; counts = WheelSlots in GraffitiWheel.cs and the 19 graffiti tints).
+  Same rules as the skin window: only Panel/Label/Button, no inline style, images as CSS background classes.
+-->
+		<Panel id="gw_win" class="gw-win" hittest="true">
+			<Panel class="gw-ring" hittest="false">
+<!--GW_SLOTS-->
+				<Panel class="gw-center" hittest="false">
+					<Panel id="gw_cur_img" class="pk-img gw-cur-img" hittest="false" />
+					<Label id="gw_cur_name" class="gw-cur-name" text="{s:text}" hittest="false" />
+					<Label id="gw_cd" class="gw-cd" text="{s:text}" hittest="false" />
+				</Panel>
+			</Panel>
+			<Panel id="gw_tints" class="gw-tints" hittest="false">
+<!--GW_TINTS-->
+			</Panel>
+			<Panel class="gw-foot" hittest="false">
+				<Label id="gw_hint" class="gw-hint" text="{s:text}" hittest="false" />
+				<Button id="gw_more" class="pk-chip"><Label class="pk-chip-text" text="All graffiti" hittest="false" /></Button>
+				<Button id="gw_cancel" class="pk-chip"><Label class="pk-chip-text" text="Cancel" hittest="false" /></Button>
+			</Panel>
+		</Panel>

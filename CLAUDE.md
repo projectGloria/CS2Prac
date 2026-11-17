@@ -130,7 +130,26 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   loadout.json `graffiti` / `graffitiTint` (both teams). K window tab `graffiti` (tints in the side list, icons
   `.pk-img.g<def>` from sticker_kits spray_* and tournament *_graffiti kits, `econ/stickers/<sticker_material>_png`; most tiles were
   empty before the *_graffiti ones were added). 3 s cooldown, 5 sprays per player. The game's own T (spray wheel) never
-  reaches the plugin: the user's Nihil.cfg binds T to `css_spray`.
+  reaches the plugin: the user's Nihil.cfg binds T to `+cs2prac_spray` (`css_spraywheel open|close`; `css_graffiti` is
+  the text menu's `!graffiti`, taken).
+- **Checkerboard decal = texture not precached.** build-hud writes resources/hud/graffiti.json (def → spray vtex
+  paths from materials/decals/sprays); the app copies it into configs/plugins/PracSkins at start and
+  PrecacheGraffiti adds every one to the manifest. Not yet confirmed in game.
+- Graffiti wheel (GraffitiWheel.cs, layout fragment scripts/hud/cs2prac_graffiti.xml/.css at `<!--GRAFFITI_WHEEL-->`,
+  ids `gw_*` routed from Hud.cs OnHudClicked): tap T sprays (SprayNow, shared with css_spray); held 0.2 s the wheel
+  shows (input capture, no freeze); release sprays unless Cancel/"All graffiti"/K/L dismissed it (DismissWheel keeps
+  a cancelled held session to swallow the release). Slots = HudPrefs.Graffiti recents (a pick already there keeps
+  its place) + the current one + catalog fill. build-hud generates `.gw-tint.gt<id>` and `.pk-img.gw-wash-<id>`
+  (wash-color) from items_game graffiti_tints. Panorama :hover is client-only, so a slot is picked by clicking.
+- **The client takes the spray texture from `m_nPlayer`** (client.dll: sticker kit by that id → its sticker_material →
+  `materials/decals/sprays/%s.vtex` + `_nodrips`, async manifest "AsyncPlayerSprayDecal"), so Spray sets Player = the
+  graffiti def. With the player index there the unsigned decal drew as a checkerboard (user, 2026-11-17).
+  User-confirmed: the graffiti now draws. Each spray plays `SprayCan.Paint` (server.dll's spray event; `SprayCan.Shake`
+  exists too) from the pawn to all players (PlaySpraySound).
+- **player_spray_decal drew nothing in game** (user, 2026-11-17, textures precached): the client entity has
+  `m_ubSignature` + `m_rtGcTime` (GC-signed), so an unsigned one is most likely dropped. Candidate: `env_decal`
+  (networked CEnvDecal: decalmaterial/width/height/depth keyvalues); `css_decaltest` tests it with stock materials.
+  The spray textures have no own vmat (playerspraydecal.vmat binds SprayTexture at runtime).
 - Server test: `css_prac_spray [def] [tint]` (first live bot; aims down if it looks at the horizon; prints every decal).
 
 ## Bot names and pictures (Phase 10)
@@ -193,6 +212,9 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   ({defIndex, x, y, z, seed}); `agents.{t,ct}` ({defIndex, model}); `precache` = every agent model. The plugin
   precaches those in OnServerPrecacheResources so agents can change without a map change. Schema 1 still loads.
 - Sticker/keychain ids and keychain seed go through `BitsAsFloat`; they're written to NetworkedDynamicAttributes only.
+- Knife body groups: the Doppler family + Ultraviolet on Paracord/Survival/Nomad/Skeleton need body_legacy although
+  nothing flags them (ForceLegacy / forceLegacy); `css_knifebody 0|1` flips the held weapon's body group to test.
+- A K-window pick re-gives only the picked weapon (RefreshPlayer focusDef); `css_prac_reload` and glove changes re-give all.
 - `css_prac_reload` calls RefreshPlayer: kills and re-gives guns + knife (keeping clip/reserve, re-selecting the active
   weapon), then re-applies agent and gloves.
 - `css_prac_status` shows each pawn's model and each weapon's dynamic attribute count (useful to see stickers landed).
@@ -239,7 +261,10 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   the client's panorama folders, restart CS2 once and switch the entity's StrLayout per variant.
 - `css_prac_hud` also counts the class/text entries sent per slot; `css_prac_hudopen` / `css_prac_hudclick <id>` drive
   the window for the first bot (server tests).
-- Clicking a gun equips it (`EquipForHud`): CS2 allows one gun per slot (a second rifle is dropped on the floor) and
+- **The client refuses a server-sent `use`** ("[InputService] Cannot execute concommand 'use', missing required
+  FCVAR flag"; a server-side `use` doesn't move the client's predicted weapon either), so UseWeapon (AgentView.cs) sends
+  humans the slot key of the weapon's gear slot (slot1…slot5; `lastinv`/slot keys are accepted). Bots keep `use`.
+  Clicking a gun equips it (`EquipForHud`): CS2 allows one gun per slot (a second rifle is dropped on the floor) and
   `use` only switches while something is in hand, so: knife out (if the replaced gun is held), 0.15 s, remove the
   slot's gun, GiveNamedItem, `use <DesignerName>` (M4A1-S is weapon_m4a1 there). Bots don't follow `use` reliably, so
   `css_prac_hudequip <def>` (server test on the first bot) only proves the slot swap, not the switch.

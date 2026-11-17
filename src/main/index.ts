@@ -22,7 +22,7 @@ import { ensureSteamCmd, installOrUpdateServer } from './setup/steamcmd'
 import { ensurePlugins, readPluginVersions } from './setup/plugins'
 import { installedPluginDir, installPracSkins } from './setup/pracskins'
 import { MIRROR_MARKER, sameDrive, syncMirror } from './setup/mirror'
-import { installClientHud } from './setup/clientHud'
+import { installClientHud, installGraffitiTextures } from './setup/clientHud'
 import { findCs2Install } from './steam/library'
 import { listInstalledMaps } from './server/maps'
 import { SERVER_PORT, ServerManager } from './server/serverManager'
@@ -365,6 +365,7 @@ function registerIpc() {
     }
     if (!(await installPracSkins(csgoDir))) send(IPC.serverLog, '[cs2prac] PracSkins plugin not found – skins will not be applied')
     await installSkinWindow()
+    await installGraffitiTextures(pluginConfigDir(csgoDir)).catch((e) => logError('graffiti textures', e))
     await exportMenuCatalog(csgoDir)
     await exportLoadout(csgoDir, await loadStore(async () => null), await agentModels())
     await rememberWorkshop(opts.map)

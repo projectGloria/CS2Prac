@@ -246,7 +246,7 @@ export function buildCatalog(
       rarityColor: s.rarity?.color ?? '#b0c3d9',
       image: s.image,
       stattrak: s.stattrak,
-      legacyModel: !!s.legacy_model
+      legacyModel: !!s.legacy_model || forceLegacy(s.weapon.weapon_id, paintKit)
     })
   }
   const skinned = new Set(skins.map((s) => s.defIndex))
@@ -383,4 +383,13 @@ async function bundledCatalog(): Promise<Catalog | null> {
   } catch {
     return null
   }
+}
+
+/**
+ * Paracord, Survival, Nomad and Skeleton got the Doppler family (415–421) and Ultraviolet (98) in a later case; they
+ * draw on the knife's body_legacy mesh although neither items_game nor ByMykel flags them (vanilla on body 0, user
+ * test 2026-11-17). Same rule as ForceLegacy in plugin/PracSkins/PracSkins.cs.
+ */
+export function forceLegacy(defIndex: number, paintKit: number): boolean {
+  return [517, 518, 521, 525].includes(defIndex) && ((paintKit >= 415 && paintKit <= 421) || paintKit === 98)
 }
