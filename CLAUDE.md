@@ -287,7 +287,7 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   `m_hSkyMaterialLightingOnly` (+ SetStateChanged), the pointer from VMaterialSystem2_001's
   FindOrCreateMaterialFromResource (vtable 14, Windows; as CS2-SkyboxChanger). The older ways (a new env_sky with the
   material keyvalue + Disable on the map's, its tint black by default) changed the server state but never the
-  client's sky. Materials precached. Not yet confirmed in game.
+  client's sky. Materials precached. User-confirmed in game (2026-11-17).
 - The client refuses server-sent HUD cvars AND aliases (ExecuteClientCommand/ReplicateConVar; an alias ack never
   arrived), and **cl_drawhud 0 hides the custom window too** (user-tested): never send it. So the user's Nihil.cfg
   owns it: K/L/Tab binds keep a none/k/l state (cs2prac_k_open/_close/_from_l …) that switches the three

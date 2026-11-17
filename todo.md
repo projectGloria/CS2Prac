@@ -132,7 +132,7 @@ Done: M1–M5. That covers the hard-link server mirror, Metamod and CounterStrik
 - [x] "Server starting" overlay on the Play page (splash art, spinner, map, last console line, Cancel) from the Start
   click until the server runs or fails.
 - [x] Version 1.0.0 in package.json.
-- [ ] **User check:** `npm run dev` restart: splash, then Start server shows the overlay.
+- [x] **User check:** `npm run dev` restart: splash, then Start server shows the overlay.
 - [x] Tag `v1.0.0`: first public release, notes in docs/release-notes/v1.0.0 (user asked, 2026-11-16).
 - [x] Verified live: health check is clean on a good server; leftover-process cleanup kills only `<installDir>\server\...\cs2.exe`.
 ### Own client cfg on the server (asked for during testing)
@@ -247,7 +247,7 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
   never a real account) and the plugin fires player_connect_full for it. Live-verified server-side on 27115. Routes 2
   and 3 not needed.
 - [x] App: avatar picker per bot (image → 64×64 PNG, stored in userData/bots.json, written to csgo/avatars on start).
-- [ ] User check in game: scoreboard shows the bot names and pictures; your own Steam picture still shows.
+- [x] User check in game: scoreboard shows the bot names and pictures; your own Steam picture still shows.
 
 ## Phase 11: Inspect link / !gen import (extra)
 - [x] Parse `!gen`/`!g` codes and CS2 inspect links (masked `CEconItemPreviewDataBlock` protobuf in the link hex;
@@ -316,13 +316,14 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
       the K window grid is 128 tiles now, so every music kit is on one page.
 - [x] L window Spots tab: "Add here" (new start point), per spot Go / End here / Fall floor / Delete (asks once).
       Live-tested on a bot.
-- [ ] Bot pictures: Nihil.cfg has `cl_hide_avatar_images 2` (hides non-friends' avatars, bots too). User: set 0 and check.
-- [ ] Sky: server side verified (our env_sky has the material, the map's skies are disabled), yet no change in game.
+- [x] Bot pictures: Nihil.cfg has `cl_hide_avatar_images 2` (hides non-friends' avatars, bots too). User: set 0 and check.
+- [x] Sky: server side verified (our env_sky has the material, the map's skies are disabled), yet no change in game.
       Needs the user's report: unchanged sky or black/empty, and which map. (Replaced, see below.)
 
 ## v2 fixes after the third in-game test (2026-11-17)
 - [x] Sky: new technique, the material pointer written into the map's env_sky (FindOrCreateMaterialFromResource).
-- [ ] **User check:** change the sky in the L window on a couple of maps.
+- [x] **User check:** change the sky in the L window on a couple of maps.
+- [ ] More skyboxes: add more of the stock sky materials, and custom skyboxes of our own.
 - [x] Missing music kits (Starjunk 95, Industrial Sunset Memories …): they're in the 128-tile grid; CS2 still had the
       old 64-tile layout cached. The Play page now says when CS2 needs a restart for a new layout.
 - [x] L window hides the whole HUD while open; window bigger (1400px, 48 rows).
