@@ -225,6 +225,9 @@ What I found so far (a quick search, more to do):
      from the Workshop browser. Weeks of map work, but doable.
 - **Q:** Do you want option 2 as a real project later, or is option 1 enough? Can you send me the video link so I
   can see exactly what they built?
+- **Status (2026-11-18): research written up in [docs/research/random-maps.md](docs/research/random-maps.md)**
+  (how a CS2 version would work, a third option: random cover from the plugin, and a recommendation). Waiting for
+  your pick: 1, 3 or 2.
 
 ## Phase I: item info pop-ups, website and docs (added 2026-11-18)
 
