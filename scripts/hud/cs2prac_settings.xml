@@ -16,6 +16,7 @@
 					<Button id="ps_tab_map" class="pk-tab ps-tab"><Panel class="ps-ic ps-tab-ic ic-map_onmap" hittest="false" /><Label class="pk-tab-text" text="Map" hittest="false" /></Button>
 					<Button id="ps_tab_spots" class="pk-tab ps-tab"><Panel class="ps-ic ps-tab-ic ic-fast" hittest="false" /><Label class="pk-tab-text" text="Spots" hittest="false" /></Button>
 					<Button id="ps_tab_nades" class="pk-tab ps-tab"><Panel class="ps-ic ps-tab-ic ic-chatwheel_grenade" hittest="false" /><Label class="pk-tab-text" text="Nades" hittest="false" /></Button>
+					<Button id="ps_tab_modes" class="pk-tab ps-tab"><Panel class="ps-ic ps-tab-ic ic-crosshair" hittest="false" /><Label class="pk-tab-text" text="Modes" hittest="false" /></Button>
 				</Panel>
 				<Button id="ps_close" class="pk-close"><Panel class="ps-ic ps-close-ic ic-cancel" hittest="false" /></Button>
 			</Panel>

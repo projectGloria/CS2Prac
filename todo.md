@@ -466,6 +466,19 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
   never reaches the server; the heading line covers the basics for now).
 - [ ] **User check**: pop-ups in the app, `!info` in game, the site after the first Pages run.
 
+## 2026-11-18 plan, Phase E: practice modes (plugin/PracSkins/Modes.cs, L window tab "Modes")
+- [x] Deathmatch: FFA/teams, bot count, skill, guns (any/rifles/AWP/pistols/Deagle), HS only, time limit.
+- [x] Aim training: 1/3/5 targets in front of you (static/strafe/crouch/jiggle), range, HS only, 30/60/120 s; reaction time.
+- [x] AWP flicks: one bot shows for 1.5/1/0.6 s or a shrinking window, 10/20/30 rounds.
+- [x] Prefire routes: points recorded in the L window (Add point = where you aim), one by one or all, bots shoot back
+  or not, timed; a death ends the run. Saved in configs/plugins/PracSkins/prefire/<map>.json.
+- [x] Results banner + chat, best per map and option set in configs/plugins/PracSkins/modes.json; live banner.
+- [x] Start/Stop leaves and re-enters MatchZy practice (css_exitprac / css_prac), saved cvars are put back.
+- [x] `!mode <dm|aim|awp|prefire|stop>`; server tests `css_prac_modes`, `css_prac_mode <id|stop>`.
+- [ ] **Not live-tested yet**: whether MatchZy takes css_exitprac/css_prac from the server console, target
+  placement on real maps, the AWP hide/show (alpha 0) on the client.
+- [ ] Later: Peek training, Retake, Utility challenge (saved lineups as a quiz).
+
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):
   weapons, paint kits per weapon (rarity, wear range), knives, gloves, agents, stickers, keychains, pins, music kits,

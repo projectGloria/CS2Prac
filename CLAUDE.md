@@ -418,6 +418,19 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   CommitWeapon; `_craftUndo[(slot, team, def)]` keeps the paint before the first unkept roll (`!craft undo`).
   Keep craft.ts and Craft.cs odds in sync.
 
+## Practice modes (plugin/PracSkins/Modes.cs, 2026-11-18 Phase E)
+- L window tab `modes` (BuildModeRows) and `css_mode` / `!mode dm|aim|awp|prefire|stop`. One global `_modeRun`
+  (owner slot). Start: `css_exitprac` when matchzy_autostart_mode is 2 (MatchZy practice kicks bots it didn't add),
+  then 0.6 s later warmup held (mp_warmup_pausetimer), respawns, sv_infinite_ammo 2, bot_quota etc. through
+  SetModeCvar, which records each cvar's old value; Stop restores them and runs `css_prac` (else mp_restartgame 1).
+  A map change drops the run and restores the cvars.
+- Bots spawn → OnModeSpawn 0.45 s later (after BotLoadouts' gun swap, which skips while a mode sets the guns).
+  Aim/AWP targets: TargetSpot (in front of the owner ±50/80°, range band, floor trace, StandingRoom, eye line of
+  sight), pinned every tick by teleport (strafe/jiggle move along Side with velocity). AWP bot hidden = alpha 0 +
+  TakesDamage false (SetPawnShown). Prefire points: configs/plugins/PracSkins/prefire/<map>.json, parked bots hidden.
+- Options and bests: configs/plugins/PracSkins/modes.json (best per map per mode+option values). Server tests:
+  `css_prac_modes`, `css_prac_mode <id|stop>`. Not live-tested yet.
+
 ## Look page (2026-11-18 Phase D)
 - App tab "Look" (pages/Look.tsx): crosshair / viewmodel / HUD makers. CS2 refuses cvars from a server, so look:save
   writes the app's own client cfgs `cs2prac_crosshair.cfg` / `_viewmodel` / `_hud` (shared/look.ts LOOK_CFG; settings.look).

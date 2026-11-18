@@ -220,7 +220,7 @@ function buildWheel() {
 // Icons of the settings window: every ic-<name> (panorama/images/icons/ui/<name>.vsvg) and ie-<name>
 // (icons/equipment/<name>.vsvg) class named in its sources, plus the grenades Lineups.cs builds as "ie-" + weapon.
 function buildIconCss(has) {
-  const sources = [SET_XML_SRC, join(root, 'plugin', 'PracSkins', 'SettingsHud.cs'), join(root, 'plugin', 'PracSkins', 'Lineups.cs')]
+  const sources = [SET_XML_SRC, join(root, 'plugin', 'PracSkins', 'SettingsHud.cs'), join(root, 'plugin', 'PracSkins', 'Lineups.cs'), join(root, 'plugin', 'PracSkins', 'Modes.cs')]
   const names = new Set(['ie-smokegrenade', 'ie-flashbang', 'ie-hegrenade', 'ie-molotov', 'ie-decoy'])
   for (const f of sources) for (const m of readFileSync(f, 'utf8').matchAll(/"(i[ce]-[a-z0-9_]+)"/g)) names.add(m[1])
   for (const m of readFileSync(SET_XML_SRC, 'utf8').matchAll(/\b(i[ce]-[a-z0-9_]+)\b/g)) names.add(m[1])

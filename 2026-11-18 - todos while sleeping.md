@@ -175,6 +175,9 @@ cvars, and "Stop" goes back to practice. All modes:
 - Bot behaviour in CS2 is limited: cvars like bot_stop, bot_dont_shoot, bot_difficulty, bot_crouch and bot_zombie,
   plus teleports. No custom AI. "Hiding/peeking" bots will be scripted positions, not real thinking.
 - **Q:** Which modes come first? My order: Deathmatch, Aim, AWP reflex, Prefire, Peek, Retake, Utility.
+- **Status (done):** Deathmatch, Aim training, AWP flicks and Prefire routes are in (L → Modes, or `!mode dm|aim|awp|prefire|stop`).
+  Movement has a shortcut row to the Spots tab. Peek, Retake and Utility are still to do. Not live-tested yet:
+  please try each mode once and tell me what's off.
 
 ## Phase F: third person (item 12)
 

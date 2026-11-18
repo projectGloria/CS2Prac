@@ -61,6 +61,8 @@ public partial class PracSkins
     private void GiveBotGuns(CCSPlayerController bot)
     {
         if (!bot.IsValid || !IsBotAny(bot) || IsStandIn(bot) || !bot.PawnIsAlive) return;
+        // a practice mode with set guns gives them itself (Modes.cs)
+        if (_modeRun is { Id: "awp" or "prefire" or "aim" } || _modeRun is { Id: "dm" } run && run.Opts["dm.guns"] != "any") return;
         var team = bot.TeamNum;
         if (team is not (2 or 3)) return;
         var pawn = bot.PlayerPawn.Value;

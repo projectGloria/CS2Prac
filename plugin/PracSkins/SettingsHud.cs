@@ -83,7 +83,7 @@ public partial class PracSkins
     private const int RowChips = 6;
 
     private static readonly (string Id, string Label)[] SetTabs =
-        [("practice", "Practice"), ("server", "Server"), ("bots", "Bots"), ("sky", "Sky"), ("map", "Map"), ("spots", "Spots"), ("nades", "Nades")];
+        [("practice", "Practice"), ("server", "Server"), ("bots", "Bots"), ("sky", "Sky"), ("map", "Map"), ("spots", "Spots"), ("nades", "Nades"), ("modes", "Modes")];
 
     private static readonly SetOpt[] OffOn = [new("Off", "0"), new("On", "1")];
 
@@ -492,6 +492,9 @@ public partial class PracSkins
             case "spots":
                 BuildSpotRows(player, s);
                 break;
+            case "modes":
+                BuildModeRows(player, s);
+                break;
             default:
             {
                 foreach (var d in SetDefs.Where(d => d.Tab == s.Tab))
@@ -783,7 +786,7 @@ public partial class PracSkins
     private MenuPage SettingsMenuRoot() => new()
     {
         Title = "Server settings",
-        Build = () => SetTabs.Where(t => t.Id is not ("sky" or "map" or "spots" or "nades"))
+        Build = () => SetTabs.Where(t => t.Id is not ("sky" or "map" or "spots" or "nades" or "modes"))
             .Select(t => new MenuItem(t.Label, pl => PushPage(pl, SettingsMenuTab(t.Id, t.Label)))).ToList()
     };
 
