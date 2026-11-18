@@ -454,6 +454,18 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
 - [ ] **User check in game**: a pasted pro code looks the same in game; gap/length/thickness units of CS… codes
   (taken raw as cvar values, unverified); `exec cs2prac_hud` cvar names all exist in CS2.
 
+## 2026-11-18 plan, Phase I: item info pop-ups, site and docs
+- [x] src/shared/itemInfo.ts: one InfoRef → ItemInfo builder (rows, flavor, related groups) for the app, site and docs.
+- [x] Weapon stats from the game's weapons.vdata (npm run build:weaponstats → src/shared/weaponStats.json).
+- [x] Catalog meta (rarity, collections, crates, souvenir, flavor, effect; CATALOG_VERSION 7).
+- [x] App: right-click or the (i) corner on every Loadout tile and in the sticker/charm pickers opens the pop-up.
+- [x] Plugin: `!info` / `css_info` for the held item; the K window heading shows rarity + collection.
+- [x] Site: npm run build:site → site/, deployed by .github/workflows/pages.yml (https://projectgloria.github.io/CS2Prac/).
+- [x] Docs: npm run build:docs → docs/items/ (weapons with stats + finishes, agents, pins, music, graffiti, charms, stickers).
+- [ ] Release dates per case/collection (not in the data; hand table later). Info mode in the K window (right click
+  never reaches the server; the heading line covers the basics for now).
+- [ ] **User check**: pop-ups in the app, `!info` in game, the site after the first Pages run.
+
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):
   weapons, paint kits per weapon (rarity, wear range), knives, gloves, agents, stickers, keychains, pins, music kits,

@@ -16,7 +16,10 @@
     "release": "npm run build:bundle && npm run build && electron-builder --win --publish always",
     "build:bundle": "node scripts/bundle.mjs",
     "build:hud": "node scripts/hud/build-hud.mjs",
-    "build:modeltool": "node scripts/build-modeltool.mjs"
+    "build:modeltool": "node scripts/build-modeltool.mjs",
+    "build:weaponstats": "node scripts/items/build-weapon-stats.mjs",
+    "build:site": "node scripts/site/build-site.mjs site",
+    "build:docs": "node scripts/site/build-site.mjs docs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

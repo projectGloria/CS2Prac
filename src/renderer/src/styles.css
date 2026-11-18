@@ -184,10 +184,21 @@ button.link { background: none; border: none; padding: 0; color: var(--accent); 
 .panel-head h2 { margin: 0; flex: 1; }
 .grid-search { width: 100%; margin-bottom: 10px; }
 .skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-.skin-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-bottom-width: 3px; font-size: 12px; }
+.skin-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-bottom-width: 3px; font-size: 12px; }
 .skin-tile img, .skin-tile .img-placeholder { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; }
 .skin-tile .img-placeholder { background: repeating-linear-gradient(45deg, #1e222b, #1e222b 6px, #20252f 6px, #20252f 12px); border-radius: 4px; }
 .skin-tile span { width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-info { position: absolute; top: 4px; right: 4px; display: none; padding: 2px; border-radius: 50%; background: #0009; color: #ddd; line-height: 0; }
+.skin-tile:hover .tile-info { display: block; }
+.tile-info:hover { color: var(--accent); }
+.item-info-head { display: flex; gap: 16px; border-left: 4px solid; padding-left: 12px; }
+.item-info-head > img, .item-info-head > .img-placeholder { width: 260px; flex: none; aspect-ratio: 4 / 3; object-fit: contain; }
+.item-info-sub { font-weight: 600; margin: 4px 0 8px; }
+.item-info-rows { border-collapse: collapse; font-size: 13px; }
+.item-info-rows th { text-align: left; font-weight: 500; color: var(--muted, #9aa); padding: 2px 14px 2px 0; vertical-align: top; white-space: nowrap; }
+.item-info-rows td { padding: 2px 0; }
+.item-info-flavor { font-style: italic; color: var(--muted, #9aa); margin: 12px 0; }
+.item-info h4 { margin: 14px 0 6px; }
 .skin-tile.selected { outline: 2px solid var(--accent); background: #2b2416; }
 .editor input[type='range'] { width: 100%; accent-color: var(--accent); padding: 0; }
 .row.tight { margin: 0; gap: 6px; }

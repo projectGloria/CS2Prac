@@ -2,6 +2,20 @@
 
 export type WeaponKind = 'weapon' | 'knife' | 'glove'
 
+/** Extra facts for the item info pop-up (2026-11-18 Phase I); only the fields the data has. */
+export interface ItemMeta {
+  /** rarity name, e.g. "Classified" */
+  rarity?: string
+  collections?: string[]
+  /** cases / capsules that drop it */
+  crates?: string[]
+  souvenir?: boolean
+  /** the italic quote from the description */
+  flavor?: string
+  /** sticker effect: Foil, Holo, Glitter … */
+  effect?: string
+}
+
 export interface CatalogWeapon {
   defIndex: number
   /** e.g. weapon_ak47, weapon_knife_karambit, sporty_gloves */
@@ -26,6 +40,7 @@ export interface CatalogSkin {
   stattrak: boolean
   /** uses the old CS:GO model, which needs a different body group in-game */
   legacyModel: boolean
+  meta?: ItemMeta
 }
 
 export interface CatalogAgent {
@@ -36,6 +51,7 @@ export interface CatalogAgent {
   model: string
   image: string
   rarityColor: string
+  meta?: ItemMeta
 }
 
 export interface CatalogSticker {
@@ -48,6 +64,7 @@ export interface CatalogSticker {
   type: string
   /** tournament name, if any */
   event: string | null
+  meta?: ItemMeta
 }
 
 export interface CatalogKeychain {
@@ -56,6 +73,7 @@ export interface CatalogKeychain {
   name: string
   image: string
   rarityColor: string
+  meta?: ItemMeta
 }
 
 /** a profile display item: pins, coins, medals, trophies (InventoryServices.Rank[5]) */
@@ -66,6 +84,7 @@ export interface CatalogPin {
   rarityColor: string
   /** Pin, Service Medal, Operation Coin … */
   type: string
+  meta?: ItemMeta
 }
 
 export interface CatalogMusicKit {
@@ -74,6 +93,7 @@ export interface CatalogMusicKit {
   name: string
   image: string
   rarityColor: string
+  meta?: ItemMeta
 }
 
 /** a graffiti pattern (sticker kit def index); tinted ones come in GRAFFITI_TINTS colours, each with its own image */
@@ -86,6 +106,7 @@ export interface CatalogGraffiti {
   rarityColor: string
   /** tint id -> image; empty for graffiti that has no tints */
   tints: Record<string, string>
+  meta?: ItemMeta
 }
 
 /** graffiti tints (items_game graffiti_tints ids 1-19) */
@@ -111,7 +132,7 @@ export const GRAFFITI_TINTS: { id: number; name: string; color: string }[] = [
   { id: 19, name: 'Shark White', color: '#c1c1c1' }
 ]
 
-export const CATALOG_VERSION = 6
+export const CATALOG_VERSION = 7
 
 export interface Catalog {
   version: number

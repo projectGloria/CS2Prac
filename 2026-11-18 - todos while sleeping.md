@@ -253,7 +253,13 @@ website and the docs.
 4. **Docs:** generated Markdown in `docs/items/`: one file per weapon (stats + skin list), per collection/case and per
    capsule, plus an index. Same generator as the site.
 
-**Q:**
+**Status (2026-11-18): implemented, built, not tested in game.** The repo is public, so the site is on GitHub Pages
+(https://projectgloria.github.io/CS2Prac/, item data only; rebuilt weekly and on pushes). App: right-click any Loadout
+tile (or its ⓘ corner, or a sticker/charm in the pickers). In game: `!info` prints the held item's finish, rarity,
+collection, wear and weapon stats; the K window's heading line shows rarity + collection. Release dates are left out
+(not in the data). Weapon stats are read from your game's weapons.vdata (`npm run build:weaponstats`).
+
+**Q (answered with defaults):**
 - GitHub Pages on a private repo needs a paid plan. Is the repo public, or should the site go in a separate public
   repo?
 - Should the site show only item data, or also present CS2Prac itself (features, download, release notes)?

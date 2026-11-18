@@ -14,11 +14,14 @@ import {
   type CatalogSkin,
   type CatalogSticker,
   type CatalogWeapon,
+  type ItemMeta,
   type WeaponKind
 } from '@shared/skins'
 
 const API = 'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/'
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+type Named = { name: string }
 
 /** Subset of the CSGO-API shapes we rely on. */
 export interface ApiSkin {
@@ -30,8 +33,12 @@ export interface ApiSkin {
   phase?: string | null
   min_float: number | null
   max_float: number | null
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
   stattrak: boolean
+  souvenir?: boolean
+  description?: string | null
+  collections?: Named[] | null
+  crates?: Named[] | null
   legacy_model?: boolean
   paint_index: string | null
   image: string
@@ -51,7 +58,9 @@ export interface ApiAgent {
   team?: { id: string } | null
   model_player?: string | null
   image: string
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  collections?: Named[] | null
+  description?: string | null
 }
 
 export interface ApiSticker {
@@ -60,14 +69,17 @@ export interface ApiSticker {
   type?: string | null
   tournament?: { name: string } | null
   image: string
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  effect?: string | null
+  crates?: Named[] | null
 }
 
 export interface ApiKeychain {
   name: string
   def_index: string | number
   image: string
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  collections?: Named[] | null
 }
 
 export interface ApiCollectible {
@@ -75,7 +87,8 @@ export interface ApiCollectible {
   def_index: string | number
   type?: string | null
   image: string
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  description?: string | null
 }
 
 export interface ApiMusicKit {
@@ -83,7 +96,8 @@ export interface ApiMusicKit {
   name: string
   def_index: string | number
   image: string
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  description?: string | null
 }
 
 export interface ApiGraffiti {
@@ -92,7 +106,8 @@ export interface ApiGraffiti {
   def_index: string | number
   image: string
   tint?: { id: string; name: string } | null
-  rarity?: { color: string } | null
+  rarity?: { color: string; name?: string } | null
+  crates?: Named[] | null
 }
 
 export interface ApiExtras {
@@ -110,13 +125,48 @@ const defOf = (v: string | number) => {
 }
 const GREY = '#b0c3d9'
 
+/** the italic line at the end of a description ("<i>Never be afraid …</i>") */
+export function flavorOf(description: string | null | undefined): string | undefined {
+  const m = /<i>([\s\S]*?)<\/i>/.exec(description ?? '')
+  const t = m?.[1].replace(/<[^>]+>/g, '').replace(/\\n|\n/g, ' ').trim()
+  return t ? t.slice(0, 240) : undefined
+}
+
+const names = (list: Named[] | null | undefined) => {
+  const n = (list ?? []).map((x) => x?.name).filter((x): x is string => !!x)
+  return n.length ? [...new Set(n)] : undefined
+}
+
+/** { meta } with only the fields that have a value, or {} (keeps catalog entries lean) */
+export function metaOf(m: {
+  rarity?: { name?: string } | null
+  collections?: Named[] | null
+  crates?: Named[] | null
+  souvenir?: boolean
+  description?: string | null
+  effect?: string | null
+}): { meta?: ItemMeta } {
+  const meta: ItemMeta = {}
+  const rarity = m.rarity?.name
+  if (rarity && rarity !== 'Default') meta.rarity = rarity
+  const cols = names(m.collections)
+  if (cols) meta.collections = cols
+  const crates = names(m.crates)
+  if (crates) meta.crates = crates.slice(0, 12)
+  if (m.souvenir) meta.souvenir = true
+  const flavor = flavorOf(m.description)
+  if (flavor) meta.flavor = flavor
+  if (m.effect && m.effect !== 'Other') meta.effect = m.effect
+  return Object.keys(meta).length ? { meta } : {}
+}
+
 export function buildAgents(raw: ApiAgent[]): CatalogAgent[] {
   const out: CatalogAgent[] = []
   for (const a of raw) {
     const defIndex = defOf(a.def_index)
     const team = a.team?.id === 'terrorists' ? 't' : a.team?.id === 'counter-terrorists' ? 'ct' : null
     if (!defIndex || !team || !a.model_player?.endsWith('.vmdl')) continue
-    out.push({ defIndex, name: a.name, team, model: a.model_player, image: a.image, rarityColor: a.rarity?.color ?? GREY })
+    out.push({ defIndex, name: a.name, team, model: a.model_player, image: a.image, rarityColor: a.rarity?.color ?? GREY, ...metaOf(a) })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -132,7 +182,8 @@ export function buildStickers(raw: ApiSticker[]): CatalogSticker[] {
       image: s.image,
       rarityColor: s.rarity?.color ?? GREY,
       type: s.type ?? 'Other',
-      event: s.tournament?.name ?? null
+      event: s.tournament?.name ?? null,
+      ...metaOf(s)
     })
   }
   return out
@@ -143,7 +194,7 @@ export function buildKeychains(raw: ApiKeychain[]): CatalogKeychain[] {
   for (const k of raw) {
     const defIndex = defOf(k.def_index)
     if (!defIndex || !k.image) continue
-    out.push({ defIndex, name: k.name.replace(/^Charm \| /, ''), image: k.image, rarityColor: k.rarity?.color ?? GREY })
+    out.push({ defIndex, name: k.name.replace(/^Charm \| /, ''), image: k.image, rarityColor: k.rarity?.color ?? GREY, ...metaOf(k) })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -155,7 +206,7 @@ export function buildPins(raw: ApiCollectible[]): CatalogPin[] {
     const defIndex = defOf(c.def_index)
     if (!defIndex || !c.image || seen.has(defIndex)) continue
     seen.add(defIndex)
-    out.push({ defIndex, name: c.name, image: c.image, rarityColor: c.rarity?.color ?? GREY, type: c.type ?? 'Other' })
+    out.push({ defIndex, name: c.name, image: c.image, rarityColor: c.rarity?.color ?? GREY, type: c.type ?? 'Other', ...metaOf(c) })
   }
   return out.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
 }
@@ -182,7 +233,7 @@ export function buildMusicKits(raw: ApiMusicKit[]): CatalogMusicKit[] {
     const defIndex = defOf(m.def_index)
     if (!defIndex || m.id.endsWith('_st') || seen.has(defIndex)) continue
     seen.add(defIndex)
-    out.push({ defIndex, name: m.name.replace(/^Music Kit \| /, ''), image: m.image, rarityColor: m.rarity?.color ?? GREY })
+    out.push({ defIndex, name: m.name.replace(/^Music Kit \| /, ''), image: m.image, rarityColor: m.rarity?.color ?? GREY, ...metaOf(m) })
   }
   if (out.length > 0) {
     for (const k of EXTRA_MUSIC_KITS) {
@@ -207,7 +258,7 @@ export function buildGraffiti(raw: ApiGraffiti[]): CatalogGraffiti[] {
     if (!entry) {
       const plain = g.name.replace(/^Sealed Graffiti \| /, '')
       const name = g.tint ? plain.replace(/ \([^)]*\)$/, '') : plain
-      entry = { defIndex, name, image: g.image, rarityColor: g.rarity?.color ?? GREY, tints: {} }
+      entry = { defIndex, name, image: g.image, rarityColor: g.rarity?.color ?? GREY, tints: {}, ...metaOf(g) }
       byDef.set(defIndex, entry)
     }
     if (tint) {
@@ -246,7 +297,8 @@ export function buildCatalog(
       rarityColor: s.rarity?.color ?? '#b0c3d9',
       image: s.image,
       stattrak: s.stattrak,
-      legacyModel: !!s.legacy_model || forceLegacy(s.weapon.weapon_id, paintKit)
+      legacyModel: !!s.legacy_model || forceLegacy(s.weapon.weapon_id, paintKit),
+      ...metaOf(s)
     })
   }
   const skinned = new Set(skins.map((s) => s.defIndex))

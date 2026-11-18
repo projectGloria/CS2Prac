@@ -5,6 +5,9 @@ import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
 import SkinViewer3D from '../components/SkinViewer3D'
 import ImportItem from '../components/ImportItem'
+import ItemInfoModal, { ItemInfoContext, useItemInfo } from '../components/ItemInfo'
+import type { InfoRef } from '@shared/itemInfo'
+import { Info } from 'lucide-react'
 import { itemOf } from '@shared/itemCode'
 import { rollCraft } from '@shared/craft'
 import {
@@ -59,6 +62,7 @@ export default function Loadout() {
   const [team, setTeam] = useState<Team>('ct')
   const [save, setSave] = useState<SaveState>({ state: 'idle' })
   const [showImport, setShowImport] = useState(false)
+  const [infoRef, setInfoRef] = useState<InfoRef | null>(null)
   /** what the gun had before the last random craft(s), for Undo */
   const [craftUndo, setCraftUndo] = useState<{ team: Team; def: number; sel: SkinSel | null } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -199,7 +203,9 @@ export default function Loadout() {
   ]
 
   return (
+    <ItemInfoContext.Provider value={setInfoRef}>
     <div className="loadout">
+      {infoRef && <ItemInfoModal catalog={catalog} start={infoRef} onClose={() => setInfoRef(null)} />}
       {showImport && (
         <ImportItem
           catalog={catalog}
@@ -478,6 +484,7 @@ export default function Loadout() {
               none="No pin"
               items={catalog.pins ?? []}
               group
+              kind="pin"
               value={profile.pin}
               onChange={(pin) => updateProfile((p) => ({ ...p, pin }))}
             />
@@ -488,6 +495,7 @@ export default function Loadout() {
               hint="Plays at round start, round end and when you are MVP, for both teams."
               none="Default music"
               items={catalog.musicKits ?? []}
+              kind="music"
               value={profile.musicKit}
               onChange={(musicKit) => updateProfile((p) => ({ ...p, musicKit }))}
             />
@@ -526,6 +534,7 @@ export default function Loadout() {
         </section>
       </div>
     </div>
+    </ItemInfoContext.Provider>
   )
 }
 
@@ -593,10 +602,13 @@ interface Tile {
   onClick: () => void
   /** right-click selects the tile (if needed) and opens the editor pop-up */
   editable?: boolean
+  /** the (i) corner button / right-click on a non-editable tile opens the item info pop-up */
+  info?: InfoRef
 }
 
 function SkinGrid({ tiles, search, onEdit }: { tiles: Tile[]; search?: boolean; onEdit?: () => void }) {
   const [q, setQ] = useState('')
+  const showInfo = useItemInfo()
   const shown = q ? tiles.filter((t) => t.name.toLowerCase().includes(q.toLowerCase())) : tiles
   return (
     <>
@@ -612,12 +624,28 @@ function SkinGrid({ tiles, search, onEdit }: { tiles: Tile[]; search?: boolean; 
             onClick={t.onClick}
             onContextMenu={(e) => {
               e.preventDefault()
-              if (!onEdit || !t.editable) return
+              if (!onEdit || !t.editable) {
+                if (t.info && showInfo) showInfo(t.info)
+                return
+              }
               if (!t.selected) t.onClick()
               onEdit()
             }}
-            title={onEdit && t.editable ? `${t.name}\nRight-click to edit wear, pattern …` : t.name}
+            title={onEdit && t.editable ? `${t.name}\nRight-click to edit wear, pattern …` : t.info ? `${t.name}\nRight-click for info` : t.name}
           >
+            {t.info && showInfo && (
+              <span
+                className="tile-info"
+                role="button"
+                title="Item info"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  showInfo(t.info!)
+                }}
+              >
+                <Info size={13} aria-hidden />
+              </span>
+            )}
             {t.image ? <img src={t.image} alt="" loading="lazy" draggable={false} /> : <div className="img-placeholder" />}
             <span>{t.name}</span>
           </button>
@@ -720,6 +748,7 @@ function WeaponPanel(props: {
       key: 'default',
       name: 'Default',
       image: weapon.image,
+      info: { kind: 'weapon', def: weapon.defIndex } as InfoRef,
       selected: !sel || sel.paintKit === 0,
       // keeps stickers and charm on the default finish
       onClick: () => onChange(sel ? { ...sel, paintKit: 0, legacyModel: false } : null)
@@ -729,6 +758,7 @@ function WeaponPanel(props: {
       name: s.name,
       image: s.image,
       color: s.rarityColor,
+      info: { kind: 'skin', id: s.id } as InfoRef,
       selected: sel?.paintKit === s.paintKit,
       onClick: () =>
         onChange({
@@ -805,7 +835,9 @@ function Picker<T extends { defIndex: number; name: string; image: string; rarit
   filters?: { label: string; test: (t: T) => boolean }[]
   onPick: (t: T) => void
   onClose: () => void
+  infoKind?: 'sticker' | 'keychain'
 }) {
+  const showInfo = useItemInfo()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState(0)
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
@@ -833,7 +865,11 @@ function Picker<T extends { defIndex: number; name: string; image: string; rarit
       </p>
       <div className="skin-grid small-tiles">
         {matches.slice(0, PICKER_LIMIT).map((t) => (
-          <button key={t.defIndex} className="skin-tile" style={{ borderBottomColor: t.rarityColor }} title={t.name} onClick={() => props.onPick(t)}>
+          <button key={t.defIndex} className="skin-tile" style={{ borderBottomColor: t.rarityColor }} title={props.infoKind ? `${t.name}\nRight-click for info` : t.name} onClick={() => props.onPick(t)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              if (props.infoKind && showInfo) showInfo({ kind: props.infoKind, def: t.defIndex })
+            }}>
             <img src={t.image} alt="" loading="lazy" draggable={false} />
             <span>{t.name}</span>
           </button>
@@ -884,6 +920,7 @@ function StickerEditor(props: {
         <Picker
           items={props.catalog}
           filters={STICKER_FILTERS}
+          infoKind="sticker"
           onPick={(s) => {
             set(picking, { ...(slots[picking] ?? emptySticker(s.defIndex)), defIndex: s.defIndex })
             setPicking(null)
@@ -941,6 +978,7 @@ function KeychainEditor(props: {
       {picking && (
         <Picker
           items={props.catalog}
+          infoKind="keychain"
           onPick={(c) => {
             props.onChange({ ...(k ?? emptyKeychain(c.defIndex)), defIndex: c.defIndex })
             setPicking(false)
@@ -979,6 +1017,7 @@ function ItemPanel(props: {
   items: { defIndex: number; name: string; image: string; rarityColor: string; type?: string }[]
   /** show the item type (Pin, Service Medal …) as a filter */
   group?: boolean
+  kind: 'pin' | 'music'
   value: number
   onChange: (def: number) => void
 }) {
@@ -994,6 +1033,7 @@ function ItemPanel(props: {
         name: i.name,
         image: i.image,
         color: i.rarityColor,
+        info: { kind: props.kind, def: i.defIndex } as InfoRef,
         selected: value === i.defIndex,
         onClick: () => onChange(i.defIndex)
       }))
@@ -1037,6 +1077,7 @@ function GraffitiPanel(props: {
         name: g.name,
         image: (value === g.defIndex && g.tints[String(tint)]) || g.image,
         color: g.rarityColor,
+        info: { kind: 'graffiti', def: g.defIndex } as InfoRef,
         selected: value === g.defIndex,
         // keep the picked tint when switching to another tinted graffiti that has it
         onClick: () => onChange(g.defIndex, hasTints ? (g.tints[String(tint)] ? tint : Number(Object.keys(g.tints)[0])) : 0)
@@ -1082,6 +1123,7 @@ function AgentPanel(props: { team: Team; agents: CatalogAgent[]; sel: AgentSel |
       name: a.name,
       image: a.image,
       color: a.rarityColor,
+      info: { kind: 'agent', def: a.defIndex } as InfoRef,
       selected: sel?.defIndex === a.defIndex,
       onClick: () => onChange({ defIndex: a.defIndex, model: a.model })
     }))
@@ -1127,6 +1169,7 @@ function KnifePanel(props: {
       key: String(k.defIndex),
       name: k.name.replace(/^★\s*/, ''),
       image: k.image,
+      info: { kind: 'weapon', def: k.defIndex } as InfoRef,
       selected: sel?.defIndex === k.defIndex,
       onClick: () => pickModel(k)
     }))
@@ -1145,6 +1188,7 @@ function KnifePanel(props: {
           name: s.name,
           image: s.image,
           color: s.rarityColor,
+          info: { kind: 'skin', id: s.id } as InfoRef,
           selected: sel?.paintKit === s.paintKit,
           onClick: () =>
             onChange({ ...sel!, paintKit: s.paintKit, wear: clamp(sel!.wear, s.minFloat, s.maxFloat), legacyModel: s.legacyModel })
@@ -1205,6 +1249,7 @@ function GlovePanel(props: {
         name: `${g.name.replace(/^★\s*/, '')} | ${s.name}`,
         image: s.image,
         color: s.rarityColor,
+        info: { kind: 'skin', id: s.id } as InfoRef,
         selected: sel?.defIndex === g.defIndex && sel.paintKit === s.paintKit,
         onClick: () =>
           onChange({

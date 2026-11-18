@@ -426,6 +426,20 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   outline mode, gap int16, length, spread limit, split bit field, scope dot scale. `CSGO-` v3/v4 codes import; v1 refused.
   Sizes are pixels at screenHeight and go into the cvars unchanged (unverified for the CS format).
 
+## Item info (2026-11-18 Phase I)
+- src/shared/itemInfo.ts `itemInfo(catalog, InfoRef)` → title, subtitle, rows, flavor, related groups (clickable
+  InfoRefs). One builder for the app (components/ItemInfo.tsx modal with a Back stack; ItemInfoContext; Loadout tiles
+  open it by right-click or the `.tile-info` corner), the site and the docs. Catalog entries carry `meta` (ItemMeta:
+  rarity, collections, crates, souvenir, flavor, effect; metaOf/flavorOf in catalog.ts; CATALOG_VERSION 7).
+- Weapon stats: `npm run build:weaponstats` (scripts/items) dumps the user's weapons.vdata (ModelExport kv3dump) into
+  src/shared/weaponStats.json (committed). pluginCatalog.ts passes stats + meta lines to the plugin: `!info` /
+  `css_info` (ItemInfo.cs) and the K window heading (HeadingInfo).
+- Site: `npm run build:site` (scripts/site/build-site.mjs: vite builds scripts/site/app into site/, git-ignored; then an
+  SSR bundle of gen.ts with `electron` stubbed builds the catalog like the app and writes site/data/catalog.json).
+  `npm run build:docs` writes docs/items/*.md (committed). .github/workflows/pages.yml deploys site/ (pushes to main
+  touching the item code, weekly, manual); in CI the ByMykel fetch must work (no bundle snapshot there).
+  Preview: .claude/launch.json "site" (vite preview on 4321).
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
   CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only

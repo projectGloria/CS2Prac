@@ -1,6 +1,9 @@
 import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
+/** open modals, newest last: Esc only closes the top one (the item info pop-up can open over an editor) */
+const open: object[] = []
+
 /** Centered pop-up over a dimmed page. Closes on Esc, the X or a click outside. */
 export default function Modal({
   title,
@@ -14,9 +17,14 @@ export default function Modal({
   wide?: boolean
 }) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const me = {}
+    open.push(me)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && open[open.length - 1] === me && onClose()
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      open.splice(open.indexOf(me), 1)
+    }
   }, [onClose])
 
   return (

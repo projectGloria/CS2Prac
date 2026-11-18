@@ -975,8 +975,8 @@ public partial class PracSkins
         // heading
         HudText(player, "pk_heading", s.Tab switch
         {
-            "weapons" => _catalog.WeaponName(s.Selected),
-            "knives" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Knife",
+            "weapons" => _catalog.WeaponName(s.Selected) + HeadingInfo(team, s.Selected),
+            "knives" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) + HeadingInfo(team, s.Selected) : "Knife",
             "gloves" => s.Selected > 0 ? _catalog.WeaponName(s.Selected) : "Gloves",
             "pins" => "Pin (both teams)",
             "music" => "Music kit (both teams)",

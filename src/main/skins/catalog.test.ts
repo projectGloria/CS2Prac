@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ApiBaseWeapon, ApiSkin } from './catalog'
 
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
-const { buildCatalog, forceLegacy } = await import('./catalog')
+const { buildCatalog, forceLegacy, metaOf, flavorOf } = await import('./catalog')
 
 const skin = (over: Partial<ApiSkin> & Pick<ApiSkin, 'weapon'>): ApiSkin => ({
   id: `skin-${Math.random()}`,
@@ -123,5 +123,26 @@ describe('forceLegacy', () => {
     expect(forceLegacy(517, 98)).toBe(true) // Paracord Ultraviolet
     expect(forceLegacy(505, 415)).toBe(false) // Flip Ruby
     expect(forceLegacy(521, 38)).toBe(false) // Nomad Fade
+  })
+})
+
+describe('item meta', () => {
+  it('keeps only the fields that have a value', () => {
+    expect(metaOf({ rarity: { name: 'Default' }, collections: [], crates: null })).toEqual({})
+    expect(
+      metaOf({
+        rarity: { name: 'Covert' },
+        collections: [{ name: 'The Phoenix Collection' }, { name: 'The Phoenix Collection' }],
+        souvenir: true,
+        effect: 'Other',
+        description: 'Some text <i>Fear the reaper</i>'
+      })
+    ).toEqual({ meta: { rarity: 'Covert', collections: ['The Phoenix Collection'], souvenir: true, flavor: 'Fear the reaper' } })
+  })
+
+  it('reads the italic flavor text', () => {
+    expect(flavorOf('<i>A <b>bold</b> quote</i>')).toBe('A bold quote')
+    expect(flavorOf('no quote')).toBeUndefined()
+    expect(flavorOf(null)).toBeUndefined()
   })
 })

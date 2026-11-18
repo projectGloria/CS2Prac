@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { metaLine, weaponStatLine } from '@shared/itemInfo'
 import type { Catalog } from '@shared/skins'
 import { pluginConfigDir } from './loadoutStore'
 
@@ -10,9 +11,10 @@ import { pluginConfigDir } from './loadoutStore'
  */
 export interface PluginCatalog {
   fetchedAt: number
-  weapons: { def: number; cls: string; name: string; kind: 'weapon' | 'knife' | 'glove' }[]
-  /** by weapon def index */
-  skins: Record<string, { paint: number; name: string; min: number; max: number; legacy: boolean }[]>
+  /** stats: one chat line (weaponStatLine), '' when unknown */
+  weapons: { def: number; cls: string; name: string; kind: 'weapon' | 'knife' | 'glove'; stats: string }[]
+  /** by weapon def index; info = "Classified · The Phoenix Collection" (metaLine) */
+  skins: Record<string, { paint: number; name: string; min: number; max: number; legacy: boolean; info: string }[]>
   agents: { def: number; name: string; team: 't' | 'ct'; model: string }[]
   stickers: { def: number; name: string }[]
   keychains: { def: number; name: string }[]
@@ -24,10 +26,10 @@ export interface PluginCatalog {
 export function toPluginCatalog(c: Catalog): PluginCatalog {
   const skins: PluginCatalog['skins'] = {}
   for (const s of c.skins)
-    (skins[s.defIndex] ??= []).push({ paint: s.paintKit, name: s.name, min: s.minFloat, max: s.maxFloat, legacy: s.legacyModel })
+    (skins[s.defIndex] ??= []).push({ paint: s.paintKit, name: s.name, min: s.minFloat, max: s.maxFloat, legacy: s.legacyModel, info: metaLine(s.meta) })
   return {
     fetchedAt: c.fetchedAt,
-    weapons: c.weapons.map((w) => ({ def: w.defIndex, cls: w.className, name: w.name.replace(/^★\s*/, ''), kind: w.kind })),
+    weapons: c.weapons.map((w) => ({ def: w.defIndex, cls: w.className, name: w.name.replace(/^★\s*/, ''), kind: w.kind, stats: weaponStatLine(w.className) })),
     skins,
     agents: (c.agents ?? []).map((a) => ({ def: a.defIndex, name: a.name, team: a.team, model: a.model })),
     stickers: (c.stickers ?? []).map((s) => ({ def: s.defIndex, name: s.event && !s.name.includes(s.event) ? `${s.name} (${s.event})` : s.name })),

@@ -11,6 +11,8 @@ public class CatalogWeapon
     public string Name { get; set; } = "";
     /// <summary>weapon, knife or glove</summary>
     public string Kind { get; set; } = "";
+    /// <summary>one chat line of stats (itemInfo.ts weaponStatLine; empty when unknown)</summary>
+    public string Stats { get; set; } = "";
 }
 
 public class CatalogSkin
@@ -20,6 +22,8 @@ public class CatalogSkin
     public float Min { get; set; }
     public float Max { get; set; } = 1;
     public bool Legacy { get; set; }
+    /// <summary>"Classified · The Phoenix Collection" (itemInfo.ts metaLine; empty when unknown)</summary>
+    public string Info { get; set; } = "";
 }
 
 public class CatalogAgent
