@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardPaste, Copy, Layers, Music, Pin, Plus, SprayCan, Trash2, User, Users } from 'lucide-react'
+import { ClipboardPaste, Copy, Dices, Layers, Music, Pin, Plus, SprayCan, Trash2, User, Users } from 'lucide-react'
 import type { LoadoutSaveResult } from '@shared/ipc'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import Modal from '../components/Modal'
 import SkinViewer3D from '../components/SkinViewer3D'
 import ImportItem from '../components/ImportItem'
 import { itemOf } from '@shared/itemCode'
+import { rollCraft } from '@shared/craft'
 import {
   emptyKeychain,
   emptyProfile,
@@ -58,6 +59,8 @@ export default function Loadout() {
   const [team, setTeam] = useState<Team>('ct')
   const [save, setSave] = useState<SaveState>({ state: 'idle' })
   const [showImport, setShowImport] = useState(false)
+  /** what the gun had before the last random craft(s), for Undo */
+  const [craftUndo, setCraftUndo] = useState<{ team: Team; def: number; sel: SkinSel | null } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const latest = useRef<LoadoutStore | null>(null)
   const dirty = useRef(false)
@@ -269,6 +272,41 @@ export default function Loadout() {
           <ClipboardPaste size={14} aria-hidden />
           Import
         </button>
+        <button
+          className="icon-text"
+          title={slot.kind === 'weapon' ? 'Random craft for this gun: finish, wear, seed, stickers, charm' : 'Pick a gun first'}
+          disabled={slot.kind !== 'weapon'}
+          onClick={() => {
+            if (slot.kind !== 'weapon') return
+            const def = slot.defIndex
+            const roll = rollCraft(index.byDef.get(def) ?? [], catalog.stickers, catalog.keychains)
+            if (!roll) return
+            if (!(craftUndo && craftUndo.team === team && craftUndo.def === def))
+              setCraftUndo({ team, def, sel: profile.weapons[team][def] ?? null })
+            updateProfile((p) => ({ ...p, weapons: { ...p.weapons, [team]: { ...p.weapons[team], [def]: roll.sel } } }))
+          }}
+        >
+          <Dices size={14} aria-hidden />
+          Random craft
+        </button>
+        {craftUndo && slot.kind === 'weapon' && craftUndo.team === team && craftUndo.def === slot.defIndex && (
+          <button
+            className="icon-text"
+            title="Put back what this gun had before the random craft"
+            onClick={() => {
+              const { def, sel } = craftUndo
+              updateProfile((p) => {
+                const map = { ...p.weapons[team] }
+                if (sel) map[def] = sel
+                else delete map[def]
+                return { ...p, weapons: { ...p.weapons, [team]: map } }
+              })
+              setCraftUndo(null)
+            }}
+          >
+            Undo craft
+          </button>
+        )}
 
         <span className="spacer" />
         <SaveIndicator save={save} />

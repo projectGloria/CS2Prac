@@ -531,6 +531,18 @@ public partial class PracSkins
                     CommitWeapon(pl, team, sel, p);
                     HudStatus(pl, s, $"{_catalog.WeaponName(sel)}: default finish");
                 }));
+                // random craft (Craft.cs): finish, wear, seed, stickers, charm in one roll
+                s.Tiles.Add(new HudTile("Random craft", $"b{sel}", "", false, pl =>
+                {
+                    HudStatus(pl, s, RandomCraft(pl, team, sel));
+                    ShowCurrentTilePage(s);
+                }));
+                if (HasCraftUndo(player, team, sel))
+                    s.Tiles.Add(new HudTile("Undo craft", $"b{sel}", "", false, pl =>
+                    {
+                        UndoCraft(pl, team, sel, out var msg);
+                        HudStatus(pl, s, msg);
+                    }));
                 foreach (var skin in _catalog.SkinsFor(sel))
                     s.Tiles.Add(new HudTile(skin.Name, $"b{sel}", $"s{sel}_{skin.Paint}", cur?.PaintKit == skin.Paint, pl =>
                     {

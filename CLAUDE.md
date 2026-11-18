@@ -411,6 +411,13 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   game/csgo/cfg/cs2prac_keys.cfg (only binds; NihilPrac.cfg ends with `exec cs2prac_keys`).
 - The bot gun swap uses DropActiveWeapon for the held gun (see BotLoadouts.cs history); not yet confirmed in game.
 
+## Random craft (plugin/PracSkins/Craft.cs, src/shared/craft.ts; 2026-11-18 Phase C)
+- `css_craft` / `!craft` for the held gun (K window tile "Random craft" after "Default"; app Loadout bar button).
+  Rolls finish (wear in range), seed, StatTrak 1/5, stickers 4/5 (1–5 slots; theme mixed / same sticker / one event =
+  text after the last " | " / one finish like (Holo)), small x/y nudges and tilt sometimes, charm 1/3. Saved through
+  CommitWeapon; `_craftUndo[(slot, team, def)]` keeps the paint before the first unkept roll (`!craft undo`).
+  Keep craft.ts and Craft.cs odds in sync.
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
   CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only

@@ -124,6 +124,12 @@ Small server-side work. I'd do this first.
 - **Q:** Should it replace what you have saved for that weapon, or be temporary until you press "Keep"? I'd say
   temporary plus Keep.
 
+**Status (2026-11-18): implemented, built, not tested in game.** Simpler than temporary + Keep: a roll is saved
+like any pick (so the app gets it too), and Undo puts back what the gun had before the first roll. In game: `!craft`
+(or the key on Play > Keys, or the K window's "Random craft" tile next to "Default"), `!craft undo` / the
+"Undo craft" tile. Banner 6 s (when K is closed) + chat with the !gen code. App: Loadout bar "Random craft" /
+"Undo craft" for the selected gun. Guns only (no knives/gloves).
+
 ## Phase D: crosshair / HUD / viewmodel makers (item 3)
 
 - App pages (React), each with a live preview:

@@ -442,6 +442,11 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
 - [x] Play page > Keys (src/shared/keyBinds.ts → client cfg/cs2prac_keys.cfg, NihilPrac.cfg execs it).
 - [ ] **User check in game** of all of the above (bots holding guns first).
 
+## 2026-11-18 plan, Phase C: random craft
+- [x] Craft.cs: `css_craft` / `!craft` (+ `undo`), K window tiles "Random craft" / "Undo craft", banner + chat + !gen.
+- [x] src/shared/craft.ts (same odds) → Loadout bar "Random craft" / "Undo craft"; key action "craft".
+- [ ] **User check in game** (stickers with nudged offsets / rotation look right?).
+
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):
   weapons, paint kits per weapon (rarity, wear range), knives, gloves, agents, stickers, keychains, pins, music kits,
