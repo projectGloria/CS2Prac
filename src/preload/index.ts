@@ -63,6 +63,10 @@ const api: Api = {
     get: () => ipcRenderer.invoke(IPC.keysGet),
     save: (binds) => ipcRenderer.invoke(IPC.keysSave, binds)
   },
+  look: {
+    get: () => ipcRenderer.invoke(IPC.lookGet),
+    save: (look, part) => ipcRenderer.invoke(IPC.lookSave, look, part)
+  },
   bots: {
     get: () => ipcRenderer.invoke(IPC.botsGet),
     save: (bots) => ipcRenderer.invoke(IPC.botsSave, bots)

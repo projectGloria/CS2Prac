@@ -41,6 +41,7 @@ import { readBots, saveBots, writeServerBots } from './setup/bots'
 const shrinkAvatar = (png: Buffer): Buffer => nativeImage.createFromBuffer(png).resize({ width: 64, height: 64, quality: 'best' }).toPNG()
 import type { BotsConfig } from '@shared/bots'
 import { KEYS_CFG, cleanKeyBinds, keysCfg, type KeyBinds } from '@shared/keyBinds'
+import { LOOK_CFG, cleanLook, lookCfg, type LookConfig, type LookPart } from '@shared/look'
 import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
 import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
 import { WorkshopStore } from './server/workshop'
@@ -541,6 +542,22 @@ function registerIpc() {
     await writeFile(file, keysCfg(clean), 'utf8')
     log('keys', `wrote ${file}`)
     return { binds: clean, file }
+  })
+  ipcMain.handle(IPC.lookGet, async () => cleanLook((await loadSettings()).look))
+  ipcMain.handle(IPC.lookSave, async (_e, look: LookConfig, part?: LookPart) => {
+    const clean = cleanLook(look)
+    await saveSettings({ ...(await loadSettings()), look: clean })
+    const client = await findCs2Install()
+    if (!client) throw new Error('CS2 not found: the look is saved, but no cfg could be written')
+    const parts = part && part in LOOK_CFG ? [part] : (Object.keys(LOOK_CFG) as LookPart[])
+    const files: string[] = []
+    for (const p of parts) {
+      const file = join(client.dir, 'game', 'csgo', 'cfg', LOOK_CFG[p])
+      await writeFile(file, lookCfg(p, clean), 'utf8')
+      files.push(file)
+    }
+    log('look', `wrote ${files.join(', ')}`)
+    return { look: clean, files }
   })
   ipcMain.handle(IPC.botsGet, () => readBots(botsFile()))
   ipcMain.handle(IPC.botsSave, async (_e, bots: BotsConfig) => {

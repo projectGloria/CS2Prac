@@ -447,6 +447,13 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
 - [x] src/shared/craft.ts (same odds) → Loadout bar "Random craft" / "Undo craft"; key action "craft".
 - [ ] **User check in game** (stickers with nudged offsets / rotation look right?).
 
+## 2026-11-18 plan, Phase D: crosshair / viewmodel / HUD makers
+- [x] src/shared/crosshair.ts: CS… share codes (cs2-v1, 32 bytes) encode/decode, CSGO- legacy v3/v4 import, cvars.
+- [x] src/shared/look.ts: viewmodel + HUD cvars, cfg text; app tab "Look" (pages/Look.tsx) with previews, Copy code /
+  Copy cfg line / Save cs2prac_crosshair|viewmodel|hud.cfg (client cfg folder, look:save).
+- [ ] **User check in game**: a pasted pro code looks the same in game; gap/length/thickness units of CS… codes
+  (taken raw as cvar values, unverified); `exec cs2prac_hud` cvar names all exist in CS2.
+
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):
   weapons, paint kits per weapon (rarity, wear range), knives, gloves, agents, stickers, keychains, pins, music kits,

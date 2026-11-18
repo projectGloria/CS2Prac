@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Copy, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, SlidersHorizontal, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
+import { Copy, Crosshair, FolderOpen, Minus, Play as PlayIcon, Settings, Shirt, SlidersHorizontal, Square, SquareTerminal, X, type LucideIcon } from 'lucide-react'
 import type { AppInfo, ServerStatus, SetupState, UpdateStatus } from '@shared/ipc'
 import appIcon from '../../../assets/CS2Prac.png'
 import { hideSplash, warmUp } from './splash'
@@ -8,11 +8,13 @@ import Play from './pages/Play'
 import Console from './pages/Console'
 import Loadout from './pages/Loadout'
 import Options from './pages/Options'
+import Look from './pages/Look'
 
-type Tab = 'play' | 'loadout' | 'console' | 'options' | 'setup'
+type Tab = 'play' | 'loadout' | 'look' | 'console' | 'options' | 'setup'
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'play', label: 'Play', icon: PlayIcon },
   { id: 'loadout', label: 'Loadout', icon: Shirt },
+  { id: 'look', label: 'Look', icon: Crosshair },
   { id: 'console', label: 'Console', icon: SquareTerminal },
   { id: 'options', label: 'Options', icon: SlidersHorizontal },
   { id: 'setup', label: 'Setup', icon: Settings }
@@ -111,6 +113,7 @@ export default function App() {
       <main className="content">
         {tab === 'play' && <Play status={status} lastLog={serverLog[serverLog.length - 1]} />}
         {tab === 'loadout' && <Loadout />}
+        {tab === 'look' && <Look />}
         {tab === 'console' && <Console status={status} log={serverLog} onClear={() => setServerLog([])} />}
         {tab === 'options' && <Options />}
         {tab === 'setup' && <Setup state={setup} onState={setSetup} serverStopped={status.state === 'stopped'} />}

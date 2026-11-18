@@ -146,6 +146,13 @@ like any pick (so the app gets it too), and Undo puts back what the gun had befo
 - **Q:** May the app write the exported file straight into your CS2 cfg folder (e.g. `cs2prac_crosshair.cfg`, then
   `exec` it)? CLAUDE.md says the app only adds HUD files to the client today. Or save to the repo `cfg/` folder only?
 
+**Status (2026-11-18): implemented, built, not tested in game.** New app tab **Look** (crosshair, viewmodel, HUD
+cards with previews). Answer to the Q: yes, as the app's own files (`cs2prac_crosshair.cfg`, `cs2prac_viewmodel.cfg`,
+`cs2prac_hud.cfg`, like cs2prac_keys.cfg; never a copy of your cfg), plus copy buttons. Codes: the current `CS…`
+format (encode + decode) and the older `CSGO-…` pixel codes (import only); CS:GO-era codes are refused (CS2 refuses
+them too). The preview background is a drawn scene, not a map screenshot. Styles are drawn as I understand them
+(circle, quad, square shapes are approximations); check a pasted code against the game once.
+
 ## Phase E: game modes inside any map (item 4)
 
 A new `Modes.cs` with a "Modes" tab in the L window. Picking a mode leaves MatchZy practice (`.exitprac`), applies its

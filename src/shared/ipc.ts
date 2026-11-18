@@ -2,6 +2,7 @@ import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
 import type { KeyBinds } from './keyBinds'
+import type { LookConfig, LookPart } from './look'
 import type { Lineup } from './lineups'
 import type { ModelResult, PaintResult } from './models'
 import type { WorkshopMap, WorkshopSearchResult, WorkshopSort } from './workshop'
@@ -60,6 +61,8 @@ export interface Settings {
   recentWorkshop?: string[]
   /** Play page > Keys: action id → CS2 key (written to the client's cfg/cs2prac_keys.cfg) */
   keyBinds?: KeyBinds
+  /** Look page: crosshair, viewmodel, HUD (written to the client's cfg/cs2prac_<part>.cfg on save) */
+  look?: LookConfig
 }
 
 export const DEFAULT_SERVER_NAME = 'Nihil Prac Server'
@@ -177,6 +180,11 @@ export interface Api {
     /** saves the binds and writes cs2prac_keys.cfg into the client's cfg folder; returns the file's path */
     save(binds: KeyBinds): Promise<{ binds: KeyBinds; file: string }>
   }
+  look: {
+    get(): Promise<LookConfig>
+    /** saves the look and writes cs2prac_<part>.cfg (every part when none is given) into the client's cfg folder */
+    save(look: LookConfig, part?: LookPart): Promise<{ look: LookConfig; files: string[] }>
+  }
   bots: {
     get(): Promise<BotsConfig>
     /** saves the list; while the server runs, names apply at once (pictures after a server restart when it was
@@ -278,6 +286,8 @@ export const IPC = {
   serverPrefsChanged: 'server:prefsChanged',
   keysGet: 'keys:get',
   keysSave: 'keys:save',
+  lookGet: 'look:get',
+  lookSave: 'look:save',
   botsGet: 'bots:get',
   botsSave: 'bots:save',
   lineupsList: 'lineups:list',

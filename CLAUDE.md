@@ -418,6 +418,14 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   CommitWeapon; `_craftUndo[(slot, team, def)]` keeps the paint before the first unkept roll (`!craft undo`).
   Keep craft.ts and Craft.cs odds in sync.
 
+## Look page (2026-11-18 Phase D)
+- App tab "Look" (pages/Look.tsx): crosshair / viewmodel / HUD makers. CS2 refuses cvars from a server, so look:save
+  writes the app's own client cfgs `cs2prac_crosshair.cfg` / `_viewmodel` / `_hud` (shared/look.ts LOOK_CFG; settings.look).
+- src/shared/crosshair.ts: `CS` + 44 chars = 32 bytes (base 57, least significant char first; layout from
+  akiver/csgo-sharecode, MIT): checksum, version 1, screen height, style/flags, RGBA, outline RGBA, thickness +
+  outline mode, gap int16, length, spread limit, split bit field, scope dot scale. `CSGO-` v3/v4 codes import; v1 refused.
+  Sizes are pixels at screenHeight and go into the cvars unchanged (unverified for the CS format).
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
   CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only
