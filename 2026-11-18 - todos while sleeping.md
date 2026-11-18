@@ -1,6 +1,6 @@
 # 2026-11-18: todos while sleeping
 
-Your 13 requests from last night, sorted into phases. Each item says what I found in the code, how I'd build it,
+Your 13 requests from last night (plus the item info pop-ups, Phase I), sorted into phases. Each item says what I found in the code, how I'd build it,
 and what I need you to decide (**Q:**). Phase A is done. The rest waits for you to read this, so we can plan it together.
 
 Same rules as always: nothing touches the Steam account or the client's memory, commits only when you say so,
@@ -186,11 +186,58 @@ What I found so far (a quick search, more to do):
 - **Q:** Do you want option 2 as a real project later, or is option 1 enough? Can you send me the video link so I
   can see exactly what they built?
 
+## Phase I: item info pop-ups, website and docs (added 2026-11-18)
+
+Right-click any item (weapon, skin, knife, gloves, agent, sticker, charm, pin, graffiti, music kit) to open an info
+pop-up. One shared data model (`ItemInfo`, built with the catalog) feeds all four places: the app, the K window, the
+website and the docs.
+
+**What each pop-up shows**
+
+| Item | Info |
+| --- | --- |
+| **Skin** | Rarity, collection and which case(s) or capsule drop it, wear range (min–max float), StatTrak/Souvenir availability, release date (the case/collection's), paint style, and "other skins in this collection" as tiles you can click through. |
+| **Weapon** | Price, kill reward, damage (base, head ×4, per armour class), armour penetration, fire rate (RPM), magazine/reserve, reload time, move speed, range and damage falloff, spread/recoil values, team (T/CT/both), and every skin for it. |
+| **Knife / gloves** | Cases that drop them, finishes, and the same skin info as above. |
+| **Sticker / charm / graffiti** | Capsule or collection, tournament/team/player if any, rarity, release date, and the other items in the same capsule. |
+| **Agent** | Faction, team, rarity, collection (operation), voice set, and a voice preview (exists in game already). |
+| **Pin / music kit** | Type (pin, service medal, coin), operation/season, StatTrak music-kit availability. Music kits get preview buttons (exist in game). |
+
+**Data**
+- Most of it comes from the user's own `items_game.txt`, which Phase 15 already plans to read:
+  - weapon stats: `price`, `kill_award`, `damage`, `armor_ratio`, `cycletime` → RPM, `range_modifier`,
+    `clip_size`, `max_speed` …
+  - paint kit wear ranges, collections (`item_sets`), case/capsule contents (`revolving_loot_lists` /
+    `client_loot_lists`), rarity.
+- ByMykel has collections, crates and rarity too (fallback).
+- Release dates are not in items_game: a small table per case/collection, from ByMykel where it has them, otherwise
+  hand-filled.
+
+**Where it shows up**
+1. **App:** right-click on any tile in Loadout, Bots, Lineups, etc. opens a side panel or modal with the info and
+   clickable "related items" (open another item's pop-up, or equip it).
+2. **In game (K window):** the custom HUD most likely reports left clicks only (`OnCustomHudClicked`). So: an "ⓘ"
+   info chip, plus "info mode" (click the chip, then a tile, and the side list shows the info). I'll test whether a
+   right click reaches the server at all.
+3. **Website (GitHub Pages):** a static site built from the same data by a script (`npm run build:site` → `site/`),
+   deployed by a GitHub Actions workflow. It has:
+   - search and filters (weapon, rarity, collection, case), one page per item, a weapon stats table,
+   - images hotlinked from Steam's CDN, so no Valve files are hosted.
+4. **Docs:** generated Markdown in `docs/items/`: one file per weapon (stats + skin list), per collection/case and per
+   capsule, plus an index. Same generator as the site.
+
+**Q:**
+- GitHub Pages on a private repo needs a paid plan. Is the repo public, or should the site go in a separate public
+  repo?
+- Should the site show only item data, or also present CS2Prac itself (features, download, release notes)?
+- In game: is the "ⓘ" chip OK if right click turns out not to reach the server?
+
 ---
 
 ## Suggested order
 
-A (done) → B → C → D → E (Deathmatch first) → F check → G → H.
+A (done) → B → C → D → I (data model + app pop-ups first, site/docs after Phase 15) → E (Deathmatch first) →
+F check → G → H.
 
 Sources for Phase H:
 - [CS:GO gets randomly generated map with 30 million variants (gamepressure)](https://www.gamepressure.com/newsroom/csgo-gets-randomly-generated-map-with-30-million-variants/zd2bcf)
