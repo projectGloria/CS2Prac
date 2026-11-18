@@ -475,9 +475,17 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
 - [x] Results banner + chat, best per map and option set in configs/plugins/PracSkins/modes.json; live banner.
 - [x] Start/Stop leaves and re-enters MatchZy practice (css_exitprac / css_prac), saved cvars are put back.
 - [x] `!mode <dm|aim|awp|prefire|stop>`; server tests `css_prac_modes`, `css_prac_mode <id|stop>`.
-- [ ] **Not live-tested yet**: whether MatchZy takes css_exitprac/css_prac from the server console, target
+- [x] Server test on 27115 (bots, MatchZy off): `css_prac_mode dm` started, saved its 27 cvars, stop restored them.
+- [ ] **Not tested in game**: whether MatchZy takes css_exitprac/css_prac from the server console, target
   placement on real maps, the AWP hide/show (alpha 0) on the client.
 - [ ] Later: Peek training, Retake, Utility challenge (saved lineups as a quiz).
+
+## 2026-11-18 plan, Phase F/G: third person and weapon showcase
+- [ ] F: P = thirdperson/firstperson in NihilPrac.cfg; the user checks in game whether CS2 allows it.
+- [x] G: `!showcase` / css_showcase (Showcase.cs): held gun or knife floats and turns in front of the player, A/D/W/S/E/R
+  controls, K edits it live (HeldWeapon = the copy), respawned on loadout changes. Key in Play page > Keys.
+- [x] Server test on 27115: a bot's UMP-45 shown with its skin (paint 17, 5 attributes), spinning, no crash.
+- [ ] Not tested in game: stickers/charm on the copy, whether it can be picked up, knife drop.
 
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):

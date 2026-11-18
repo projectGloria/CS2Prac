@@ -431,6 +431,17 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Options and bests: configs/plugins/PracSkins/modes.json (best per map per mode+option values). Server tests:
   `css_prac_modes`, `css_prac_mode <id|stop>`. Not live-tested yet.
 
+## Weapon showcase (plugin/PracSkins/Showcase.cs, 2026-11-18 Phase G)
+- `css_showcase` / `!showcase` (toggle; key in Play page > Keys): the player is frozen, weapons stashed (AgentView's
+  StashWeapons/RestoreWeapons), and a copy of the held gun/knife is teleported every tick 34 units in front of the eye
+  (angle LookYaw + 90 + Spin). A/D spin, W/S distance 18–90, E pause, R tilt, Tab ends; keys only while no K window.
+- **The copy is GiveNamedItem + DropActiveWeapon 0.1 s later** (the hook skins it as the player's).
+  `CreateEntityByName<CBasePlayerWeapon>` + DispatchSpawn crashed the server (0xC0000005 in DispatchSpawn, 27115).
+  Still carried after the drop (knives) → removed and the showcase ends. Picked up again → removed and re-given.
+- Every 0.5 s: loadout signature (JSON of the paint for the team) changed → new copy (the client builds stickers on
+  first draw); weapons given meanwhile (K picks) go into the stash. HeldWeapon (SkinMenu.cs) returns the copy, so the
+  K window edits it. Server test: `css_prac_showcase [start]` (first human, else bot). Live-tested on 27115 (bot).
+
 ## Look page (2026-11-18 Phase D)
 - App tab "Look" (pages/Look.tsx): crosshair / viewmodel / HUD makers. CS2 refuses cvars from a server, so look:save
   writes the app's own client cfgs `cs2prac_crosshair.cfg` / `_viewmodel` / `_hud` (shared/look.ts LOOK_CFG; settings.look).

@@ -230,7 +230,10 @@ public partial class PracSkins
     /// <summary>The weapon in the player's hand, as a catalog entry (knives map to the knife they carry).</summary>
     private CatalogWeapon? HeldWeapon(CCSPlayerController player)
     {
-        var w = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
+        // during a showcase (Showcase.cs) the K window edits the weapon on show
+        var w = _showcases.TryGetValue(player.Slot, out var sc) && sc.Weapon is { IsValid: true } shown
+            ? shown
+            : player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value;
         if (w is not { IsValid: true }) return null;
         if (IsKnife(w)) return new CatalogWeapon { Def = w.AttributeManager.Item.ItemDefinitionIndex, Kind = "knife", Name = "Knife" };
         return _catalog.Weapon(w.AttributeManager.Item.ItemDefinitionIndex);

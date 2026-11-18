@@ -186,6 +186,8 @@ cvars, and "Stop" goes back to practice. All modes:
 - If CS2 blocks it, the fallback is the camera we already have (AgentView: `CameraServices.ViewEntity` behind you).
   But the client turns your pawn to the view direction, so playing in that view feels wrong. It's fine for looking
   at your agent, not for playing.
+- **Status (2026-11-18):** nothing more to build until you've tried P in game. If `thirdperson` is refused, tell me
+  and I'll look at a camera-only view (with the caveat above).
 
 ## Phase G: 3D craft in game (item 13)
 
@@ -197,6 +199,14 @@ cvars, and "Stop" goes back to practice. All modes:
   weapon entity with physics frozen.
 - Until then: F (inspect) in game after each change.
 - **Q:** OK with "world-space showcase" instead of a 3D panel in the window?
+- **Status (2026-11-18): implemented, live-tested on a test server (bot), not tested in game.** `!showcase` (or a key
+  from Play page > Keys > "Weapon showcase") freezes you, puts your weapons away and floats a copy of the held gun or
+  knife 34 units in front of your eyes, turning. A/D turn it, W/S nearer/farther, E pauses, R tilts, Tab or
+  `!showcase` again ends it. Open K while it runs: the K window edits that weapon, and every 0.5 s the copy is
+  spawned again when your finish, stickers or charm changed. No camera entity: your own eyes are the camera.
+  The copy is given to you and dropped (a weapon made from scratch crashed the server). If a knife can't be dropped,
+  the showcase says so and ends. Please check in game: does the copy draw with stickers and charm, does walking into
+  it or pressing E ever pick it up.
 
 ## Phase H: research, custom random maps (item 8)
 

@@ -20,7 +20,8 @@ export const KEY_ACTIONS: KeyAction[] = [
   { id: 'placeB', name: 'B site', sub: 'Teleport to B (.b)', command: 'css_place b' },
   { id: 'placeMid', name: 'Mid', sub: 'Teleport to mid (.mid)', command: 'css_place mid' },
   { id: 'spray', name: 'Spray', sub: 'Spray the picked (or a random) graffiti', command: 'css_spray' },
-  { id: 'craft', name: 'Random craft', sub: 'Roll a random craft for the gun in your hand (!craft, !craft undo)', command: 'css_craft' }
+  { id: 'craft', name: 'Random craft', sub: 'Roll a random craft for the gun in your hand (!craft, !craft undo)', command: 'css_craft' },
+  { id: 'showcase', name: 'Weapon showcase', sub: 'Your held weapon turning in front of you; K edits it live (!showcase)', command: 'css_showcase' }
 ]
 
 /** action id → CS2 key name ('' or missing = not bound) */
