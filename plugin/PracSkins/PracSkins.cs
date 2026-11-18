@@ -69,6 +69,7 @@ public partial class PracSkins : BasePlugin
         InitSettings();
         InitBots();
         InitSafeKick();
+        InitExtras();
 
         // A dedicated server has no sound system: `play <sound>` (common in client cfgs and aliases run with
         // !cmd exec) crashes it with an access violation. Swallow the sound commands server-side.

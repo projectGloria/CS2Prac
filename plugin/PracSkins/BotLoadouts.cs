@@ -51,11 +51,12 @@ public partial class PracSkins
     /// <summary>
     /// Swaps a bot's primary and pistol for its own rolled ones (bots all spawned with the same guns, only the skins
     /// differed). The slot's old gun leaves first: CS2 drops a second gun of the same slot on the floor.
-    /// A gun the bot holds goes like the stand-in's pose swap (user-confirmed in game): the hands are emptied
-    /// (networked), and the new gun is given 0.1 s later, so the engine deploys it into empty hands. Removing the held
-    /// gun and giving the new one in the same tick left bots empty-handed in game with the new gun on their back,
-    /// although the server had it active and deployed (live test 2026-11-17). Bots ignore server-sent `use`, `slot3`,
-    /// `lastinv` (live-tested), so there is no switching them to the knife first.
+    /// History: removing the held gun and giving the new one in the same tick left bots empty-handed in game (new gun
+    /// on the back) although the server had it active and deployed; emptying m_hActiveWeapon by hand and giving 0.1 s
+    /// later still showed bots without a gun (user report 2026-11-18). Now the held gun goes through the engine's own
+    /// drop (CCSPlayerController.DropActiveWeapon: the engine switches the bot to its next weapon the normal way), the
+    /// dropped gun is removed, and the new guns come 0.15 s later; the bot AI then draws its best gun itself. Bots
+    /// ignore server-sent use/slot3/lastinv (live-tested), so there is no switching them by command.
     /// </summary>
     private void GiveBotGuns(CCSPlayerController bot)
     {
@@ -73,7 +74,7 @@ public partial class PracSkins
             _botGuns[(bot.Slot, team)] = guns = (primaries[rnd.Next(primaries.Length)], pistols[rnd.Next(pistols.Length)]);
         }
         var gives = new List<string>();
-        var emptied = false;
+        CBasePlayerWeapon? dropHeld = null;
         foreach (var (slot, cls) in new[] { (gear_slot_t.GEAR_SLOT_RIFLE, guns.Primary), (gear_slot_t.GEAR_SLOT_PISTOL, guns.Pistol) })
         {
             var held = services.MyWeapons.Select(h => h.Value).Where(w => w is { IsValid: true } && GearSlot(w!) == slot).ToList();
@@ -81,25 +82,27 @@ public partial class PracSkins
             if (held.Any(w => GiveName(w!) == cls)) continue;
             foreach (var w in held)
             {
-                if (services.ActiveWeapon.Value?.Index == w!.Index)
-                {
-                    services.ActiveWeapon.Raw = uint.MaxValue;
-                    Utilities.SetStateChanged(pawn, "CPlayer_WeaponServices", "m_hActiveWeapon");
-                    emptied = true;
-                }
+                if (services.ActiveWeapon.Value?.Index == w!.Index) { dropHeld = w; continue; }
                 pawn.RemovePlayerItem(w);
                 w.Remove();
             }
             gives.Add(cls);
         }
         if (gives.Count == 0) return;
+        if (dropHeld != null)
+        {
+            var dropped = dropHeld;
+            try { bot.DropActiveWeapon(); }
+            catch { pawn.RemovePlayerItem(dropped); }
+            // the dropped gun lies on the floor now: take it away
+            AddTimer(0.05f, () => { if (dropped.IsValid && !dropped.OwnerEntity.IsValid) dropped.Remove(); }, TimerFlags.STOP_ON_MAPCHANGE);
+        }
         void Give()
         {
             if (!bot.IsValid || !bot.PawnIsAlive || bot.TeamNum != team) return;
             foreach (var cls in gives) bot.GiveNamedItem<CBasePlayerWeapon>(cls);
         }
-        // empty hands: give after the clients saw them empty; the primary goes first, so it is the one drawn
-        if (emptied) AddTimer(0.1f, Give, TimerFlags.STOP_ON_MAPCHANGE);
+        if (dropHeld != null) AddTimer(0.15f, Give, TimerFlags.STOP_ON_MAPCHANGE);
         else Give();
     }
 

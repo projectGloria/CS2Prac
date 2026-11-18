@@ -3,6 +3,7 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Extensions;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace PracSkins;
 
@@ -118,7 +119,7 @@ public partial class PracSkins
     /// <summary>Sprays the loadout's graffiti with the cooldown, telling the player what happened.</summary>
     private void SprayNow(CCSPlayerController player)
     {
-        if (_loadout.Graffiti <= 0)
+        if (_loadout.Graffiti <= 0 && !(_randomGraffiti && _catalog.Graffiti.Count > 0))
         {
             player.PrintToChat($"{ChatTag} No graffiti picked: hold T and click one, or K > Graffiti.");
             return;
@@ -129,11 +130,37 @@ public partial class PracSkins
             player.PrintToChat($"{ChatTag} Next graffiti in {next - now:0.0} s.");
             return;
         }
-        var error = Spray(player, _loadout.Graffiti, _loadout.GraffitiTint);
+        var (def, tint) = (_loadout.Graffiti, _loadout.GraffitiTint);
+        CatalogGraffiti? random = null;
+        if (_randomGraffiti && _catalog.Graffiti.Count > 0)
+        {
+            random = _catalog.Graffiti[Random.Shared.Next(_catalog.Graffiti.Count)];
+            (def, tint) = (random.Def, random.Tinted ? Random.Shared.Next(1, 20) : 0);
+        }
+        var error = Spray(player, def, tint);
         if (error != null) player.PrintToChat($"{ChatTag} {error}.");
+        else if (random != null) AnnounceRandomGraffiti(player, random, tint);
         else if (_sprayCooldown > 0) _nextSpray[player.Slot] = now + _sprayCooldown;
         else _nextSpray.Remove(player.Slot);
     }
+
+    /// <summary>Random graffiti: a short banner (name + tint colour) and a chat line.</summary>
+    private void AnnounceRandomGraffiti(CCSPlayerController player, CatalogGraffiti g, int tint)
+    {
+        var color = tint is >= 1 and <= 19 ? TintColors[tint - 1] : "#ffffff";
+        var tintText = tint > 0 ? $"<font class='fontSize-m' color='{color}'>● {Html(TintName(tint))}</font>" : "";
+        ShowBanner(player, $"<font class='fontSize-s' color='#a0a0a0'>Random graffiti</font><br><font class='fontSize-l' color='#ffffff'>{Html(g.Name)}</font><br>{tintText}", 2.5f);
+        player.PrintToChat($"{ChatTag} Random graffiti: {ChatColors.Gold}{g.Name}{ChatColors.Default}{(tint > 0 ? $" ({TintName(tint)})" : "")}");
+    }
+
+    private bool _randomGraffiti;
+
+    /// <summary>The 19 graffiti tints as hex (src/shared/skins.ts GRAFFITI_TINTS).</summary>
+    private static readonly string[] TintColors =
+    [
+        "#874444", "#b14d4d", "#b87148", "#8f7d5d", "#ae833d", "#d4c95b", "#789d53", "#417a4a", "#488f80", "#a6c4a5",
+        "#6ba5b2", "#4e7fa9", "#4c5b98", "#af92df", "#6e4f9f", "#ba68b2", "#9d567a", "#e4ccd5", "#c1c1c1"
+    ];
 
     /// <summary>The wheel's graffiti: the last ones picked, the current one, then the catalog's first.</summary>
     private List<CatalogGraffiti> WheelGraffiti(CCSPlayerController player)

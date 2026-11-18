@@ -92,7 +92,7 @@ public partial class PracSkins
     {
         ["glow"] = "ic-enemyspotted", ["spawns"] = "ic-pin", ["ammo"] = "ic-bullet", ["buyanywhere"] = "ic-shoppingcart",
         ["trajectory"] = "ie-hegrenade", ["impacts"] = "ic-crosshair", ["noflash"] = "ie-flashbang", ["god"] = "ic-shield",
-        ["bhop"] = "ic-fast", ["spraycooldown"] = "ic-timer",["friendlyfire"] = "ic-kill", ["falldamage"] = "ic-health", ["roundtime"] = "ic-timer",
+        ["bhop"] = "ic-fast", ["backspawne"] = "ic-pin", ["randomgraffiti"] = "ic-refresh", ["welcome"] = "ic-info", ["spraycooldown"] = "ic-timer",["friendlyfire"] = "ic-kill", ["falldamage"] = "ic-health", ["roundtime"] = "ic-timer",
         ["freezetime"] = "ic-hourglass", ["gravity"] = "ic-parachute", ["timescale"] = "ic-clock", ["sounds"] = "ix-cs16",
         ["botradio"] = "ic-chatwheel_affirmative", ["botdifficulty"] = "ic-stats", ["botshoot"] = "ie-ak47",
         ["botstop"] = "ic-pause", ["botcrouch"] = "ic-bot"
@@ -182,12 +182,18 @@ public partial class PracSkins
             () => _noFlashOn ? "1" : "0", v => _noFlashOn = v == "1"),
         new("god", "practice", "God mode", "Players take no damage (bots still do)", OffOn, [],
             () => _godOn ? "1" : "0", v => SetGod(v == "1")),
+        new("backspawne", "practice", "E = back to spawn", "E with nothing to use in front of you (also .bs)", OffOn, [],
+            () => _backSpawnE ? "1" : "0", v => _backSpawnE = v == "1"),
+        new("randomgraffiti", "practice", "Random graffiti", "Every spray picks a random graffiti and tint", OffOn, [],
+            () => _randomGraffiti ? "1" : "0", v => _randomGraffiti = v == "1"),
         new("bhop", "practice", "Auto bunnyhop", "Hold space to keep hopping", OffOn, ["sv_autobunnyhopping", "sv_enablebunnyhopping"]),
         // any number of seconds (the app has an input box); the chips are shortcuts
         new("spraycooldown", "graffiti", "Graffiti timer", "Seconds between two sprays (0 = no limit)",
             [new("No limit", "0"), new("3 s", "3"), new("5 s", "5"), new("10 s", "10"), new("30 s", "30"), new("60 s", "60")], [],
             SprayCooldownText, SetSprayCooldown),
 
+        new("welcome", "server", "Welcome message", "A greeting card and the keys when someone joins", OffOn, [],
+            () => _welcomeOn ? "1" : "0", v => _welcomeOn = v == "1"),
         new("friendlyfire", "server", "Friendly fire", "mp_friendlyfire", OffOn, ["mp_friendlyfire"]),
         new("falldamage", "server", "Fall damage", "sv_falldamage_scale (off in movement mode anyway)", [new("Off", "0"), new("On", "1")], ["sv_falldamage_scale"]),
         new("roundtime", "server", "Round time", "Minutes (mp_roundtime, _defuse, _hostage)",

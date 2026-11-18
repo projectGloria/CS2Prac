@@ -49,6 +49,20 @@ Folder `cfg/` in the repo root:
 
 Small server-side work. I'd do this first.
 
+**Status (2026-11-18): implemented, built, not tested in game.** Your open questions got these defaults:
+- Bots: the held gun now goes through the engine's own drop (DropActiveWeapon), the dropped gun is removed and the
+  new guns come 0.15 s later, so the bot AI draws one itself. Same for .bot and bot_add bots.
+- E = back to spawn only when nothing usable is in front of you; it is a setting in L ("E = back to spawn", on by
+  default), so you can switch it off. Doors, buttons, loose guns, the bomb and hostages keep E.
+- Keys: Play page > **Keys** picks a key per action (back to spawn, side, A/B/mid, spray). The app writes
+  `cs2prac_keys.cfg` into CS2's cfg folder (its own file, not a copy of yours); NihilPrac.cfg runs `exec cs2prac_keys`.
+- Mid: no curated table (I won't make up coordinates). Mid = half way between the T and CT spawns, snapped to free
+  floor; `.setmid` (and `.seta` / `.setb`) saves your own spot per map, which then always wins.
+- Welcome: center HTML card (gradient server name, map, key hints, ~6 s) + a chat block, no sound (no sound event
+  I know works for sure). Setting "Welcome message" in L. `.welcome` shows it again.
+- Random graffiti: a setting in L (Practice tab), banner with name + tint colour + one chat line.
+- "Start CS2 with 1.6 sounds" now runs `+exec NihilPrac` when that file is in the cfg folder, else Nihil.
+
 1. **Bots not holding their weapons (2).** The last fix (empty hands, give the guns 0.1 s later) didn't help in
    game. On the server the bot always held the gun, so the bug is in what the client is shown.
    - Next attempts, in order:

@@ -59,6 +59,10 @@ const api: Api = {
     savePrefs: (prefs) => ipcRenderer.invoke(IPC.serverPrefsSave, prefs),
     onPrefsChanged: (cb) => subscribe<ServerPrefs>(IPC.serverPrefsChanged, cb)
   },
+  keys: {
+    get: () => ipcRenderer.invoke(IPC.keysGet),
+    save: (binds) => ipcRenderer.invoke(IPC.keysSave, binds)
+  },
   bots: {
     get: () => ipcRenderer.invoke(IPC.botsGet),
     save: (bots) => ipcRenderer.invoke(IPC.botsSave, bots)

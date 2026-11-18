@@ -312,11 +312,12 @@ public partial class PracSkins
         return best;
     }
 
-    private static void TeleportToSpawn(CCSPlayerController player, SpawnSpot spot)
+    private void TeleportToSpawn(CCSPlayerController player, SpawnSpot spot)
     {
         var pawn = player.PlayerPawn.Value;
         if (pawn is not { IsValid: true }) return;
         pawn.Teleport(spot.Origin, spot.Angles, new Vector(0, 0, 0));
+        _practiceSpawn[player.Slot] = (Copy(spot.Origin), Copy(spot.Angles)); // .bs / E bring you back here
         var team = spot.Team == CsTeam.CounterTerrorist ? "CT" : "T";
         player.PrintToCenter($"{team} spawn {spot.Number}");
     }

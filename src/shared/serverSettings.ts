@@ -83,6 +83,8 @@ export const SETTINGS: SettingDef[] = [
   { id: 'impacts', tab: 'practice', name: 'Bullet impacts', sub: 'sv_showimpacts', options: offOn },
   { id: 'noflash', tab: 'practice', name: 'No flash', sub: "Flashbangs don't blind players", options: offOn },
   { id: 'god', tab: 'practice', name: 'God mode', sub: 'Players take no damage', options: offOn },
+  { id: 'backspawne', tab: 'practice', name: 'E = back to spawn', sub: 'E with nothing to use in front of you (also .bs)', options: offOn },
+  { id: 'randomgraffiti', tab: 'practice', name: 'Random graffiti', sub: 'Every spray picks a random graffiti and tint', options: offOn },
   { id: 'bhop', tab: 'practice', name: 'Auto bunnyhop', sub: 'Hold space to keep hopping', options: offOn },
   {
     id: 'spraycooldown',
@@ -96,6 +98,7 @@ export const SETTINGS: SettingDef[] = [
     input: { min: 0, max: 3600, unit: 's' }
   },
 
+  { id: 'welcome', tab: 'server', name: 'Welcome message', sub: 'A greeting card and the keys when someone joins', options: offOn },
   { id: 'friendlyfire', tab: 'server', name: 'Friendly fire', sub: 'mp_friendlyfire', options: offOn },
   { id: 'falldamage', tab: 'server', name: 'Fall damage', sub: 'sv_falldamage_scale', options: offOn },
   {

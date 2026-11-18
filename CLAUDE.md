@@ -395,6 +395,22 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Feedback: a chip click prints "copying …" to chat (ChangeSetting); the app's result goes to the Console and, via
   `css_prac_notice <text>` (server only), to every player's chat.
 
+## Practice helpers (plugin/PracSkins/Extras.cs, 2026-11-18 Phase B)
+- `css_side` / `.side`: SwitchTeam + Respawn, teleported back 0.1 s later (NihilPrac's M). Molotov ↔ incgrenade
+  swapped to the team on spawn/team change (SwapTeamGrenades).
+- Back to spawn: `_practiceSpawn` (spawn-marker teleport in TeleportToSpawn, MatchZy .spawn/.ctspawn/.tspawn read
+  0.3 s later) over `_roundSpawn` (player_spawn); cleared on team change. E triggers it (setting `backspawne`)
+  unless a menu/window is open, movement mode runs, a spawn marker is aimed at, or SomethingUsable (door/button/
+  loose weapon/c4/hostage within ~110–130 units in a front cone; entity proximity, not a trace).
+- `.a`/`.b` = CCSPlayerResource BombsiteCenterA/B snapped to free floor (FindStandSpot: rings + StandingRoom),
+  facing the enemy spawns; `.mid` = midpoint of the team spawn averages. `.seta/.setb/.setmid` (admin) →
+  configs/plugins/PracSkins/places.json, always preferred.
+- Banners: ShowBanner (center HTML re-sent in OnExtrasTick until expiry, skipped while K/L/menu open). Welcome card
+  (setting `welcome`) 3 s after player_connect_full. Random graffiti (setting `randomgraffiti`) in SprayNow.
+- Play page "Keys" (src/shared/keyBinds.ts, KeyBinds.tsx): settings.keyBinds → the client's
+  game/csgo/cfg/cs2prac_keys.cfg (only binds; NihilPrac.cfg ends with `exec cs2prac_keys`).
+- The bot gun swap uses DropActiveWeapon for the held gun (see BotLoadouts.cs history); not yet confirmed in game.
+
 ## Admin and commands (Phase 2)
 - No auto-connect: the Play page shows copyable `connect 127.0.0.1:27015` (+ LAN IPs). There is no rcon line:
   CS2's client `rcon` never reaches the server. The RCON password (generated once, settings.json `rconPassword`) is only

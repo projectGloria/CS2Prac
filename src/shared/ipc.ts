@@ -1,6 +1,7 @@
 import type { Catalog, LoadoutStore, SteamAccount } from './skins'
 import type { ServerPrefs } from './serverSettings'
 import type { BotsConfig } from './bots'
+import type { KeyBinds } from './keyBinds'
 import type { Lineup } from './lineups'
 import type { ModelResult, PaintResult } from './models'
 import type { WorkshopMap, WorkshopSearchResult, WorkshopSort } from './workshop'
@@ -57,6 +58,8 @@ export interface Settings {
   serverName: string
   /** workshop map ids started recently, newest first (offered in the in-game settings window's Map tab) */
   recentWorkshop?: string[]
+  /** Play page > Keys: action id → CS2 key (written to the client's cfg/cs2prac_keys.cfg) */
+  keyBinds?: KeyBinds
 }
 
 export const DEFAULT_SERVER_NAME = 'Nihil Prac Server'
@@ -169,6 +172,11 @@ export interface Api {
     /** the in-game settings window changed server_prefs.json */
     onPrefsChanged(cb: (prefs: ServerPrefs) => void): () => void
   }
+  keys: {
+    get(): Promise<KeyBinds>
+    /** saves the binds and writes cs2prac_keys.cfg into the client's cfg folder; returns the file's path */
+    save(binds: KeyBinds): Promise<{ binds: KeyBinds; file: string }>
+  }
   bots: {
     get(): Promise<BotsConfig>
     /** saves the list; while the server runs, names apply at once (pictures after a server restart when it was
@@ -268,6 +276,8 @@ export const IPC = {
   serverPrefsGet: 'server:prefsGet',
   serverPrefsSave: 'server:prefsSave',
   serverPrefsChanged: 'server:prefsChanged',
+  keysGet: 'keys:get',
+  keysSave: 'keys:save',
   botsGet: 'bots:get',
   botsSave: 'bots:save',
   lineupsList: 'lineups:list',

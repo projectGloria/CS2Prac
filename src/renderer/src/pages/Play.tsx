@@ -16,13 +16,15 @@ import {
   Bomb,
   Globe,
   Volume2,
-  type LucideIcon
+  type LucideIcon,
+  Keyboard
 } from 'lucide-react'
 import Dropdown from '../components/Dropdown'
 import CopyLine from '../components/CopyLine'
 import ServerSettings from '../components/ServerSettings'
 import Bots from '../components/Bots'
 import Lineups from '../components/Lineups'
+import KeyBinds from '../components/KeyBinds'
 import WorkshopBrowser from '../components/WorkshopBrowser'
 import { thumbUrl, type WorkshopMap } from '@shared/workshop'
 import splashArt from '../../../../assets/CS2Prac.png'
@@ -87,6 +89,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
   const [showPrefs, setShowPrefs] = useState(false)
   const [showBots, setShowBots] = useState(false)
   const [showLineups, setShowLineups] = useState(false)
+  const [showKeys, setShowKeys] = useState(false)
   /** set from the Start click until the start finishes or fails (the prep before cs2.exe runs isn't 'starting' yet) */
   const [launching, setLaunching] = useState(false)
   const [info, setInfo] = useState<ConnectInfo | null>(null)
@@ -311,6 +314,10 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
                 <Bomb size={15} aria-hidden />
                 Lineups
               </button>
+              <button title="Keys for back to spawn, side switch, sites …" onClick={() => setShowKeys(true)}>
+                <Keyboard size={15} aria-hidden />
+                Keys
+              </button>
             </div>
           </div>
           {error && <p className="error-text">{error}</p>}
@@ -351,6 +358,7 @@ export default function Play({ status, lastLog }: { status: ServerStatus; lastLo
 
         {showPrefs && <ServerSettings onClose={() => setShowPrefs(false)} />}
         {showBots && <Bots onClose={() => setShowBots(false)} />}
+        {showKeys && <KeyBinds onClose={() => setShowKeys(false)} />}
         {showLineups && (
           <Lineups
             currentMap={status.state !== 'stopped' && status.map.kind === 'official' ? status.map.name : null}

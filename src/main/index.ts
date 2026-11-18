@@ -40,6 +40,7 @@ import { readBots, saveBots, writeServerBots } from './setup/bots'
 /** a picture over the engine's 16 KB avatar limit, scaled down to 64×64 (Steam's cache holds 184×184 files) */
 const shrinkAvatar = (png: Buffer): Buffer => nativeImage.createFromBuffer(png).resize({ width: 64, height: 64, quality: 'best' }).toPNG()
 import type { BotsConfig } from '@shared/bots'
+import { KEYS_CFG, cleanKeyBinds, keysCfg, type KeyBinds } from '@shared/keyBinds'
 import { readLineups, readRawNades, writeRawNades } from './setup/lineups'
 import { addLineups, deleteLineup, GLOBAL_OWNER, parseShareFile, toShareFile, updateLineup, type Lineup } from '@shared/lineups'
 import { WorkshopStore } from './server/workshop'
@@ -214,7 +215,10 @@ async function launchCs2Sounds() {
   await applySoundPack(toSoundPack(prefs?.global.sounds)) // the addon folder must exist before CS2 mounts it
   const args = ['-steam', '-tools', '-addon', SOUND_ADDON]
   // the user's own cfg (aliases, binds); CS2 just runs it, the app never touches the file
-  if (existsSync(join(client.dir, 'game', 'csgo', 'cfg', 'Nihil.cfg'))) args.push('+exec', 'Nihil')
+  const cfgDir = join(client.dir, 'game', 'csgo', 'cfg')
+  // NihilPrac = Nihil + the CS2Prac server practice section (cfg/ in the repo)
+  const userCfg = ['NihilPrac', 'Nihil'].find((n) => existsSync(join(cfgDir, `${n}.cfg`)))
+  if (userCfg) args.push('+exec', userCfg)
   if (server.getStatus().state === 'running') args.push('+connect', `127.0.0.1:${SERVER_PORT}`)
   log('sounds', `starting CS2 in tools mode: ${args.join(' ')}`)
   spawn(exe, args, { cwd: dirname(exe), detached: true, stdio: 'ignore' }).unref()
@@ -526,6 +530,17 @@ function registerIpc() {
     await saveSettings({ ...settings, recentWorkshop })
     if (settings.installDir) await writeRecentWorkshop(layout(settings.installDir).csgoDir).catch((e) => logError('maps', e))
     return workshop().details(recentWorkshop)
+  })
+  ipcMain.handle(IPC.keysGet, async () => cleanKeyBinds((await loadSettings()).keyBinds))
+  ipcMain.handle(IPC.keysSave, async (_e, binds: KeyBinds) => {
+    const clean = cleanKeyBinds(binds)
+    await saveSettings({ ...(await loadSettings()), keyBinds: clean })
+    const client = await findCs2Install()
+    if (!client) throw new Error('CS2 not found: the keys are saved and will be written once CS2 is installed')
+    const file = join(client.dir, 'game', 'csgo', 'cfg', KEYS_CFG)
+    await writeFile(file, keysCfg(clean), 'utf8')
+    log('keys', `wrote ${file}`)
+    return { binds: clean, file }
   })
   ipcMain.handle(IPC.botsGet, () => readBots(botsFile()))
   ipcMain.handle(IPC.botsSave, async (_e, bots: BotsConfig) => {

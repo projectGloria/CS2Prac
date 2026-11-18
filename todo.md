@@ -431,6 +431,17 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 # v3: our own tooling (planned 2026-11-17)
 Replace ByMykel/CSGO-API and MatchZy with our own code. Metamod and CounterStrikeSharp stay (engine hooks, rebuilt
 upstream after every CS2 update). Same rules: one phase at a time, the user tests in game, commit only when asked.
+## 2026-11-18 plan, Phase B (see "2026-11-18 - todos while sleeping.md")
+- [x] Bots' held gun swapped via DropActiveWeapon (engine switch), new guns 0.15 s later (BotLoadouts.cs).
+- [x] Molotov ↔ incendiary follows the team (Extras.cs SwapTeamGrenades, on spawn and team change).
+- [x] `css_side` / `.side` (M in NihilPrac.cfg): switch team, respawn, back where you stood.
+- [x] Back to spawn: `css_backspawn` / `.bs`, E with nothing usable in front (setting backspawne); spawn = last marker /
+  .spawn, else the round spawn.
+- [x] `.a` / `.b` / `.mid` (css_place), `.seta`/`.setb`/`.setmid` (places.json per map).
+- [x] Random graffiti (setting randomgraffiti, banner + chat), welcome card + chat (setting welcome, `.welcome`).
+- [x] Play page > Keys (src/shared/keyBinds.ts → client cfg/cs2prac_keys.cfg, NihilPrac.cfg execs it).
+- [ ] **User check in game** of all of the above (bots holding guns first).
+
 ## Phase 15: Item data from the user's own CS2 files (replaces ByMykel)
 - [ ] Read `items_game.txt` + `csgo_english.txt` (names) from the user's VPK (keyvalues.mjs/vpk.mjs ported to main):
   weapons, paint kits per weapon (rarity, wear range), knives, gloves, agents, stickers, keychains, pins, music kits,
