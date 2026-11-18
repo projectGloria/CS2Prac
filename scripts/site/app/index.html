@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CS2Prac items</title>
+    <meta name="description" content="Every CS2 skin, knife, glove, agent, sticker, charm, pin, music kit and graffiti with rarity, collection, wear range and weapon stats. Made for CS2Prac, a local CS2 practice server." />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <strong>CS2Prac</strong> <span>items</span>
+      </div>
+      <input id="q" type="search" placeholder="Search… (e.g. ak redline, katowice 2014 holo)" autocomplete="off" />
+      <a class="gh" href="https://github.com/projectGloria/CS2Prac">GitHub</a>
+    </header>
+    <section class="intro">
+      <p>
+        <strong>CS2Prac</strong> is a Windows app that runs a local CS2 practice server: pick any map, connect, and you are admin
+        with MatchZy practice tools. Skins, knives, gloves, agents, stickers, charms, pins, music kits and graffiti are applied
+        by the server itself on a private <code>-insecure</code> LAN server, so your Steam account is never involved.
+        This page lists every item the app offers. Click one for its details.
+        <a href="https://github.com/projectGloria/CS2Prac/releases/latest">Download</a> ·
+        <a href="https://github.com/projectGloria/CS2Prac/tree/main/docs/items">Docs</a>
+      </p>
+    </section>
+    <nav id="tabs" class="tabs"></nav>
+    <div id="filters" class="filters"></div>
+    <p id="count" class="muted"></p>
+    <main id="grid" class="grid"></main>
+    <button id="more" class="more" hidden>Show more</button>
+    <dialog id="info"></dialog>
+    <footer class="muted">
+      Item data: <a href="https://github.com/ByMykel/CSGO-API">ByMykel/CSGO-API</a>; weapon stats from the game files. Not affiliated with Valve.
+      <span id="updated"></span>
+    </footer>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
