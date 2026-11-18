@@ -396,8 +396,15 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   `css_prac_notice <text>` (server only), to every player's chat.
 
 ## Practice helpers (plugin/PracSkins/Extras.cs, 2026-11-18 Phase B)
-- `css_side` / `.side`: SwitchTeam + Respawn, teleported back 0.1 s later (NihilPrac's M). Molotov ↔ incgrenade
-  swapped to the team on spawn/team change (SwapTeamGrenades).
+- `css_side` / `.side`: as MatchZy's .t/.ct, CommitSuicide first (SwitchTeam on a live pawn didn't stick; the death
+  is hidden from the kill feed via `_sideSwitching`, score/deaths put back), next frame SwitchTeam + Respawn
+  at the new team's spawn (no teleport back: the user saw that as "switched for 0.1 s, then back"). Game-fired show_survival_respawn_status is dropped while a banner shows. Molotov ↔ incgrenade
+  swapped to the team on spawn/team change (SwapTeamGrenades). Guns go with the side (user: CT M4 stayed an M4 as T):
+  TeamGuns records rifle/pistol/held before the suicide, 0.25 s after Respawn GiveModeGuns(keepEmpty) gives the
+  counterparts (TToCt/CtToT: ak47↔m4a1, galil↔famas, sg556↔aug, mac10↔mp9, sawedoff↔mag7, g3sg1↔scar20, glock↔usp,
+  tec9↔fiveseven; shared guns stay), UseWeapon re-selects. The CT M4/USP variant is remembered per SteamID
+  (`_ctRifle`/`_ctPistol`). Loose weapons at the death spot are removed (RemoveLooseWeapons). Bots reroll their guns
+  on spawn anyway (BotLoadouts), so only a human shows the swap.
 - Back to spawn: `_practiceSpawn` (spawn-marker teleport in TeleportToSpawn, MatchZy .spawn/.ctspawn/.tspawn read
   0.3 s later) over `_roundSpawn` (player_spawn); cleared on team change. E triggers it (setting `backspawne`)
   unless a menu/window is open, movement mode runs, a spawn marker is aimed at, or SomethingUsable (door/button/
@@ -420,16 +427,39 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 
 ## Practice modes (plugin/PracSkins/Modes.cs, 2026-11-18 Phase E)
 - L window tab `modes` (BuildModeRows) and `css_mode` / `!mode dm|aim|awp|prefire|stop`. One global `_modeRun`
-  (owner slot). Start: `css_exitprac` when matchzy_autostart_mode is 2 (MatchZy practice kicks bots it didn't add),
-  then 0.6 s later warmup held (mp_warmup_pausetimer), respawns, sv_infinite_ammo 2, bot_quota etc. through
+  (owner slot). Start: MatchZy goes to sleep (`css_sleep` only, for autostart 1 and 2; Stop runs `css_prac` /
+  `css_exitprac`, then cs2prac_defaults.cfg again since MatchZy's unprac sets sv_cheats false). **Never `css_exitprac`
+  at start**: it is MatchZy's StartMatchMode (ResetMatch, warmup cfg, KickBots), the "deathmatch is a real match where
+  everyone respawns in base" bug. Sleep turns readyAvailable off, so bot player_connect_fulls (BotNames) no longer run
+  AutoStart → practice → bots kicked. sleep.cfg sets bot_quota 0 (kicks every bot, a bot owner too, so server tests
+  need autostart 0), mp_warmup_end, mp_death_drop_gun 1 …: ApplyModeCvars runs at 1.0 s (first: warmup) and again at
+  2.5 s. MatchZy console commands work from
+  Server.ExecuteCommand (IsPlayerAdmin(null) = true). `matchzy_autostart_mode` is a MatchZy command, not a cvar:
+  MatchZyAutostartMode() reads it from cfg/MatchZy/config_override.cfg. sleep.cfg pauses the match, so
+  `mp_unpause_match` follows. Then 1 s later warmup: timed modes run a real warmup countdown (mp_warmuptime = time + 1,
+  the top HUD shows the time left), untimed ones hold it (mp_warmup_pausetimer). Respawns, sv_infinite_ammo 2, bot_quota etc. through
   SetModeCvar, which records each cvar's old value; Stop restores them and runs `css_prac` (else mp_restartgame 1).
   A map change drops the run and restores the cvars.
+- **No center HTML for the run's numbers**: PrintToCenterHtml draws in the hint panel, whose show transition replays on
+  every re-send (the "stutter", even with stable text). The stats live in the skin window layout's `ms_box`
+  (scripts/hud/cs2prac_modestats.xml/.css at `<!--MODE_STATS-->`; ms_title with the clock, ms_line with counts and
+  accuracy), sent every 0.2 s through HudText/HudFlag (cached: only changes go out); HideModeStats on Stop. Needs the
+  rebuilt layout in the client (restart CS2). One-off result banners still use ShowBanner.
+- Deathmatch: competitive ignores mp_randomspawn, so every spawn is placed by DmTeleport (0.05 s after player_spawn):
+  DmSpots = info_deathmatch_spawn, or (< 8) the team spawns + bombsite/mid centres and their midpoints with
+  FindStandSpot rings (56 on dust2); picks a spot ≥ 200 from the last, no enemy within 600 or in sight, then relaxes.
+  No drops: mp_death_drop_* 0 + mp_drop_knife_enable 0, and 0.1 s after a death loose weapons within 120 units go.
+- Live-test bots: sv_hibernate_when_empty 0 and bot_join_after_player 0, or bots never stay on an empty test server.
 - Bots spawn → OnModeSpawn 0.45 s later (after BotLoadouts' gun swap, which skips while a mode sets the guns).
   Aim/AWP targets: TargetSpot (in front of the owner ±50/80°, range band, floor trace, StandingRoom, eye line of
-  sight), pinned every tick by teleport (strafe/jiggle move along Side with velocity). AWP bot hidden = alpha 0 +
+  sight), then a wide search (±90°, band ×0.5–×2), then AheadSpot, so no target is left unregistered (they walked at
+  the player). Pinned every tick by teleport (strafe/jiggle move along Side with velocity); move "free" (user's
+  choice, the Move option) = not pinned, bot_stop 0 / bot_zombie 0 (pinned: 1/1). PlaceStrayBots (0.2 s) places
+  aim/AWP bots that spawned before the owner. AWP bot hidden = alpha 0 +
   TakesDamage false (SetPawnShown). Prefire points: configs/plugins/PracSkins/prefire/<map>.json, parked bots hidden.
-- Options and bests: configs/plugins/PracSkins/modes.json (best per map per mode+option values). Server tests:
-  `css_prac_modes`, `css_prac_mode <id|stop>`. Not live-tested yet.
+- Options and bests: configs/plugins/PracSkins/modes.json (`options` {"aim.move": …}; best per map per mode+option
+  values). Server tests: `css_prac_modes` (per bot pinned/move/base/at), `css_prac_mode <id|stop>`. Live-tested on
+  27115 (2026-11-19, autostart 0): dm respawns and spots, aim static/strafe pinned, free walks; not yet in game.
 
 ## Weapon showcase (plugin/PracSkins/Showcase.cs, 2026-11-18 Phase G)
 - `css_showcase` / `!showcase` (toggle; key in Play page > Keys): the player is frozen, weapons stashed (AgentView's

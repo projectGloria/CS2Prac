@@ -1,0 +1,9 @@
+<!--
+  CS2Prac practice-mode stats (plugin/PracSkins/Modes.cs ModeStatsHud): a small panel at the top of the screen while
+  a mode runs. Inserted by build-hud.mjs at MODE_STATS. It never takes input (hittest false everywhere); texts change
+  through dialog variables, which don't replay any transition (the center hint panel did: the "stutter").
+-->
+		<Panel id="ms_box" class="ms-box" hittest="false">
+			<Label id="ms_title" class="ms-title" text="{s:text}" hittest="false" />
+			<Label id="ms_line" class="ms-line" text="{s:text}" hittest="false" />
+		</Panel>

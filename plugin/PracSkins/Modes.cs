@@ -69,7 +69,8 @@ public class ModeRun
     public float Ends { get; set; }
     public Dictionary<string, string> Opts { get; set; } = new();
     public Dictionary<string, string> SavedCvars { get; } = new();
-    public bool LeftPractice { get; set; }
+    /// <summary>matchzy_autostart_mode when the run put MatchZy to sleep (1 match, 2 practice), else 0.</summary>
+    public int MatchZyMode { get; set; }
     public Dictionary<int, ModeStats> Stats { get; } = new();
     public Dictionary<int, ModeBot> Bots { get; } = new();
     public float NextBanner { get; set; }
@@ -85,12 +86,14 @@ public class ModeRun
     public List<PrefirePoint> Points { get; set; } = new();
     public HashSet<int> Cleared { get; } = new();
     public int NextPoint { get; set; }
+    // deathmatch spawn spots (found once per run)
+    public List<(Vector At, float Yaw)>? DmSpots { get; set; }
 }
 
 /// <summary>
 /// Practice modes (Phase E): deathmatch, aim training, AWP flicks and prefire routes, started from the L window's
-/// Modes tab. A run leaves MatchZy practice (css_exitprac, when its autostart mode is practice), holds warmup with
-/// respawns and its own cvars, and puts everything back on Stop (saved cvar values, css_prac).
+/// Modes tab. A run puts MatchZy to sleep (css_sleep, never css_exitprac: that starts a real match), holds warmup with
+/// respawns and its own cvars, and puts everything back on Stop (saved cvar values, css_prac or css_exitprac).
 /// </summary>
 public partial class PracSkins
 {
@@ -113,7 +116,7 @@ public partial class PracSkins
         ["dm.hs"] = ("dm", "Headshots only", [("Off", "0"), ("On", "1")], "0"),
         ["dm.time"] = ("dm", "Time", [("2 min", "120"), ("5 min", "300"), ("10 min", "600"), ("Endless", "0")], "300"),
         ["aim.targets"] = ("aim", "Targets", [("1", "1"), ("3", "3"), ("5", "5")], "3"),
-        ["aim.move"] = ("aim", "Targets move", [("Static", "static"), ("Strafe", "strafe"), ("Crouch", "crouch"), ("Jiggle", "jiggle")], "static"),
+        ["aim.move"] = ("aim", "Targets move", [("Static", "static"), ("Strafe", "strafe"), ("Crouch", "crouch"), ("Jiggle", "jiggle"), ("Free", "free")], "static"),
         ["aim.range"] = ("aim", "Range", [("Close", "close"), ("Mid", "mid"), ("Far", "far")], "mid"),
         ["aim.hs"] = ("aim", "Headshots only", [("Off", "0"), ("On", "1")], "0"),
         ["aim.time"] = ("aim", "Time", [("30 s", "30"), ("60 s", "60"), ("120 s", "120")], "60"),
@@ -145,6 +148,12 @@ public partial class PracSkins
         {
             if (_modeRun == null || e.Userid is not { IsValid: true } p) return HookResult.Continue;
             var slot = p.Slot;
+            // deathmatch: away from the team base at once (competitive ignores mp_randomspawn)
+            if (_modeRun.Id == "dm")
+                AddTimer(0.05f, () =>
+                {
+                    if (_modeRun is { Id: "dm" } dm && Utilities.GetPlayerFromSlot(slot) is { IsValid: true, PawnIsAlive: true } pl) DmTeleport(dm, pl);
+                }, TimerFlags.STOP_ON_MAPCHANGE);
             // after the spawn teleport and BotLoadouts' gun swap (0.2 s)
             AddTimer(0.45f, () =>
             {
@@ -171,7 +180,7 @@ public partial class PracSkins
         });
         RegisterEventHandler<EventPlayerDeath>((e, _) =>
         {
-            if (_modeRun is not { } run || e.Userid is not { IsValid: true } v) return HookResult.Continue;
+            if (_modeRun is not { } run || e.Userid is not { IsValid: true } v || _sideSwitching.Contains(v.Slot)) return HookResult.Continue;
             StatsOf(run, v).Deaths++;
             if (e.Attacker is { IsValid: true } a && a.Slot != v.Slot)
             {
@@ -179,8 +188,13 @@ public partial class PracSkins
                 st.Kills++;
                 if (run.Bots.TryGetValue(v.Slot, out var b) && b.ShownAt > 0) st.Reactions.Add(Server.CurrentTime - b.ShownAt);
             }
+            // read everything now: the event is freed once the handler returns (reading e later crashed, 0xC0000005)
             var victim = v.Slot;
-            Server.NextFrame(() => OnModeDeath(run, victim, e.Attacker?.Slot ?? -1));
+            var attacker = e.Attacker is { IsValid: true } at ? at.Slot : -1;
+            var diedAt = v.PlayerPawn.Value?.AbsOrigin is { } o ? Copy(o) : null;
+            Server.NextFrame(() => OnModeDeath(run, victim, attacker));
+            // safety net for mp_death_drop_*: whatever still fell to the floor goes
+            if (diedAt != null) AddTimer(0.1f, () => { if (_modeRun == run) RemoveLooseWeapons(diedAt, 120); }, TimerFlags.STOP_ON_MAPCHANGE);
             return HookResult.Continue;
         });
     }
@@ -309,74 +323,31 @@ public partial class PracSkins
         run.Enemy = owner.TeamNum == 2 ? 3 : 2;
         var enemyTeam = run.Enemy == 2 ? "T" : "CT";
 
-        // leave MatchZy practice (it kicks bots it didn't add), back on Stop
-        if (ConVar.Find("matchzy_autostart_mode") is { } az && CvarInt(az) == 2)
+        // MatchZy to sleep for the run, back on Stop. Leaving practice alone wasn't enough (user test 2026-11-19: bots
+        // still kicked): every bot's player_connect_full (BotNames fires one for bots with pictures) with one real
+        // player in match warmup runs MatchZy's AutoStart, which went straight back into practice. Sleep mode turns
+        // readyAvailable off, so AutoStart never runs, and has no warmup/ready logic of its own. Never css_exitprac:
+        // that is MatchZy's StartMatchMode (ResetMatch, warmup cfg, KickBots), the "deathmatch is a real match" bug.
+        var az = MatchZyAutostartMode();
+        if (az is 1 or 2)
         {
-            run.LeftPractice = true;
-            Server.ExecuteCommand("css_exitprac");
+            run.MatchZyMode = az;
+            // MatchZy's sleep sets sv_cheats false: keep today's value for Stop
+            if (ConVar.Find("sv_cheats") is { } ch) run.SavedCvars["sv_cheats"] = CvarText(ch);
+            Server.ExecuteCommand("css_sleep");
         }
         _modeRun = run;
         var time = id switch { "dm" => ModeFloat(opts["dm.time"], 300), "aim" => ModeFloat(opts["aim.time"], 60), _ => 0 };
-        AddTimer(0.6f, () =>
+        if (id == "awp")
+        {
+            run.Rounds = (int)ModeFloat(opts["awp.rounds"], 20);
+            run.Window = opts["awp.window"] == "shrink" ? 1.5f : ModeFloat(opts["awp.window"], 1);
+        }
+        // after MatchZy's cfgs (sleep.cfg: mp_warmup_end, bot_quota 0, mp_death_drop_gun 1 …) so our cvars win
+        AddTimer(1.0f, () =>
         {
             if (_modeRun != run) return;
-            void Set(string cvar, string value) => SetModeCvar(run, cvar, value);
-            Server.ExecuteCommand("mp_warmup_start");
-            Set("mp_warmup_pausetimer", "1");
-            Set("mp_warmuptime", "9999");
-            Set("mp_ignore_round_win_conditions", "1");
-            Set("mp_respawn_on_death_t", "1");
-            Set("mp_respawn_on_death_ct", "1");
-            Set("mp_respawn_immunitytime", id == "dm" ? "1" : "0");
-            Set("mp_autoteambalance", "0");
-            Set("mp_limitteams", "0");
-            Set("bot_join_after_player", "0");
-            Set("bot_quota_mode", "normal");
-            Set("sv_infinite_ammo", "2");
-            Set("sv_hibernate_when_empty", "0");
-            Set("mp_free_armor", "2");
-            switch (id)
-            {
-                case "dm":
-                    Set("mp_teammates_are_enemies", opts["dm.type"] == "ffa" ? "1" : "0");
-                    Set("mp_randomspawn", "1");
-                    Set("bot_join_team", "any");
-                    Set("bot_difficulty", opts["dm.diff"]);
-                    Set("bot_stop", "0");
-                    Set("bot_dont_shoot", "0");
-                    Set("mp_damage_headshot_only", opts["dm.hs"]);
-                    Set("mp_buy_anywhere", opts["dm.guns"] == "any" ? "1" : "0");
-                    Set("mp_buytime", "99999");
-                    Set("mp_maxmoney", "16000");
-                    Set("mp_startmoney", "16000");
-                    Set("mp_afterroundmoney", "16000");
-                    Set("bot_quota", opts["dm.bots"]);
-                    break;
-                case "aim":
-                    Set("bot_join_team", enemyTeam);
-                    Set("bot_stop", "1");
-                    Set("bot_dont_shoot", "1");
-                    Set("mp_damage_headshot_only", opts["aim.hs"]);
-                    Set("bot_quota", opts["aim.targets"]);
-                    break;
-                case "awp":
-                    run.Rounds = (int)ModeFloat(opts["awp.rounds"], 20);
-                    run.Window = opts["awp.window"] == "shrink" ? 1.5f : ModeFloat(opts["awp.window"], 1);
-                    Set("bot_join_team", enemyTeam);
-                    Set("bot_stop", "1");
-                    Set("bot_dont_shoot", "1");
-                    Set("mp_damage_headshot_only", "0");
-                    Set("bot_quota", "1");
-                    break;
-                case "prefire":
-                    Set("bot_join_team", enemyTeam);
-                    Set("bot_stop", opts["prefire.shoot"] == "1" ? "0" : "1");
-                    Set("bot_dont_shoot", opts["prefire.shoot"] == "1" ? "0" : "1");
-                    Set("bot_difficulty", "2");
-                    Set("mp_damage_headshot_only", "0");
-                    Set("bot_quota", opts["prefire.order"] == "all" ? run.Points.Count.ToString(CultureInfo.InvariantCulture) : "1");
-                    break;
-            }
+            ApplyModeCvars(run, time, enemyTeam, first: true);
             run.Started = Server.CurrentTime;
             run.Ends = time > 0 ? run.Started + time : 0;
             // bots already on the server get placed now; new ones on their spawn
@@ -384,14 +355,113 @@ public partial class PracSkins
             {
                 if (_modeRun != run) return;
                 foreach (var p in Utilities.GetPlayers())
-                    if (p is { IsValid: true, PawnIsAlive: true }) OnModeSpawn(run, p);
+                {
+                    if (p is not { IsValid: true, PawnIsAlive: true }) continue;
+                    if (run.Id == "dm") DmTeleport(run, p);
+                    OnModeSpawn(run, p);
+                }
             }, TimerFlags.STOP_ON_MAPCHANGE);
             if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } o)
             {
                 o.PrintToChat($"{ChatTag} {ModeName(id)} started. {ModeHelp(id)} Stop: L → Modes, or !mode stop.");
                 if (!o.PawnIsAlive) o.Respawn();
+                SpawnHud();
             }
         }, TimerFlags.STOP_ON_MAPCHANGE);
+        // once more when anything MatchZy queued late has run (its practice timers, the sleep cfg's tail)
+        AddTimer(2.5f, () => { if (_modeRun == run) ApplyModeCvars(run, time, enemyTeam, first: false); }, TimerFlags.STOP_ON_MAPCHANGE);
+    }
+
+    /// <summary>
+    /// The run's cvars (each old value kept by SetModeCvar for Stop). <paramref name="first"/>: also (re)start the
+    /// warmup that holds the run; the re-apply 1.5 s later only puts the values back.
+    /// </summary>
+    private void ApplyModeCvars(ModeRun run, float time, string enemyTeam, bool first)
+    {
+        var id = run.Id;
+        var opts = run.Opts;
+        void Set(string cvar, string value) => SetModeCvar(run, cvar, value);
+        Set("sv_cheats", "1"); // bot_stop, sv_infinite_ammo … are cheat cvars
+        if (first)
+        {
+            if (run.MatchZyMode != 0) Server.ExecuteCommand("mp_unpause_match"); // MatchZy's sleep pauses the match
+            // A timed run counts down in the game's own top timer too (a running warmup, 1 s longer than the run,
+            // which ends first); untimed runs hold the warmup.
+            Set("mp_warmup_pausetimer", time > 0 ? "0" : "1");
+            Set("mp_warmuptime", time > 0 ? (time + 1).ToString(CultureInfo.InvariantCulture) : "9999");
+            Server.ExecuteCommand("mp_warmup_start");
+        }
+        else if (run.MatchZyMode != 0) Server.ExecuteCommand("mp_unpause_match");
+        Set("mp_ignore_round_win_conditions", "1");
+        Set("mp_respawn_on_death_t", "1");
+        Set("mp_respawn_on_death_ct", "1");
+        Set("mp_respawn_immunitytime", id == "dm" ? "1" : "0");
+        Set("mp_autoteambalance", "0");
+        Set("mp_limitteams", "0");
+        Set("bot_join_after_player", "0");
+        Set("bot_quota_mode", "normal");
+        Set("sv_infinite_ammo", "2");
+        Set("sv_hibernate_when_empty", "0");
+        Set("mp_free_armor", "2");
+        // nothing lands on the floor when someone dies (user: DM deaths dropped guns and grenades)
+        Set("mp_death_drop_gun", "0");
+        Set("mp_death_drop_grenade", "0");
+        Set("mp_death_drop_defuser", "0");
+        Set("mp_death_drop_taser", "0");
+        Set("mp_death_drop_healthshot", "0");
+        Set("mp_drop_knife_enable", "0");
+        // competitive ignores mp_randomspawn: DmTeleport places every spawn itself
+        Set("mp_randomspawn", "0");
+        switch (id)
+        {
+            case "dm":
+                Set("mp_teammates_are_enemies", opts["dm.type"] == "ffa" ? "1" : "0");
+                Set("bot_join_team", "any");
+                Set("bot_difficulty", opts["dm.diff"]);
+                Set("bot_stop", "0");
+                Set("bot_zombie", "0");
+                Set("bot_dont_shoot", "0");
+                Set("mp_damage_headshot_only", opts["dm.hs"]);
+                Set("mp_buy_anywhere", opts["dm.guns"] == "any" ? "1" : "0");
+                Set("mp_buytime", "99999");
+                Set("mp_maxmoney", "16000");
+                Set("mp_startmoney", "16000");
+                Set("mp_afterroundmoney", "16000");
+                Set("bot_quota", opts["dm.bots"]);
+                break;
+            case "aim":
+            {
+                // Free: the bots walk about on their own (still not shooting); the other choices hold them on their spot
+                var free = opts["aim.move"] == "free";
+                Set("bot_join_team", enemyTeam);
+                Set("bot_stop", free ? "0" : "1");
+                Set("bot_zombie", free ? "0" : "1");
+                Set("bot_dont_shoot", "1");
+                Set("mp_damage_headshot_only", opts["aim.hs"]);
+                Set("bot_quota", opts["aim.targets"]);
+                break;
+            }
+            case "awp":
+                Set("bot_join_team", enemyTeam);
+                Set("bot_stop", "1");
+                Set("bot_zombie", "1");
+                Set("bot_dont_shoot", "1");
+                Set("mp_damage_headshot_only", "0");
+                Set("bot_quota", "1");
+                break;
+            case "prefire":
+            {
+                var shoot = opts["prefire.shoot"] == "1";
+                Set("bot_join_team", enemyTeam);
+                Set("bot_stop", shoot ? "0" : "1");
+                Set("bot_zombie", "0");
+                Set("bot_dont_shoot", shoot ? "0" : "1");
+                Set("bot_difficulty", "2");
+                Set("mp_damage_headshot_only", "0");
+                Set("bot_quota", opts["prefire.order"] == "all" ? run.Points.Count.ToString(CultureInfo.InvariantCulture) : "1");
+                break;
+            }
+        }
     }
 
     private static string ModeName(string id) => ModeList.FirstOrDefault(m => m.Id == id).Name ?? id;
@@ -424,16 +494,53 @@ public partial class PracSkins
         if (run.SavedCvars.TryGetValue("bot_quota", out var q)) Server.ExecuteCommand($"bot_quota {q}");
     }
 
+    /// <summary>
+    /// MatchZy's matchzy_autostart_mode (0 off, 1 match, 2 practice), or 0 without MatchZy. It is a console command
+    /// in MatchZy, not a cvar (ConVar.Find found nothing, so modes never put MatchZy to sleep and its practice mode
+    /// kicked every mode bot), so the value is read from the cfgs that set it: config_override.cfg (written by the
+    /// app) over config.cfg; MatchZy's default is 1.
+    /// </summary>
+    private int MatchZyAutostartMode()
+    {
+        if (!MatchZyInstalled) return 0;
+        var dir = Path.Combine(Server.GameDirectory, "csgo", "cfg", "MatchZy");
+        foreach (var file in new[] { "config_override.cfg", "config.cfg" })
+        {
+            try
+            {
+                var path = Path.Combine(dir, file);
+                if (!File.Exists(path)) continue;
+                int? found = null;
+                foreach (var raw in File.ReadAllLines(path))
+                {
+                    var line = raw.Split("//")[0].Trim();
+                    if (!line.StartsWith("matchzy_autostart_mode", StringComparison.OrdinalIgnoreCase)) continue;
+                    var value = line["matchzy_autostart_mode".Length..].Trim().Trim('"');
+                    if (int.TryParse(value, out var v)) found = v;
+                }
+                if (found is { } f) return f;
+            }
+            catch (Exception ex) { Logger.LogWarning("Reading MatchZy {File}: {Message}", file, ex.Message); }
+        }
+        return 1;
+    }
+
     private void StopMode(CCSPlayerController? by, string why, bool quiet = false)
     {
         if (_modeRun is not { } run) return;
         if (!run.Finished && !quiet) ShowModeResult(run, why);
         _modeRun = null;
+        HideModeStats(run.Owner);
         foreach (var (slot, b) in run.Bots)
             if (b.Hidden && Utilities.GetPlayerFromSlot(slot)?.PlayerPawn.Value is { IsValid: true } bp) SetPawnShown(bp, true);
         RestoreModeCvars(run);
-        if (run.LeftPractice) Server.ExecuteCommand("css_prac");
+        // out of sleep the way MatchZy would be at map start (css_prac / css_exitprac leave sleep themselves)
+        if (run.MatchZyMode == 2) Server.ExecuteCommand("css_prac");
+        else if (run.MatchZyMode == 1) Server.ExecuteCommand("css_exitprac");
         else Server.ExecuteCommand("mp_restartgame 1");
+        // MatchZy's own commands run after ours (unprac: sv_cheats false …): our map-start defaults again on top
+        if (run.MatchZyMode != 0)
+            AddTimer(1f, () => { if (_modeRun == null) Server.ExecuteCommand("execifexists cs2prac_defaults.cfg; execifexists cs2prac_server.cfg"); }, TimerFlags.STOP_ON_MAPCHANGE);
         if (!quiet && by != null) by.PrintToChat($"{ChatTag} {ModeName(run.Id)} stopped.");
     }
 
@@ -473,8 +580,8 @@ public partial class PracSkins
         }
     }
 
-    /// <summary>Gives a primary and/or pistol (replacing that slot's gun), the same way as BotLoadouts.GiveBotGuns.</summary>
-    private void GiveModeGuns(CCSPlayerController p, string? primary, string? pistol)
+    /// <summary>Gives a primary and/or pistol (replacing that slot's gun), the same way as BotLoadouts.GiveBotGuns. <paramref name="keepEmpty"/>: a null leaves that slot as it is (else a null primary removes the rifle).</summary>
+    private void GiveModeGuns(CCSPlayerController p, string? primary, string? pistol, bool keepEmpty = false)
     {
         if (p.PlayerPawn.Value is not { IsValid: true, WeaponServices: { } services } pawn) return;
         var team = p.TeamNum;
@@ -485,7 +592,7 @@ public partial class PracSkins
             var held = services.MyWeapons.Select(h => h.Value).Where(w => w is { IsValid: true } && GearSlot(w!) == slot).ToList();
             if (cls != null && held.Any(w => GiveName(w!) == cls)) continue;
             // no pistol wanted: keep the one they have (pistol rounds need something)
-            if (cls == null && slot == gear_slot_t.GEAR_SLOT_PISTOL) continue;
+            if (cls == null && (keepEmpty || slot == gear_slot_t.GEAR_SLOT_PISTOL)) continue;
             foreach (var w in held)
             {
                 if (services.ActiveWeapon.Value?.Index == w!.Index) { dropHeld = w; continue; }
@@ -541,6 +648,68 @@ public partial class PracSkins
         }
     }
 
+    // ---------------------------------------------------------------- deathmatch spawns
+
+    /// <summary>
+    /// The map's deathmatch spots: its own info_deathmatch_spawn entities (official maps have them), else both teams'
+    /// spawns plus free floor around the bombsites, mid and the halfway points between them.
+    /// </summary>
+    private List<(Vector At, float Yaw)> DmSpots(ModeRun run)
+    {
+        if (run.DmSpots != null) return run.DmSpots;
+        var spots = new List<(Vector, float)>();
+        foreach (var e in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("info_deathmatch_spawn"))
+        {
+            if (!e.IsValid || e.CBodyComponent?.SceneNode is not { } node) continue;
+            var at = new Vector(node.AbsOrigin.X, node.AbsOrigin.Y, node.AbsOrigin.Z);
+            spots.Add((new Vector(at.X, at.Y, GroundUnder(at) + 1), node.AbsRotation.Y));
+        }
+        if (spots.Count < 8)
+        {
+            foreach (var s in CollectSpawns()) spots.Add((new Vector(s.Origin.X, s.Origin.Y, s.Ground + 1), s.Angles.Y));
+            var centers = new[] { PlaceTarget("a"), PlaceTarget("b"), PlaceTarget("mid") }.Where(c => c != null).Select(c => c!).ToList();
+            var extra = new List<Vector>(centers);
+            for (var i = 0; i < centers.Count; i++)
+                for (var j = i + 1; j < centers.Count; j++)
+                    extra.Add(new Vector((centers[i].X + centers[j].X) / 2, (centers[i].Y + centers[j].Y) / 2, Math.Max(centers[i].Z, centers[j].Z)));
+            foreach (var c in extra)
+                for (var k = 0; k < 6; k++)
+                {
+                    var a = k * MathF.PI / 3;
+                    var r = k == 0 ? 0 : 280f;
+                    if (FindStandSpot(new Vector(c.X + MathF.Cos(a) * r, c.Y + MathF.Sin(a) * r, c.Z)) is { } at)
+                        spots.Add((at, Random.Shared.Next(360)));
+                }
+        }
+        Logger.LogInformation("Deathmatch: {Count} spawn spots on {Map}", spots.Count, CurrentMap);
+        return run.DmSpots = spots;
+    }
+
+    /// <summary>
+    /// Puts a deathmatch spawn somewhere no enemy stands close (600 units) or can see; looser when nothing qualifies
+    /// (then the spot farthest from everyone).
+    /// </summary>
+    private void DmTeleport(ModeRun run, CCSPlayerController p)
+    {
+        if (IsStandIn(p) || p.PlayerPawn.Value is not { IsValid: true } pawn) return;
+        var spots = DmSpots(run);
+        if (spots.Count == 0) return;
+        var ffa = run.Opts["dm.type"] == "ffa";
+        var enemies = Utilities.GetPlayers()
+            .Where(o => o is { IsValid: true, PawnIsAlive: true } && o.Slot != p.Slot && !IsStandIn(o) && (ffa || o.TeamNum != p.TeamNum))
+            .Select(o => o.PlayerPawn.Value?.AbsOrigin).Where(v => v != null).Select(v => Copy(v!)).ToList();
+        float Nearest(Vector at) => enemies.Count == 0 ? float.MaxValue
+            : enemies.Min(e => (e.X - at.X) * (e.X - at.X) + (e.Y - at.Y) * (e.Y - at.Y) + (e.Z - at.Z) * (e.Z - at.Z));
+        bool Seen(Vector at) => enemies.Any(e => ClearLine(new Vector(e.X, e.Y, e.Z + 64), new Vector(at.X, at.Y, at.Z + 60)));
+        var here = pawn.AbsOrigin is { } h ? Copy(h) : null;
+        bool NotHere((Vector At, float Yaw) s) => here == null || (s.At.X - here.X) * (s.At.X - here.X) + (s.At.Y - here.Y) * (s.At.Y - here.Y) > 200 * 200;
+        var shuffled = spots.OrderBy(_ => Random.Shared.Next()).ToList();
+        var pick = shuffled.FirstOrDefault(s => NotHere(s) && Nearest(s.At) > 600 * 600 && !Seen(s.At) && StandingRoom(s.At));
+        if (pick.At == null) pick = shuffled.FirstOrDefault(s => Nearest(s.At) > 600 * 600 && StandingRoom(s.At));
+        if (pick.At == null) pick = shuffled.OrderByDescending(s => Nearest(s.At)).First();
+        pawn.Teleport(pick.At, new QAngle(0, pick.Yaw, 0), new Vector(0, 0, 0));
+    }
+
     // ---------------------------------------------------------------- aim / AWP targets
 
     private static Vector Forward(float pitch, float yaw)
@@ -585,7 +754,7 @@ public partial class PracSkins
     }
 
     /// <summary>A free floor spot the owner can see, in front of them at the range picked (null: none found).</summary>
-    private Vector? TargetSpot(ModeRun run, string range, Vector? avoid = null)
+    private Vector? TargetSpot(ModeRun run, string range, Vector? avoid = null, bool wide = false)
     {
         if (Utilities.GetPlayerFromSlot(run.Owner)?.PlayerPawn.Value is not { IsValid: true, AbsOrigin: not null } op) return null;
         var feet = op.AbsOrigin;
@@ -594,10 +763,11 @@ public partial class PracSkins
         var rnd = Random.Shared;
         for (var i = 0; i < 40; i++)
         {
-            var spread = i < 20 ? 50f : 80f;
+            var spread = wide ? 90f : i < 20 ? 50f : 80f;
             var yaw = op.EyeAngles.Y + (float)(rnd.NextDouble() * 2 - 1) * spread;
             var dist = min + (float)rnd.NextDouble() * (max - min);
-            if (i >= 30) dist = min * 0.6f + (float)rnd.NextDouble() * min;
+            if (wide) dist = min * 0.5f + (float)rnd.NextDouble() * (max * 2 - min * 0.5f);
+            else if (i >= 30) dist = min * 0.6f + (float)rnd.NextDouble() * min;
             var dir = Forward(0, yaw);
             var probe = new Vector(eye.X + dir.X * dist, eye.Y + dir.Y * dist, eye.Z + 32);
             // the line out there must be free (not into a wall), then the floor below it
@@ -618,20 +788,39 @@ public partial class PracSkins
     {
         var range = run.Id == "awp" ? run.Opts["awp.range"] : run.Opts["aim.range"];
         var old = run.Bots.TryGetValue(bot.Slot, out var prev) ? prev.Base : null;
-        var at = TargetSpot(run, range, old);
-        if (at == null || Utilities.GetPlayerFromSlot(run.Owner)?.PlayerPawn.Value is not { IsValid: true, AbsOrigin: not null } op) return;
+        if (Utilities.GetPlayerFromSlot(run.Owner)?.PlayerPawn.Value is not { IsValid: true, AbsOrigin: not null } op) return;
+        // Never leave a bot unplaced: an unregistered one isn't held anywhere and walks at the player (user report:
+        // strafe/crouch/jiggle bots "just come at me"). Wider search, then a fixed spot straight ahead.
+        var at = TargetSpot(run, range, old) ?? TargetSpot(run, range, old, wide: true) ?? AheadSpot(op, range);
         var yaw = YawTo(at, op.AbsOrigin);
         var side = Forward(0, yaw + 90);
         var move = run.Id == "aim" ? run.Opts["aim.move"] : "static";
         run.Bots[bot.Slot] = new ModeBot
         {
-            Base = at, Side = side, Yaw = yaw, Pinned = true, ShownAt = Server.CurrentTime,
+            Base = at, Side = side, Yaw = yaw, Pinned = move != "free", ShownAt = Server.CurrentTime,
             Dir = Random.Shared.Next(2) == 0 ? -1 : 1, NextFlip = Server.CurrentTime + 0.3f,
             Hidden = prev?.Hidden ?? false
         };
         pawn.TakesDamage = true;
         pawn.Teleport(at, new QAngle(0, yaw, 0), new Vector(0, 0, 0));
         if (move == "crouch") SetDuck(bot, pawn, true);
+    }
+
+    /// <summary>The last resort for a target: straight ahead of the owner at the range's near end (short of any wall), on the floor.</summary>
+    private static Vector AheadSpot(CCSPlayerPawn owner, string range)
+    {
+        var feet = owner.AbsOrigin!;
+        var eye = new Vector(feet.X, feet.Y, feet.Z + 64);
+        var dist = range switch { "close" => 250f, "far" => 1200f, _ => 600f };
+        var dir = Forward(0, owner.EyeAngles.Y);
+        var probe = new Vector(eye.X + dir.X * dist, eye.Y + dir.Y * dist, eye.Z);
+        if (TraceWorld(eye, probe) is { } wall)
+        {
+            var d = MathF.Max(64, MathF.Sqrt((wall.X - eye.X) * (wall.X - eye.X) + (wall.Y - eye.Y) * (wall.Y - eye.Y)) - 48);
+            probe = new Vector(eye.X + dir.X * d, eye.Y + dir.Y * d, eye.Z);
+        }
+        var floor = TraceWorld(probe, new Vector(probe.X, probe.Y, probe.Z - 900));
+        return new Vector(probe.X, probe.Y, (floor?.Z ?? feet.Z) + 1);
     }
 
     private static void SetDuck(CCSPlayerController bot, CCSPlayerPawn pawn, bool crouch)
@@ -764,8 +953,48 @@ public partial class PracSkins
 
         if (run.Ends > 0 && now >= run.Ends) { FinishMode(run, ""); return; }
         if (now < run.NextBanner) return;
-        run.NextBanner = now + 0.5f;
-        if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } owner) ShowBanner(owner, ModeBanner(run, owner), 0.8f);
+        run.NextBanner = now + 0.2f;
+        PlaceStrayBots(run);
+        if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } owner) ModeStatsHud(run, owner);
+    }
+
+    /// <summary>
+    /// Aim/AWP bots that never got a spot (the owner was dead or not yet in when they spawned) get one now, so no
+    /// target runs about unheld.
+    /// </summary>
+    private void PlaceStrayBots(ModeRun run)
+    {
+        if (run.Id is not ("aim" or "awp")) return;
+        if (Utilities.GetPlayerFromSlot(run.Owner) is not { IsValid: true, PawnIsAlive: true }) return;
+        foreach (var p in Utilities.GetPlayers())
+        {
+            if (p is not { IsValid: true, PawnIsAlive: true } || !IsBotAny(p) || IsStandIn(p) || p.TeamNum != run.Enemy) continue;
+            if (run.Bots.ContainsKey(p.Slot) || p.PlayerPawn.Value is not { IsValid: true, AbsOrigin: not null } pawn) continue;
+            PlaceTarget(run, p, pawn);
+            if (run.Id == "awp") HideAwpBot(run, p);
+        }
+    }
+
+    /// <summary>
+    /// The run's numbers in the skin window layout's ms_box panel (scripts/hud/cs2prac_modestats.xml). The center
+    /// hint panel (PrintToCenterHtml) replayed its show transition on every re-send: the "stutter". Dialog variables
+    /// change in place, so the clock and accuracy are back. Only changed texts are sent (HudText caches).
+    /// </summary>
+    private void ModeStatsHud(ModeRun run, CCSPlayerController owner)
+    {
+        if (IsBotAny(owner)) return;
+        if (!HudReady) SpawnHud();
+        if (!HudReady) return;
+        var (title, line) = ModeStatsText(run, owner);
+        HudText(owner, "ms_title", title);
+        HudText(owner, "ms_line", line);
+        HudFlag(owner, "ms_box", "shown", true);
+    }
+
+    private void HideModeStats(int slot)
+    {
+        if (!HudReady || Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } p || IsBotAny(p)) return;
+        HudFlag(p, "ms_box", "shown", false);
     }
 
     private static string Clock(float seconds)
@@ -774,19 +1003,21 @@ public partial class PracSkins
         return $"{s / 60}:{s % 60:00}";
     }
 
-    private string ModeBanner(ModeRun run, CCSPlayerController owner)
+    private (string Title, string Line) ModeStatsText(ModeRun run, CCSPlayerController owner)
     {
         var st = run.Stats.TryGetValue(owner.Slot, out var x) ? x : new ModeStats();
         var now = Server.CurrentTime;
-        var acc = st.Shots > 0 ? $"{Math.Min(100, st.Hits * 100 / st.Shots)}%" : "–";
+        var title = ModeName(run.Id);
+        if (run.Ends > 0) title += $"  ·  {Clock(run.Ends - now)}";
+        else if (run.Id == "prefire" && run.Started > 0) title += $"  ·  {now - run.Started:0} s";
+        var acc = st.Shots > 0 ? Math.Min(100, st.Hits * 100 / st.Shots) : 0;
         var line = run.Id switch
         {
-            "awp" => $"Round {Math.Min(run.Round + 1, run.Rounds)}/{run.Rounds} · Hits {run.AwpHits}",
-            "prefire" => $"Cleared {run.Cleared.Count}/{run.Points.Count} · {Clock(now - run.Started)}",
-            _ => $"Kills {st.Kills} · Deaths {st.Deaths} · Acc {acc} · HS {st.Headshots}"
+            "awp" => $"Round {Math.Min(run.Round + 1, run.Rounds)}/{run.Rounds}  ·  Hits {run.AwpHits}",
+            "prefire" => $"Cleared {run.Cleared.Count}/{run.Points.Count}",
+            _ => $"Kills {st.Kills}  ·  Deaths {st.Deaths}  ·  HS {st.Headshots}  ·  {acc}% acc"
         };
-        var time = run.Ends > 0 ? $" · {Clock(run.Ends - now)} left" : "";
-        return $"<font color='#f0a83a'>{ModeName(run.Id)}</font><br><font class='fontSize-m'>{line}{time}</font>";
+        return (title, line);
     }
 
     // ---------------------------------------------------------------- results
@@ -914,13 +1145,16 @@ public partial class PracSkins
     public void OnPracModesCommand(CCSPlayerController? _, CommandInfo info)
     {
         if (_modeRun is not { } run) { info.ReplyToCommand("no mode running"); return; }
-        info.ReplyToCommand($"{run.Id} owner {run.Owner} enemy {run.Enemy} left practice {run.LeftPractice} started {run.Started:0.0} ends {run.Ends:0.0} now {Server.CurrentTime:0.0}");
+        info.ReplyToCommand($"{run.Id} owner {run.Owner} enemy {run.Enemy} matchzy {run.MatchZyMode} started {run.Started:0.0} ends {run.Ends:0.0} now {Server.CurrentTime:0.0}");
+        if (Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault()?.GameRules is { } gr)
+            info.ReplyToCommand($"  warmup {gr.WarmupPeriod} start {gr.WarmupPeriodStart:0.0} end {gr.WarmupPeriodEnd:0.0}");
+        if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } o) { var (t, l) = ModeStatsText(run, o); info.ReplyToCommand($"  stats: {t} | {l} (hud {(HudReady ? "ready" : "missing")})"); }
         info.ReplyToCommand($"  {ModeScore(run).Text}; awp round {run.Round}/{run.Rounds} window {run.Window:0.00}; cleared {run.Cleared.Count}/{run.Points.Count}");
         foreach (var (slot, b) in run.Bots)
         {
             var p = Utilities.GetPlayerFromSlot(slot);
             var at = p?.PlayerPawn.Value?.AbsOrigin;
-            info.ReplyToCommand($"  bot {slot} {p?.PlayerName} alive {p?.PawnIsAlive} hidden {b.Hidden} point {b.Point} base {b.Base.X:0} {b.Base.Y:0} {b.Base.Z:0} at {at?.X:0} {at?.Y:0} {at?.Z:0}");
+            info.ReplyToCommand($"  bot {slot} {p?.PlayerName} alive {p?.PawnIsAlive} hidden {b.Hidden} pinned {b.Pinned} move {(run.Opts.TryGetValue("aim.move", out var mv) ? mv : "-")} point {b.Point} base {b.Base.X:0} {b.Base.Y:0} {b.Base.Z:0} at {at?.X:0} {at?.Y:0} {at?.Z:0}");
         }
         foreach (var (cvar, v) in run.SavedCvars) info.ReplyToCommand($"  saved {cvar} = {v}");
     }

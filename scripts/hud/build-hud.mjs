@@ -51,6 +51,8 @@ const GW_SLOTS = 8
 const GW_TINTS = 19
 const GW_XML_SRC = join(here, 'cs2prac_graffiti.xml')
 const GW_CSS_SRC = join(here, 'cs2prac_graffiti.css')
+const MS_XML_SRC = join(here, 'cs2prac_modestats.xml')
+const MS_CSS_SRC = join(here, 'cs2prac_modestats.css')
 // Our own images (class ix-<name> on .ps-ic panels): assets/version-icons/<file> -> panorama/images/custom_game/cs2prac/
 // <name>.<ext>, compiled with the style (-r) and shipped in resources/hud/images (the app copies them into the client).
 // Flags keep their colours: no wash (.ps-ic and the picked chip tint the white game icons).
@@ -137,7 +139,8 @@ function buildLayout() {
   xml = xml.replace('<!--SIDE_ROWS-->', rows.join('\n')).replace('<!--GRID_ROWS-->', grid.join('\n'))
   xml = xml.replace('<!--SETTINGS_WINDOW-->', buildSettings())
   xml = xml.replace('<!--GRAFFITI_WHEEL-->', buildWheel())
-  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS|PS_SKY_TILES|GRAFFITI_WHEEL|GW_SLOTS|GW_TINTS)-->/.test(xml)) throw new Error('layout markers missing')
+  xml = xml.replace('<!--MODE_STATS-->', readFileSync(MS_XML_SRC, 'utf8'))
+  if (/<!--(SIDE_ROWS|GRID_ROWS|SETTINGS_WINDOW|PS_ROWS|PS_SKY_TILES|GRAFFITI_WHEEL|GW_SLOTS|GW_TINTS|MODE_STATS)-->/.test(xml)) throw new Error('layout markers missing')
   return xml
 }
 
@@ -371,7 +374,7 @@ const styleSrc = join(content, 'styles', 'custom_game', `${NAME}.css`)
 mkdirSync(dirname(layoutSrc), { recursive: true })
 mkdirSync(dirname(styleSrc), { recursive: true })
 writeFileSync(layoutSrc, buildLayout())
-let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8') + '\n' + readFileSync(GW_CSS_SRC, 'utf8')
+let css = readFileSync(CSS_SRC, 'utf8') + '\n' + readFileSync(SET_CSS_SRC, 'utf8') + '\n' + readFileSync(GW_CSS_SRC, 'utf8') + '\n' + readFileSync(MS_CSS_SRC, 'utf8')
 writeFileSync(styleSrc, css + '\n' + buildImageCss(cs2) + '\n' + buildOwnImages(content).join('\n\n') + '\n')
 
 // -f: without it the compiler skips an unchanged style and a child image whose output exists, even when the

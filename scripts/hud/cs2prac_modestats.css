@@ -1,0 +1,40 @@
+/* ---------------------------------------------------------------- practice-mode stats (Modes.cs) */
+
+/* Hidden like the windows (collapsed, parked off screen) until class shown. No transition: it must never flicker. */
+.ms-box
+{
+	visibility: collapse;
+	position: -5000px 0px 0px;
+	horizontal-align: center;
+	vertical-align: top;
+	margin-top: 150px;
+	flow-children: down;
+	padding: 8px 22px 10px 22px;
+	background-color: #0d1117d0;
+	border-radius: 6px;
+	border: 1px solid #f0a83a60;
+}
+
+.ms-box.shown
+{
+	visibility: visible;
+	position: 0px 0px 0px;
+}
+
+.ms-title
+{
+	horizontal-align: center;
+	font-size: 20px;
+	font-weight: bold;
+	color: #f0a83a;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+.ms-line
+{
+	horizontal-align: center;
+	font-size: 26px;
+	color: #ffffff;
+	margin-top: 2px;
+}

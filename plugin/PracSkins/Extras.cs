@@ -41,6 +41,8 @@ public partial class PracSkins
     private Dictionary<string, Dictionary<string, PlaceSpot>> _places = new();
     private bool _backSpawnE = true;
     private bool _welcomeOn = true;
+    /// <summary>Slots whose pawn SwitchSide just killed (death hidden, not counted by modes).</summary>
+    private readonly HashSet<int> _sideSwitching = new();
 
     private string PlacesPath => Path.Combine(ConfigDir, "places.json");
 
@@ -81,6 +83,21 @@ public partial class PracSkins
             AddTimer(0.1f, () => { if (p.IsValid) SwapTeamGrenades(p); }, TimerFlags.STOP_ON_MAPCHANGE);
             return HookResult.Continue;
         });
+        RegisterEventHandler<EventPlayerDeath>((e, info) =>
+        {
+            if (e.Userid is { IsValid: true } p && _sideSwitching.Contains(p.Slot)) info.DontBroadcast = true;
+            return HookResult.Continue;
+        }, HookMode.Pre);
+        // PrintToCenterHtml is this event sent to one client (FireEventToClient, never through this hook). The game
+        // fires it itself (respawn status) while respawn cvars are on, which blanked our mode banner every so often
+        // (user: the stats banner stutters in training modes); while a banner shows, the game's own one is dropped.
+        RegisterEventHandler<EventShowSurvivalRespawnStatus>((e, info) =>
+        {
+            if (e.Userid is { IsValid: true } p && _banners.TryGetValue(p.Slot, out var b) && Server.CurrentTime < b.Until)
+                info.DontBroadcast = true;
+            else if (_modeRun != null && _banners.Count > 0) info.DontBroadcast = true;
+            return HookResult.Continue;
+        }, HookMode.Pre);
         RegisterEventHandler<EventPlayerConnectFull>((e, _) =>
         {
             if (e.Userid is { IsValid: true } p && !IsBotAny(p))
@@ -155,11 +172,24 @@ public partial class PracSkins
 
     // ---------------------------------------------------------------- side switch
 
-    [ConsoleCommand("css_side", "Switch T <-> CT at once and stay where you stand")]
+    [ConsoleCommand("css_side", "Switch T <-> CT at once (respawns at the new team's spawn)")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSideCommand(CCSPlayerController? player, CommandInfo info)
     {
         if (player != null) SwitchSide(player);
+    }
+
+    [ConsoleCommand("css_prac_side", "Server test: SwitchSide on the first human (else bot), logging its team for 2 s")]
+    [CommandHelper(whoCanExecute: CommandUsage.SERVER_ONLY)]
+    public void OnPracSideCommand(CCSPlayerController? _, CommandInfo info)
+    {
+        var p = Utilities.GetPlayers().Where(x => x is { IsValid: true } && !IsStandIn(x)).OrderBy(x => IsBotAny(x)).FirstOrDefault();
+        if (p == null) { info.ReplyToCommand("no player"); return; }
+        void Log(string when) => Console.WriteLine($"[side] {when}: team {p.TeamNum} pending {p.PendingTeamNum} pawn {(p.PlayerPawn.Value is { IsValid: true } pw ? $"{pw.TeamNum} {pw.CBodyComponent?.SceneNode?.GetSkeletonInstance()?.ModelState.ModelName} at {pw.AbsOrigin}" : "-")} alive {p.PawnIsAlive}");
+        Log("before");
+        SwitchSide(p);
+        foreach (var t in new[] { 0.02f, 0.1f, 0.2f, 0.4f, 0.8f, 1.5f, 2.5f })
+            AddTimer(t, () => { if (p.IsValid) Log($"{t:0.00}s"); }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
     private void SwitchSide(CCSPlayerController player)
@@ -167,21 +197,106 @@ public partial class PracSkins
         if (!player.IsValid) return;
         var to = player.TeamNum == (byte)CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
         var pawn = player.PlayerPawn.Value;
-        (Vector Pos, QAngle Ang)? at = pawn is { IsValid: true, AbsOrigin: not null } && player.PawnIsAlive
-            ? (Copy(pawn.AbsOrigin), Copy(pawn.EyeAngles)) : null;
-        player.SwitchTeam(to);
-        AddTimer(0.05f, () =>
+        // As MatchZy's .t/.ct: kill the pawn (death hidden from the kill feed, score/deaths put back), switch and
+        // respawn next frame, at the new team's spawn. It used to teleport the player back to where they stood
+        // 0.1 s later; the user read that as "back to my old team" (2026-11-19), so the new spawn is kept.
+        var slot = player.Slot;
+        var score = player.Score;
+        var deaths = player.ActionTrackingServices?.MatchStats?.Deaths ?? 0;
+        _sideSwitching.Add(slot);
+        AddTimer(1f, () => _sideSwitching.Remove(slot), TimerFlags.STOP_ON_MAPCHANGE);
+        // the guns go with the side: an M4 as CT is an AK as T and back (user: "I had M4 as CT, still M4 as T")
+        var (rifle, pistol, active) = player.PawnIsAlive ? TeamGuns(player) : (null, null, null);
+        var diedAt = pawn?.AbsOrigin is { } da ? Copy(da) : null;
+        if (pawn is { IsValid: true } && player.PawnIsAlive) pawn.CommitSuicide(false, true);
+        Server.NextFrame(() =>
         {
             if (!player.IsValid) return;
+            player.SwitchTeam(to);
             player.Respawn();
-            AddTimer(0.1f, () =>
+            player.Score = score;
+            if (player.ActionTrackingServices?.MatchStats is { } ms) ms.Deaths = deaths;
+            Utilities.SetStateChanged(player, "CCSPlayerController", "m_iScore");
+        });
+        if (diedAt != null) AddTimer(0.1f, () => RemoveLooseWeapons(diedAt, 120), TimerFlags.STOP_ON_MAPCHANGE);
+        if (rifle != null || pistol != null)
+            AddTimer(0.25f, () =>
             {
-                if (!player.IsValid || at == null || player.PlayerPawn.Value is not { IsValid: true } p) return;
-                p.Teleport(at.Value.Pos, at.Value.Ang, new Vector(0, 0, 0));
+                if (!player.IsValid || !player.PawnIsAlive || player.TeamNum != (byte)to) return;
+                var steam = player.SteamID;
+                var newRifle = rifle == null ? null : TeamCounterpart(rifle, to, steam);
+                var newPistol = pistol == null ? null : TeamCounterpart(pistol, to, steam);
+                GiveModeGuns(player, newRifle, newPistol, keepEmpty: true);
+                var hand = active == rifle ? newRifle : active == pistol ? newPistol : null;
+                if (hand != null)
+                    AddTimer(0.3f, () => { if (player.IsValid && player.PawnIsAlive) UseWeapon(player, hand); }, TimerFlags.STOP_ON_MAPCHANGE);
             }, TimerFlags.STOP_ON_MAPCHANGE);
-        }, TimerFlags.STOP_ON_MAPCHANGE);
         var name = to == CsTeam.CounterTerrorist ? "<font color='#5aa0ff'>Counter-Terrorists</font>" : "<font color='#f0a032'>Terrorists</font>";
         ShowBanner(player, $"<font class='fontSize-l'>{name}</font>", 1.5f);
+    }
+
+    /// <summary>Per SteamID the CT rifle / pistol last carried (M4A4 or M4A1-S, USP-S or P2000), for T → CT.</summary>
+    private readonly Dictionary<ulong, string> _ctRifle = new();
+    private readonly Dictionary<ulong, string> _ctPistol = new();
+
+    /// <summary>T gun ↔ CT gun; guns both sides use (AWP, Deagle, P250 …) have none.</summary>
+    private static readonly Dictionary<string, string> TToCt = new()
+    {
+        ["weapon_ak47"] = "weapon_m4a1", ["weapon_galilar"] = "weapon_famas", ["weapon_sg556"] = "weapon_aug",
+        ["weapon_mac10"] = "weapon_mp9", ["weapon_sawedoff"] = "weapon_mag7", ["weapon_g3sg1"] = "weapon_scar20",
+        ["weapon_glock"] = "weapon_usp_silencer", ["weapon_tec9"] = "weapon_fiveseven",
+    };
+    private static readonly Dictionary<string, string> CtToT = new()
+    {
+        ["weapon_m4a1"] = "weapon_ak47", ["weapon_m4a1_silencer"] = "weapon_ak47", ["weapon_famas"] = "weapon_galilar",
+        ["weapon_aug"] = "weapon_sg556", ["weapon_mp9"] = "weapon_mac10", ["weapon_mag7"] = "weapon_sawedoff",
+        ["weapon_scar20"] = "weapon_g3sg1", ["weapon_usp_silencer"] = "weapon_glock", ["weapon_hkp2000"] = "weapon_glock",
+        ["weapon_fiveseven"] = "weapon_tec9",
+    };
+
+    /// <summary>The player's rifle-slot and pistol-slot guns (give names) and the one in hand; CT variants remembered.</summary>
+    private (string? Rifle, string? Pistol, string? Active) TeamGuns(CCSPlayerController player)
+    {
+        if (player.PlayerPawn.Value?.WeaponServices is not { } services) return (null, null, null);
+        string? rifle = null, pistol = null, active = null;
+        foreach (var w in services.MyWeapons.Select(h => h.Value))
+        {
+            if (w is not { IsValid: true }) continue;
+            var slot = GearSlot(w);
+            var name = GiveName(w);
+            if (slot == gear_slot_t.GEAR_SLOT_RIFLE) rifle = name;
+            else if (slot == gear_slot_t.GEAR_SLOT_PISTOL) pistol = name;
+            else continue;
+            if (services.ActiveWeapon.Value?.Index == w.Index) active = name;
+        }
+        if (player.TeamNum == (byte)CsTeam.CounterTerrorist)
+        {
+            if (rifle is "weapon_m4a1" or "weapon_m4a1_silencer") _ctRifle[player.SteamID] = rifle;
+            if (pistol is "weapon_usp_silencer" or "weapon_hkp2000") _ctPistol[player.SteamID] = pistol;
+        }
+        return (rifle, pistol, active);
+    }
+
+    private string TeamCounterpart(string name, CsTeam to, ulong steam)
+    {
+        if (to == CsTeam.Terrorist) return CtToT.TryGetValue(name, out var t) ? t : name;
+        if (!TToCt.TryGetValue(name, out var ct)) return name;
+        if (ct == "weapon_m4a1" && _ctRifle.TryGetValue(steam, out var r)) return r;
+        if (ct == "weapon_usp_silencer" && _ctPistol.TryGetValue(steam, out var p)) return p;
+        return ct;
+    }
+
+    /// <summary>Removes weapons lying loose (no owner) within <paramref name="radius"/> of a spot, C4 excepted.</summary>
+    private static void RemoveLooseWeapons(Vector at, float radius)
+    {
+        foreach (var w in Utilities.FindAllEntitiesByDesignerName<CBasePlayerWeapon>("weapon_").ToList())
+        {
+            if (!w.IsValid || w.DesignerName == "weapon_c4" || w.OwnerEntity.IsValid || w.AbsOrigin is not { } o) continue;
+            var dx = o.X - at.X;
+            var dy = o.Y - at.Y;
+            var dz = o.Z - at.Z;
+            if (dx * dx + dy * dy + dz * dz <= radius * radius) w.Remove();
+        }
     }
 
     /// <summary>T and CT have their own fire grenade: a molotov kept as CT becomes an incendiary and back.</summary>
