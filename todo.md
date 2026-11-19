@@ -419,14 +419,12 @@ writes are limited to new Panorama/resource files like the skin window's. Risky 
 - [x] 4b Bots get random guns too (BotLoadouts.cs GiveBotGuns: a rolled primary + pistol per bot and team, 0.2 s
       after each spawn, not for stand-ins). **User check in game, also with MatchZy `.bot` bots.**
 - [ ] **User check in game** of 3, 4b, 5.
-## CS 1.6 sounds (L window, Server tab "Sounds")
+## CS 1.6 sounds (removed 2026-11-19 by the user's choice; files kept, see Phase 17)
 - [x] TR/UK packs mapped onto CS2 sound files (assets/sounds/1.6/cs2map.json).
 - [x] Local addon `cs2prac16` (loose files) with a soundevents_addon file built from the user's own stock events
       (ModelExport `soundevents`); TR/UK/Off rebuild only what changed. Live build tested (UK 12 s, switch 4–7 s).
-- [x] Play page "Start CS2 with 1.6 sounds": tools-mode client (`-tools -addon cs2prac16`, +connect when running).
-      User-confirmed: 1.6 AK sound in game.
-- [ ] **User check in game:** switch TR/UK/Off in L while tools-mode CS2 runs (heard live?), Off back to stock,
-      K/L/T binds from Nihil.cfg in tools mode, the Play page button itself.
+- [x] ~~Play page "Start CS2 with 1.6 sounds": tools-mode client (`-tools -addon cs2prac16`, +connect when running).
+      User-confirmed: 1.6 AK sound in game.~~ Setting, button and addon builder removed (user, 2026-11-19).
 ---
 # v3: our own tooling (planned 2026-11-17)
 Replace ByMykel/CSGO-API and MatchZy with our own code. Metamod and CounterStrikeSharp stay (engine hooks, rebuilt
@@ -507,3 +505,16 @@ upstream after every CS2 update). Same rules: one phase at a time, the user test
 - [x] Match mode (`.ready`, knife round …): not needed (user, 2026-11-17). Practice only; the Play page's MatchZy
   mode option goes away with MatchZy.
 - [ ] Remove MatchZy from setup/bundle/health; clean up the workarounds; live tests on 27115, then the user in game.
+## Phase 17: 1.6 sounds via the Workshop (normal CS2, no tools mode)
+Tested by hand 2026-11-19: the TR pack as a hidden Workshop item (3842267830) + MultiAddonManager v1.7.4 on the server
+(`mm_client_extra_addons <id>` in cfg/multiaddonmanager/multiaddonmanager.cfg) → a normal client downloads it on
+connect and plays the 1.6 sounds. A switch needs a reconnect (disconnect + connect; CS2 has no `retry`). Removed again.
+- [ ] The addon builder was removed 2026-11-19: restore setup/clientSounds.ts from git history to build the UK addon.
+- [ ] Upload a second item with the UK pack (user, Workshop Manager); keep both ids in the app (settings or constants).
+- [ ] Pin MultiAddonManager in setup/plugins.ts + the bundle; install it with the other plugins.
+- [ ] Every start: write multiaddonmanager.cfg from the Sounds setting (off/tr/uk → no id / TR id / UK id),
+  `mm_cache_clients_with_addons 1`.
+- [ ] L window Sounds chips in this mode: `mm_remove_client_addon` / `mm_add_client_addon`, then tell the player to
+  reconnect (or try a map reload and check whether the client picks up the new list).
+- [ ] Play page: choose tools mode (live switching) or Workshop (normal CS2, reconnect per switch).
+- [ ] **User check:** normal CS2, TR / UK / Off each after a reconnect.

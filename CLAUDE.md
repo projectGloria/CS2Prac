@@ -82,6 +82,10 @@ plugin/PracSkins/    C# CounterStrikeSharp plugin (PracSkins.cs, Loadout.cs). Bu
   client, so test servers miss it). Use `SetModelBeforeSpawn` (Practice.cs; clears that flag first). A "model" spawn
   keyvalue avoids the assert too, but glow props spawned that way never showed on the client.
   Grep the server log for `Assertion Failed` after adding entity code.
+- **Keep client command handlers cheap.** The engine drops a client whose string commands take ~300 ms in one
+  ProcessMessages call ("exhausted its CPU time budget", assert + minidump, then NETWORK_DISCONNECT_OVERFLOW). The
+  first K/L window of a server costs that much (HUD API's one-time "Failed to find type descriptor for
+  HUDPanelDialogVariableString_t"), so css_menu/css_pracmenu do their work in Server.NextFrame (2026-11-19).
 - Signatures (`CAttributeList_SetOrAddAttributeValueByName`) can break after CS2 updates. `css_prac_status` reports whether the function was resolved.
 
 ## Commands
@@ -355,45 +359,23 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   (bot, skins, weapons, eye angles). A throwaway server mirror (syncMirror into a scratch folder + copied addons) lets
   you live-test without touching the user's running server, whose plugin folder hot-reloads.
 
-## CS 1.6 sounds (L window, Server tab "Sounds")
-- Setting `sounds` (off/tr/uk, global only: ChangeSetting forces it). The server only stores it; the app (index.ts
-  applySoundPack, on server_prefs.json changes, prefs saves and server start) runs setup/clientSounds.ts
-  installSoundPack into the local addon **`cs2prac16`** (`<cs2>/content|game/csgo_addons/cs2prac16`).
-- **The retail client mounts a local addon only in tools mode** (loose files in game/csgo/sounds were ignored; a VPK in
-  the addon = FATAL pak01). So the Play page's "Start CS2 with 1.6 sounds" (launchCs2Sounds, index.ts) runs the
-  client's cs2.exe `-steam -tools -addon cs2prac16` (+connect 127.0.0.1:<port> when our server runs; refuses while
-  CS2 is open; `+exec Nihil` when the user's Nihil.cfg exists). Tools mode can't join VAC servers: restart from Steam
-  before playing online. Console = VConsole (~), which talks to port 29000: the dedicated server takes 29000 too
-  unless started with `-vconport 29100` (launchArgs.ts), otherwise ~ showed the server's console (GetLine spam).
-  VConsole refuses aliases it doesn't know ("'pracGloria' is not a recognized command"; its own reply): bind a key.
-- **A tools-mode client fails Steam auth** ("STEAMAUTH: Client … received failure code 8; ignoring because local
-  connection"): no AuthorizedSteamID, so CSS's admin check (and `[RequiresPermissions]`) said no. PracSkins uses
-  `IsAdmin(p)` (PracSkins.cs) everywhere instead: loopback players are checked by their unverified SteamID.
-  User-confirmed: `play sounds/cs2prac16/ak47_1` and the AK sound in game (2026-11-17).
-- Overriding: `soundevents/soundevents_addon.vsndevts_c` in the addon redefines every stock event that uses a mapped
-  file (assets/sounds/1.6/cs2map.json, scripts/sounds/build-cs16-map.mjs), its `sounds/…vsnd` swapped for
-  `sounds/cs2prac16/<soundName>.vsnd`. Stock events come from the user's VPK: ModelExport `soundevents <csgo> <out>`
-  (KV3 text), cached per build (ModelStore.soundEventsDir). ~6900 events, 253 wavs (+3), events file ~130 KB.
-  Agent voices: the newer sets (jungle, gendarmerie, *_epic, *_fem) name lines `<set>.<take>_<line>_<nn>`
-  (`jungle_male.afm1_throwing_molotov_04`) and use other line names (affirmation, request_*, throwing_*): the map's
-  first version only covered the 9 old sets, so most agents kept their own radio voice and nade line. The map's
-  input (cs2_events.json [{file, event, files}]) can be rebuilt from that cache. The exact radio mapping comes from
-  the agents' talker rules (`ModelExport kv3dump <csgo> <out> vrr_c scripts/talker/`, the map builder's 2nd arg):
-  group "<Concept><set>" → SPEAK events, so a TSV target part `talker Radio.Roger / …` covers every agent. CS2's
-  Radio.GetInPosition plays the "thanks" lines, so it's left out. Concepts 1.6 has no line for (thanks, cheer,
-  compliment, sorry, nade requests, callouts, bomb/hostage talk …) keep the agent's voice.
-- Wav names are the same for TR and UK (soundName of the 1.6 path; TR takes turkish/<path> where it exists), so a
-  switch only rewrites changed wavs and recompiles (`-i dir\*.wav`, no -f); Off writes an empty events file. Tools
-  mode hot-reloads changed files ("file CRC changed"): switching in L works live (first build ~12 s, switch ~4–7 s).
-  Record: game/csgo_addons/cs2prac16/cs2prac16.json. The old loose install (game/csgo/cs2prac-sounds.json) is removed.
-  Shipped as <resources>/sounds16. `css_soundtest <event>` plays any sound event for the caller.
-- Icons: build-hud OWN_IMAGES (assets/version-icons → panorama/images/custom_game/cs2prac, classes `ix-cs16`,
-  `ix-flag_tr/_uk`, flags unwashed and 42px wide) → resources/hud/images → the client (installClientHud).
-  Panorama drew nothing for the original TR.svg (negative viewBox, 90000-unit arcs): the window uses
-  TR-panorama.svg (rect, two circles, polygon star). build-hud compiles with `-f`: otherwise an existing child image
-  output is kept even when its source changed.
-- Feedback: a chip click prints "copying …" to chat (ChangeSetting); the app's result goes to the Console and, via
-  `css_prac_notice <text>` (server only), to every player's chat.
+## CS 1.6 sounds (removed from the app 2026-11-19; only the sound files are left)
+- The user dropped the feature (setting `sounds`, the L window chips, the Play page's tools-mode button, the addon
+  builder setup/clientSounds.ts, ModelStore.soundEventsDir, the `sounds16` resources). Left: the TR/UK wavs and the
+  map in assets/sounds/1.6 (cs2map.json, built by scripts/sounds/build-cs16-map.mjs from docs/sounds/cs16-sound-files.tsv)
+  and the flag/1.6 icons in build-hud OWN_IMAGES. The old builder is in git history (clientSounds.ts before its removal):
+  it wrote `soundevents/soundevents_addon.vsndevts_c` redefining every stock event that uses a mapped file (stock events
+  from ModelExport `soundevents`, agent voices via the talker rules from `ModelExport kv3dump … vrr_c scripts/talker/`)
+  plus one compiled `sounds/cs2prac16/<name>.vsnd` per wav, into the local addon `<cs2>/content|game/csgo_addons/cs2prac16`.
+- Findings: the retail client mounts a local addon only in tools mode (`-steam -tools -addon cs2prac16`; loose files in
+  game/csgo/sounds ignored; a VPK in the addon = FATAL pak01; `-insecure -addon` without `-tools` does nothing). Tools
+  mode hot-reloads ("file CRC changed"), so switching was live; it can't join VAC servers, its console is VConsole on
+  port 29000 (hence the server's `-vconport 29100`), and it fails Steam auth (failure code 8), which is why PracSkins
+  checks admins with `IsAdmin(p)` (loopback players by their unverified SteamID).
+- Workshop route (todo.md Phase 17, tested by hand 2026-11-19): the TR addon as a hidden Workshop item (3842267830)
+  + MultiAddonManager v1.7.4 (`mm_client_extra_addons <id>`, `mm_add_client_addon`/`mm_remove_client_addon`) gave a
+  normal client the sounds, but the client mounts items only at connect: a switch needs disconnect + connect (CS2 has
+  no `retry`). `css_soundtest <event>` plays any sound event for the caller.
 
 ## Practice helpers (plugin/PracSkins/Extras.cs, 2026-11-18 Phase B)
 - `css_side` / `.side`: as MatchZy's .t/.ct, CommitSuicide first (SwitchTeam on a live pawn didn't stick; the death

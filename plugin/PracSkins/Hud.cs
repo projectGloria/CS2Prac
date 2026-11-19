@@ -214,6 +214,12 @@ public partial class PracSkins
         // "open" / "close" come from the client's K/L binds (Nihil.cfg), which also switch the client's HUD cvars;
         // no argument toggles as before
         var arg = command.GetArg(1).ToLowerInvariant();
+        // next frame, not in the command handler: see OnPracMenuCommand (the first window costs ~0.3 s)
+        Server.NextFrame(() => { if (player.IsValid) HudCommand(player, arg); });
+    }
+
+    private void HudCommand(CCSPlayerController player, string arg)
+    {
         if (arg == "close")
         {
             CloseHud(player);
@@ -226,7 +232,7 @@ public partial class PracSkins
             return;
         }
         if (MenuOpen(player)) CloseMenu(player);
-        if (!CanEdit(player, command)) return;
+        if (!CanEdit(player)) return;
         if (_setSessions.ContainsKey(player.Slot)) CloseSettings(player);
         if (!HudReady)
         {

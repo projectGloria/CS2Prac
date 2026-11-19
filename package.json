@@ -71,15 +71,6 @@
       {
         "from": "resources/modeltool",
         "to": "modeltool"
-      },
-      {
-        "from": "assets/sounds/1.6",
-        "to": "sounds16",
-        "filter": [
-          "cs2map.json",
-          "english/**/*.wav",
-          "turkish/**/*.wav"
-        ]
       }
     ],
     "win": {

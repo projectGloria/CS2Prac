@@ -216,25 +216,6 @@ export class ModelStore {
     return result
   }
 
-  /** The game's sound events as KV3 text (<dir>/soundevents/**.vsndevts), dumped once per CS2 build. */
-  async soundEventsDir(): Promise<string> {
-    const env = await this.env()
-    const dir = join(await this.dir(env), 'soundevents')
-    const done = join(dir, '.done')
-    if (!existsSync(done)) {
-      const job = this.queue.then(async () => {
-        if (existsSync(done)) return
-        const { exe, dll } = await this.tool(env)
-        await rm(dir, { recursive: true, force: true })
-        await run(exe, [dll, 'soundevents', env.csgoDir, dir])
-        await writeFile(done, '')
-      })
-      this.queue = job.catch(() => {})
-      await job
-    }
-    return join(dir, 'soundevents')
-  }
-
   private async export(env: ModelEnv, dir: string, model: string) {
     const { exe, dll } = await this.tool(env)
     const t0 = Date.now()
