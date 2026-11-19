@@ -62,7 +62,7 @@ public partial class PracSkins
     {
         if (!bot.IsValid || !IsBotAny(bot) || IsStandIn(bot) || !bot.PawnIsAlive) return;
         // a practice mode with set guns gives them itself (Modes.cs)
-        if (_modeRun is { Id: "awp" or "prefire" or "aim" } || _modeRun is { Id: "dm" } run && run.Opts["dm.guns"] != "any") return;
+        if (_modeRun is { Id: "awp" or "prefire" or "aim" or "dm" }) return; // the mode gives the guns
         var team = bot.TeamNum;
         if (team is not (2 or 3)) return;
         var pawn = bot.PlayerPawn.Value;

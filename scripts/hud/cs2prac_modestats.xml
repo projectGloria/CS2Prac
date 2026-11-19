@@ -6,4 +6,5 @@
 		<Panel id="ms_box" class="ms-box" hittest="false">
 			<Label id="ms_title" class="ms-title" text="{s:text}" hittest="false" />
 			<Label id="ms_line" class="ms-line" text="{s:text}" hittest="false" />
+			<Label id="ms_feed" class="ms-feed" text="{s:text}" hittest="false" />
 		</Panel>

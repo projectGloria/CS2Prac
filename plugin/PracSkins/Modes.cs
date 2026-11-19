@@ -28,6 +28,8 @@ public class ModesFile
     public Dictionary<string, string> Options { get; set; } = new();
     /// <summary>map -> result key (mode + options) -> best score.</summary>
     public Dictionary<string, Dictionary<string, double>> Best { get; set; } = new();
+    /// <summary>Deathmatch !guns picks per SteamID64.</summary>
+    public Dictionary<string, DmGunPick> Guns { get; set; } = new();
 }
 
 /// <summary>Per player numbers of one run.</summary>
@@ -38,6 +40,10 @@ public class ModeStats
     public int Shots { get; set; }
     public int Hits { get; set; }
     public int Headshots { get; set; }
+    /// <summary>Kills by a headshot (deathmatch HS %).</summary>
+    public int HsKills { get; set; }
+    public int Streak { get; set; }
+    public int BestStreak { get; set; }
     public List<float> Reactions { get; } = new();
 }
 
@@ -88,6 +94,11 @@ public class ModeRun
     public int NextPoint { get; set; }
     // deathmatch spawn spots (found once per run)
     public List<(Vector At, float Yaw)>? DmSpots { get; set; }
+    public DmSpotFile? DmFile { get; set; }
+    public int DmMapSpots { get; set; }
+    public bool DmLearnedDirty { get; set; }
+    /// <summary>Where each player last spawned (the next spawn goes elsewhere).</summary>
+    public Dictionary<int, Vector> DmLastSpot { get; } = new();
 }
 
 /// <summary>
@@ -112,8 +123,13 @@ public partial class PracSkins
         ["dm.type"] = ("dm", "Type", [("FFA", "ffa"), ("Teams", "teams")], "ffa"),
         ["dm.bots"] = ("dm", "Bots", [("0", "0"), ("3", "3"), ("5", "5"), ("7", "7"), ("9", "9")], "5"),
         ["dm.diff"] = ("dm", "Bot skill", [("Easy", "0"), ("Normal", "1"), ("Hard", "2"), ("Expert", "3")], "2"),
-        ["dm.guns"] = ("dm", "Guns", [("Any", "any"), ("Rifles", "rifles"), ("AWP", "awp"), ("Pistols", "pistols"), ("Deagle", "deagle")], "any"),
+        ["dm.guns"] = ("dm", "Guns", [("Your pick", "any"), ("Rifles", "rifles"), ("Pistols", "pistols"), ("AWP", "awp"), ("Scout", "scout"), ("Deagle", "deagle")], "any"),
         ["dm.hs"] = ("dm", "Headshots only", [("Off", "0"), ("On", "1")], "0"),
+        ["dm.respawn"] = ("dm", "Respawn after", [("At once", "0"), ("1 s", "1"), ("2 s", "2"), ("3 s", "3")], "1"),
+        ["dm.protect"] = ("dm", "Spawn protection", [("Off", "0"), ("1 s", "1"), ("2 s", "2")], "1"),
+        ["dm.reward"] = ("dm", "Kill reward", [("Off", "off"), ("+25 HP", "25"), ("+50 HP", "50"), ("Full", "full")], "25"),
+        ["dm.sound"] = ("dm", "Sounds", [("Off", "off"), ("Kills", "kills"), ("Hits + kills", "all")], "kills"),
+        ["dm.limit"] = ("dm", "Kill limit", [("Off", "0"), ("25", "25"), ("50", "50"), ("100", "100")], "0"),
         ["dm.time"] = ("dm", "Time", [("2 min", "120"), ("5 min", "300"), ("10 min", "600"), ("Endless", "0")], "300"),
         ["aim.targets"] = ("aim", "Targets", [("1", "1"), ("3", "3"), ("5", "5")], "3"),
         ["aim.move"] = ("aim", "Targets move", [("Static", "static"), ("Strafe", "strafe"), ("Crouch", "crouch"), ("Jiggle", "jiggle"), ("Free", "free")], "static"),
@@ -127,12 +143,11 @@ public partial class PracSkins
         ["prefire.shoot"] = ("prefire", "Bots shoot back", [("Off", "0"), ("On", "1")], "0"),
     };
 
-    private static readonly string[] RifleGuns = ["weapon_ak47", "weapon_m4a1", "weapon_m4a1_silencer", "weapon_famas", "weapon_galilar", "weapon_aug", "weapon_sg556"];
-    private static readonly string[] PistolGuns = ["weapon_glock", "weapon_usp_silencer", "weapon_hkp2000", "weapon_p250", "weapon_fiveseven", "weapon_tec9", "weapon_cz75a", "weapon_deagle"];
 
     private void InitModes()
     {
         LoadModes();
+        InitDeathmatch();
         RegisterListener<Listeners.OnTick>(OnModesTick);
         RegisterListener<Listeners.OnMapStart>(_ =>
         {
@@ -148,12 +163,15 @@ public partial class PracSkins
         {
             if (_modeRun == null || e.Userid is not { IsValid: true } p) return HookResult.Continue;
             var slot = p.Slot;
-            // deathmatch: away from the team base at once (competitive ignores mp_randomspawn)
+            // deathmatch: away from the team base at once (competitive ignores mp_randomspawn), protection, guns
             if (_modeRun.Id == "dm")
+            {
                 AddTimer(0.05f, () =>
                 {
-                    if (_modeRun is { Id: "dm" } dm && Utilities.GetPlayerFromSlot(slot) is { IsValid: true, PawnIsAlive: true } pl) DmTeleport(dm, pl);
+                    if (_modeRun is { Id: "dm" } dm && Utilities.GetPlayerFromSlot(slot) is { IsValid: true, PawnIsAlive: true } pl) DmSpawn(dm, pl);
                 }, TimerFlags.STOP_ON_MAPCHANGE);
+                return HookResult.Continue;
+            }
             // after the spawn teleport and BotLoadouts' gun swap (0.2 s)
             AddTimer(0.45f, () =>
             {
@@ -165,6 +183,7 @@ public partial class PracSkins
         RegisterEventHandler<EventWeaponFire>((e, _) =>
         {
             if (_modeRun is not { } run || e.Userid is not { IsValid: true } p) return HookResult.Continue;
+            if (run.Id == "dm") DmUnprotect(p.Slot); // the first shot ends spawn protection
             var w = e.Weapon ?? "";
             if (w.Contains("knife") || w.Contains("grenade") || w.Contains("flashbang") || w.Contains("molotov") || w.Contains("decoy") || w.Contains("bayonet")) return HookResult.Continue;
             StatsOf(run, p).Shots++;
@@ -176,6 +195,7 @@ public partial class PracSkins
             var st = StatsOf(run, a);
             st.Hits++;
             if (e.Hitgroup == 1) st.Headshots++;
+            if (run.Id == "dm") DmHit(run, a, e.DmgHealth, e.Hitgroup, e.Health <= 0);
             return HookResult.Continue;
         });
         RegisterEventHandler<EventPlayerDeath>((e, _) =>
@@ -186,12 +206,15 @@ public partial class PracSkins
             {
                 var st = StatsOf(run, a);
                 st.Kills++;
+                if (e.Headshot) st.HsKills++;
                 if (run.Bots.TryGetValue(v.Slot, out var b) && b.ShownAt > 0) st.Reactions.Add(Server.CurrentTime - b.ShownAt);
             }
             // read everything now: the event is freed once the handler returns (reading e later crashed, 0xC0000005)
             var victim = v.Slot;
             var attacker = e.Attacker is { IsValid: true } at ? at.Slot : -1;
             var diedAt = v.PlayerPawn.Value?.AbsOrigin is { } o ? Copy(o) : null;
+            var headshot = e.Headshot;
+            if (run.Id == "dm") Server.NextFrame(() => { if (_modeRun == run) DmDeath(run, victim, attacker, headshot); });
             Server.NextFrame(() => OnModeDeath(run, victim, attacker));
             // safety net for mp_death_drop_*: whatever still fell to the floor goes
             if (diedAt != null) AddTimer(0.1f, () => { if (_modeRun == run) RemoveLooseWeapons(diedAt, 120); }, TimerFlags.STOP_ON_MAPCHANGE);
@@ -357,8 +380,8 @@ public partial class PracSkins
                 foreach (var p in Utilities.GetPlayers())
                 {
                     if (p is not { IsValid: true, PawnIsAlive: true }) continue;
-                    if (run.Id == "dm") DmTeleport(run, p);
-                    OnModeSpawn(run, p);
+                    if (run.Id == "dm") DmSpawn(run, p);
+                    else OnModeSpawn(run, p);
                 }
             }, TimerFlags.STOP_ON_MAPCHANGE);
             if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } o)
@@ -393,9 +416,10 @@ public partial class PracSkins
         }
         else if (run.MatchZyMode != 0) Server.ExecuteCommand("mp_unpause_match");
         Set("mp_ignore_round_win_conditions", "1");
-        Set("mp_respawn_on_death_t", "1");
-        Set("mp_respawn_on_death_ct", "1");
-        Set("mp_respawn_immunitytime", id == "dm" ? "1" : "0");
+        // deathmatch respawns on its own timer (dm.respawn) with its own protection (dm.protect)
+        Set("mp_respawn_on_death_t", id == "dm" ? "0" : "1");
+        Set("mp_respawn_on_death_ct", id == "dm" ? "0" : "1");
+        Set("mp_respawn_immunitytime", "0");
         Set("mp_autoteambalance", "0");
         Set("mp_limitteams", "0");
         Set("bot_join_after_player", "0");
@@ -410,7 +434,7 @@ public partial class PracSkins
         Set("mp_death_drop_taser", "0");
         Set("mp_death_drop_healthshot", "0");
         Set("mp_drop_knife_enable", "0");
-        // competitive ignores mp_randomspawn: DmTeleport places every spawn itself
+        // competitive ignores mp_randomspawn: DmSpawn places every spawn itself
         Set("mp_randomspawn", "0");
         switch (id)
         {
@@ -422,11 +446,11 @@ public partial class PracSkins
                 Set("bot_zombie", "0");
                 Set("bot_dont_shoot", "0");
                 Set("mp_damage_headshot_only", opts["dm.hs"]);
-                Set("mp_buy_anywhere", opts["dm.guns"] == "any" ? "1" : "0");
-                Set("mp_buytime", "99999");
-                Set("mp_maxmoney", "16000");
-                Set("mp_startmoney", "16000");
-                Set("mp_afterroundmoney", "16000");
+                // guns come from !guns / the variant, never the buy menu
+                Set("mp_buy_anywhere", "0");
+                Set("mp_buytime", "0");
+                Set("mp_startmoney", "0");
+                Set("mp_afterroundmoney", "0");
                 Set("bot_quota", opts["dm.bots"]);
                 break;
             case "aim":
@@ -530,7 +554,8 @@ public partial class PracSkins
         if (_modeRun is not { } run) return;
         if (!run.Finished && !quiet) ShowModeResult(run, why);
         _modeRun = null;
-        HideModeStats(run.Owner);
+        HideModeStats();
+        if (run.Id == "dm") DmStop(run);
         foreach (var (slot, b) in run.Bots)
             if (b.Hidden && Utilities.GetPlayerFromSlot(slot)?.PlayerPawn.Value is { IsValid: true } bp) SetPawnShown(bp, true);
         RestoreModeCvars(run);
@@ -552,21 +577,6 @@ public partial class PracSkins
         var bot = IsBotAny(p);
         switch (run.Id)
         {
-            case "dm":
-            {
-                var guns = run.Opts["dm.guns"];
-                if (guns == "any") { if (!bot) p.InGameMoneyServices!.Account = 16000; break; }
-                var rnd = Random.Shared;
-                var (primary, pistol) = guns switch
-                {
-                    "rifles" => (RifleGuns[rnd.Next(RifleGuns.Length)], PistolGuns[rnd.Next(PistolGuns.Length)]),
-                    "awp" => ("weapon_awp", "weapon_deagle"),
-                    "pistols" => ((string?)null, PistolGuns[rnd.Next(PistolGuns.Length)]),
-                    _ => ((string?)null, "weapon_deagle")
-                };
-                GiveModeGuns(p, primary, pistol);
-                break;
-            }
             case "aim":
                 if (bot) PlaceTarget(run, p, pawn);
                 break;
@@ -646,68 +656,6 @@ public partial class PracSkins
                 }
                 break;
         }
-    }
-
-    // ---------------------------------------------------------------- deathmatch spawns
-
-    /// <summary>
-    /// The map's deathmatch spots: its own info_deathmatch_spawn entities (official maps have them), else both teams'
-    /// spawns plus free floor around the bombsites, mid and the halfway points between them.
-    /// </summary>
-    private List<(Vector At, float Yaw)> DmSpots(ModeRun run)
-    {
-        if (run.DmSpots != null) return run.DmSpots;
-        var spots = new List<(Vector, float)>();
-        foreach (var e in Utilities.FindAllEntitiesByDesignerName<CBaseEntity>("info_deathmatch_spawn"))
-        {
-            if (!e.IsValid || e.CBodyComponent?.SceneNode is not { } node) continue;
-            var at = new Vector(node.AbsOrigin.X, node.AbsOrigin.Y, node.AbsOrigin.Z);
-            spots.Add((new Vector(at.X, at.Y, GroundUnder(at) + 1), node.AbsRotation.Y));
-        }
-        if (spots.Count < 8)
-        {
-            foreach (var s in CollectSpawns()) spots.Add((new Vector(s.Origin.X, s.Origin.Y, s.Ground + 1), s.Angles.Y));
-            var centers = new[] { PlaceTarget("a"), PlaceTarget("b"), PlaceTarget("mid") }.Where(c => c != null).Select(c => c!).ToList();
-            var extra = new List<Vector>(centers);
-            for (var i = 0; i < centers.Count; i++)
-                for (var j = i + 1; j < centers.Count; j++)
-                    extra.Add(new Vector((centers[i].X + centers[j].X) / 2, (centers[i].Y + centers[j].Y) / 2, Math.Max(centers[i].Z, centers[j].Z)));
-            foreach (var c in extra)
-                for (var k = 0; k < 6; k++)
-                {
-                    var a = k * MathF.PI / 3;
-                    var r = k == 0 ? 0 : 280f;
-                    if (FindStandSpot(new Vector(c.X + MathF.Cos(a) * r, c.Y + MathF.Sin(a) * r, c.Z)) is { } at)
-                        spots.Add((at, Random.Shared.Next(360)));
-                }
-        }
-        Logger.LogInformation("Deathmatch: {Count} spawn spots on {Map}", spots.Count, CurrentMap);
-        return run.DmSpots = spots;
-    }
-
-    /// <summary>
-    /// Puts a deathmatch spawn somewhere no enemy stands close (600 units) or can see; looser when nothing qualifies
-    /// (then the spot farthest from everyone).
-    /// </summary>
-    private void DmTeleport(ModeRun run, CCSPlayerController p)
-    {
-        if (IsStandIn(p) || p.PlayerPawn.Value is not { IsValid: true } pawn) return;
-        var spots = DmSpots(run);
-        if (spots.Count == 0) return;
-        var ffa = run.Opts["dm.type"] == "ffa";
-        var enemies = Utilities.GetPlayers()
-            .Where(o => o is { IsValid: true, PawnIsAlive: true } && o.Slot != p.Slot && !IsStandIn(o) && (ffa || o.TeamNum != p.TeamNum))
-            .Select(o => o.PlayerPawn.Value?.AbsOrigin).Where(v => v != null).Select(v => Copy(v!)).ToList();
-        float Nearest(Vector at) => enemies.Count == 0 ? float.MaxValue
-            : enemies.Min(e => (e.X - at.X) * (e.X - at.X) + (e.Y - at.Y) * (e.Y - at.Y) + (e.Z - at.Z) * (e.Z - at.Z));
-        bool Seen(Vector at) => enemies.Any(e => ClearLine(new Vector(e.X, e.Y, e.Z + 64), new Vector(at.X, at.Y, at.Z + 60)));
-        var here = pawn.AbsOrigin is { } h ? Copy(h) : null;
-        bool NotHere((Vector At, float Yaw) s) => here == null || (s.At.X - here.X) * (s.At.X - here.X) + (s.At.Y - here.Y) * (s.At.Y - here.Y) > 200 * 200;
-        var shuffled = spots.OrderBy(_ => Random.Shared.Next()).ToList();
-        var pick = shuffled.FirstOrDefault(s => NotHere(s) && Nearest(s.At) > 600 * 600 && !Seen(s.At) && StandingRoom(s.At));
-        if (pick.At == null) pick = shuffled.FirstOrDefault(s => Nearest(s.At) > 600 * 600 && StandingRoom(s.At));
-        if (pick.At == null) pick = shuffled.OrderByDescending(s => Nearest(s.At)).First();
-        pawn.Teleport(pick.At, new QAngle(0, pick.Yaw, 0), new Vector(0, 0, 0));
     }
 
     // ---------------------------------------------------------------- aim / AWP targets
@@ -952,10 +900,17 @@ public partial class PracSkins
         }
 
         if (run.Ends > 0 && now >= run.Ends) { FinishMode(run, ""); return; }
+        if (run.Id == "dm") DmTick(run);
         if (now < run.NextBanner) return;
         run.NextBanner = now + 0.2f;
         PlaceStrayBots(run);
-        if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } owner) ModeStatsHud(run, owner);
+        // deathmatch: every human sees their own numbers
+        if (run.Id == "dm")
+        {
+            foreach (var p in Utilities.GetPlayers())
+                if (p is { IsValid: true } && !IsBotAny(p) && p.TeamNum is 2 or 3) ModeStatsHud(run, p);
+        }
+        else if (Utilities.GetPlayerFromSlot(run.Owner) is { IsValid: true } owner) ModeStatsHud(run, owner);
     }
 
     /// <summary>
@@ -991,10 +946,16 @@ public partial class PracSkins
         HudFlag(owner, "ms_box", "shown", true);
     }
 
-    private void HideModeStats(int slot)
+    /// <summary>The stats panel off for every human (deathmatch showed it to all).</summary>
+    private void HideModeStats()
     {
-        if (!HudReady || Utilities.GetPlayerFromSlot(slot) is not { IsValid: true } p || IsBotAny(p)) return;
-        HudFlag(p, "ms_box", "shown", false);
+        if (!HudReady) return;
+        foreach (var p in Utilities.GetPlayers())
+        {
+            if (p is not { IsValid: true } || IsBotAny(p)) continue;
+            HudFlag(p, "ms_box", "shown", false);
+            HudFlag(p, "ms_feed", "on", false);
+        }
     }
 
     private static string Clock(float seconds)
@@ -1005,6 +966,7 @@ public partial class PracSkins
 
     private (string Title, string Line) ModeStatsText(ModeRun run, CCSPlayerController owner)
     {
+        if (run.Id == "dm") return DmStatsText(run, owner);
         var st = run.Stats.TryGetValue(owner.Slot, out var x) ? x : new ModeStats();
         var now = Server.CurrentTime;
         var title = ModeName(run.Id);
@@ -1022,7 +984,11 @@ public partial class PracSkins
 
     // ---------------------------------------------------------------- results
 
-    private string ResultKey(ModeRun run) => run.Id + ":" + string.Join(":", run.Opts.OrderBy(o => o.Key).Select(o => o.Value));
+    private static string ResultKey(ModeRun run) => ScoreKey(run.Id, run.Opts);
+
+    /// <summary>Mode + the options that change the score (sounds don't), in key order; the same for runs and the L rows.</summary>
+    private static string ScoreKey(string id, Dictionary<string, string> opts) =>
+        id + ":" + string.Join(":", opts.Where(o => o.Key != "dm.sound").OrderBy(o => o.Key).Select(o => o.Value));
 
     /// <summary>The run's score (higher is better; prefire: seconds, lower is better) and its text.</summary>
     private (double Score, bool LowerBetter, string Text) ModeScore(ModeRun run)
@@ -1034,6 +1000,7 @@ public partial class PracSkins
         {
             "awp" => (run.AwpHits, false, $"{run.AwpHits}/{run.Rounds} hits{react}"),
             "prefire" => (Server.CurrentTime - run.Started, true, $"{run.Cleared.Count}/{run.Points.Count} cleared in {Server.CurrentTime - run.Started:0.0} s"),
+            "dm" => (st.Kills, false, DmScoreText(st, run)),
             _ => (st.Kills, false, $"{st.Kills} kills · {st.Deaths} deaths · {acc}% accuracy · {st.Headshots} HS{react}")
         };
     }
@@ -1091,14 +1058,14 @@ public partial class PracSkins
         foreach (var (id, name) in ModeList)
         {
             var opts = ModeOpts.Where(o => o.Value.Mode == id).ToDictionary(o => o.Key, o => ModeOpt(o.Key));
-            var key = id + ":" + string.Join(":", opts.OrderBy(o => o.Key).Select(o => o.Value));
+            var key = ScoreKey(id, opts);
             var sub = best.TryGetValue(key, out var v) ? $"Best here with these options: {FormatBest(id, v)}" : ModeHelp(id);
             if (id == "prefire")
             {
                 var n = LoadPrefire(CurrentMap).Count;
                 sub = n == 0 ? "No route on this map yet: aim at the floor and Add point" : $"{n} point(s) on this map · {sub}";
             }
-            if (id == "dm") sub = best.TryGetValue(key, out var dv) ? sub : "Bots fight you (and each other in FFA), respawns on";
+            if (id == "dm") sub = best.TryGetValue(key, out _) ? sub : "Starts in place: no map change. Respawns, your guns (!guns), kill rewards";
             var icon = id switch { "dm" => "ic-kill", "aim" => "ic-crosshair", "awp" => "ie-awp", _ => "ic-pin" };
             s.Rows.Add(new SetRow(name, sub, [("Start", running?.Id == id, pl => { CloseSettings(pl); StartModeLater(pl, id); })]) { Icon = icon });
             foreach (var (optKey, o) in ModeOpts.Where(o => o.Value.Mode == id))
@@ -1110,6 +1077,7 @@ public partial class PracSkins
                     SaveModes();
                 }))).ToList()));
             }
+            if (id == "dm") BuildDmRows(player, s);
             if (id == "prefire")
             {
                 s.Rows.Add(new SetRow("   Route", "Add point = where you aim (floor or wall base)",

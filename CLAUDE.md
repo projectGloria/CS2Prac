@@ -427,10 +427,18 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
   (scripts/hud/cs2prac_modestats.xml/.css at `<!--MODE_STATS-->`; ms_title with the clock, ms_line with counts and
   accuracy), sent every 0.2 s through HudText/HudFlag (cached: only changes go out); HideModeStats on Stop. Needs the
   rebuilt layout in the client (restart CS2). One-off result banners still use ShowBanner.
-- Deathmatch: competitive ignores mp_randomspawn, so every spawn is placed by DmTeleport (0.05 s after player_spawn):
-  DmSpots = info_deathmatch_spawn, or (< 8) the team spawns + bombsite/mid centres and their midpoints with
-  FindStandSpot rings (56 on dust2); picks a spot ≥ 200 from the last, no enemy within 600 or in sight, then relaxes.
+- Deathmatch = our own (plugin/PracSkins/Deathmatch.cs, Phase 19; no map reload, Valve's game_mode 2 not used):
+  mp_respawn_on_death 0, we `Respawn()` after `dm.respawn` s (DmDeath); buy/money off. Every spawn goes through
+  DmSpawn (0.05 s after player_spawn): DmPick from DmSpots (6+ manual spots in configs/plugins/PracSkins/dm/<map>.json
+  = only those; else manual + info_deathmatch_spawn, and under 8 also team spawns, A/B/mid FindStandSpot rings and
+  learned spots (DmLearn: where players stood, every 3 s, ≥ 250 apart, max 150); 56 on dust2), ≥ 200 from the last,
+  no enemy within 600 or in sight, then relaxes. Protection: TakesDamage off + blue tint until the first
+  weapon_fire or `dm.protect` s. Guns 0.1 s after the spawn (DmGiveGuns: `!guns`/`css_guns` pick per SteamID in
+  modes.json `guns`, or random within `dm.guns`). Kill: reward (`dm.reward`), clip refill, streak sounds, feed line
+  in `ms_feed` (inside ms_box, class `on` for 2 s; needs the rebuilt layout, restart CS2). L window dm rows: Your
+  guns, Spawns (Add here / Remove near / Clear / Forget learned / Show = beam crosses 30 s). Kill limit ends the run.
   No drops: mp_death_drop_* 0 + mp_drop_knife_enable 0, and 0.1 s after a death loose weapons within 120 units go.
+  Live-tested on 27115 (bots, autostart 0): respawns with guns, no loose weapons; not yet in game.
 - Live-test bots: sv_hibernate_when_empty 0 and bot_join_after_player 0, or bots never stay on an empty test server.
 - Bots spawn → OnModeSpawn 0.45 s later (after BotLoadouts' gun swap, which skips while a mode sets the guns).
   Aim/AWP targets: TargetSpot (in front of the owner ±50/80°, range band, floor trace, StandingRoom, eye line of
@@ -442,6 +450,12 @@ paths → raw links pinned to the tag). The release stays a draft until publishe
 - Options and bests: configs/plugins/PracSkins/modes.json (`options` {"aim.move": …}; best per map per mode+option
   values). Server tests: `css_prac_modes` (per bot pinned/move/base/at), `css_prac_mode <id|stop>`. Live-tested on
   27115 (2026-11-19, autostart 0): dm respawns and spots, aim static/strafe pinned, free walks; not yet in game.
+
+## Mode switch at runtime (Phase 19, tested 2026-11-19 on 27115)
+- `game_type 1; game_mode 2; changelevel <map>` = CS2's real Deathmatch (respawns, random DM spawns, no rounds/buy);
+  `game_type 0; game_mode 1; changelevel` goes back. Clients stay connected. MatchZy must be off in DM:
+  `css_plugins unload MatchZy`, and back with `css_plugins load MatchZy` **after** the changelevel (a load runs
+  autostart, the next map start runs it again). Each re-load leaves the old MatchZy listed as UNLOADED (cosmetic).
 
 ## Weapon showcase (plugin/PracSkins/Showcase.cs, 2026-11-18 Phase G)
 - `css_showcase` / `!showcase` (toggle; key in Play page > Keys): the player is frozen, weapons stashed (AgentView's

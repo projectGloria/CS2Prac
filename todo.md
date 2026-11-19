@@ -518,3 +518,58 @@ connect and plays the 1.6 sounds. A switch needs a reconnect (disconnect + conne
   reconnect (or try a map reload and check whether the client picks up the new list).
 - [ ] Play page: choose tools mode (live switching) or Workshop (normal CS2, reconnect per switch).
 - [ ] **User check:** normal CS2, TR / UK / Off each after a reconnect.
+
+## Phase 18: Game modes like xplay.gg's list (offline, vs bots)
+xplay.gg only hosts: its maps are Steam Workshop maps and most modes run public community plugins. Their server
+configs, private plugins and per-mode map lists are not downloadable (and the site sits behind a bot check), so we
+rebuild each mode from the upstream sources: Workshop maps downloaded by our own server (`host_workshop_map`, as
+Phase 13), open-source plugins installed as pinned releases (like MatchZy, license texts in the bundle), our own cfgs.
+Everything runs on the local `-insecure` server; nothing touches the client.
+- [ ] **User input:** the map list per mode (names or Workshop links; e.g. read `status` / the map name while on
+  their servers, or copy the lists from the xplay pages), and what "Aim Assist" and "PUBLIC" (fun modes) actually do.
+- [ ] Mode framework: a mode = game_type/game_mode + plugin set + cfg + map pool (Workshop ids). Play page mode cards
+  (picture, name, maps); switching restarts the server with that plugin set (MatchZy only in Practice; PracSkins in
+  every mode so skins work everywhere). Plugins not in the set are moved out of plugins/ (CSS) / not listed in
+  metamod (Metamod). Later: switch from the L window (the app restarts the server).
+- [ ] 5x5 / 2x2: Valve competitive / wingman vs bots (bot_quota, difficulty), no plugin.
+- [ ] Deathmatch, Pistol DM, HS DM, AWP DM: see Phase 19 (CS2's own DM mode + our layer).
+- [ ] AWP: awp_ map pool, AWP-only cfg (+ scout option).
+- [ ] Retake / Pistol Retake: try Valve's built-in Retakes mode with bots first (back since 2025-10-22); else
+  B3none/cs2-retakes + yonilerner/cs2-retakes-allocator (pistol-round config) + cs2-instadefuse. Check bots work.
+- [ ] Surf / BHOP: SharpTimer (archived; use the maintained fork) + STFixes-metamod, movement cvars
+  (sv_airaccelerate, sv_enablebunnyhopping …), surf_/bhop_ map pools, local records only.
+- [ ] KZ: KZGlobalTeam/cs2kz-metamod (Metamod C++, must match the CS2 build) in local mode (no global API key),
+  kz_ map pool.
+- [ ] Arena / Duels: K4-Arenas (KitsuneLab) on arena maps (am_ / 1v1 maps); check it pairs you with bots.
+- [ ] Skin Inspect: already ours (K window + !showcase); maybe a bright inspect map in the pool.
+- [ ] Every plugin: pinned version, bundle + license, health check (`css_plugins list` / `meta list`), live test on
+  27115, then the user in game. Watch for clashes with PracSkins commands and with each other.
+
+## Phase 19: Our own deathmatch (instant, no map reload)
+The user wants our own custom DM, not Valve's: start and stop instantly from the L window (no loading screen, no
+reconnect), all logic in PracSkins. MatchZy only sleeps meanwhile (`css_sleep`, as now; never `css_exitprac`).
+- [x] Rules layer: no rounds (ignore win conditions, endless round time), no buy, respawn after a set delay (0–3 s),
+      no drops (and a sweep of loose weapons), FFA or teams, fixed armor/helmet/HP on spawn.
+- [x] Spawns: own spot list per map (map's info_deathmatch_spawn if present, else generated from spawns/bombsites/nav
+      rings, saved to configs/plugins/PracSkins/dm/<map>.json); pick = no enemy close or in sight, not the last spot;
+      spawn protection 1–2 s (no damage taken, ends on first shot), shown on the pawn.
+- [x] Guns: `!guns` / window panel (primary + pistol), remembered per SteamID, "random each life"; given on spawn
+      with the player's skins.
+- [ ] Variants: normal / pistols / AWP / Deagle / rifles / scout and headshots only (mp_damage_headshot_only) done;
+      one tap still open.
+- [x] Kill feedback: HP/armor reward, mag refill, hit/kill sound, damage numbers, kill streak call.
+- [x] Bots: count, difficulty, guns follow the variant, actually hunt (not zombie/stop), skins random as now.
+- [x] Stats panel (ms_box): K/D, HS%, streak, KPM, time/kill limit; end summary + best per map and variant.
+- [x] Spawn editor in the L window (add here / remove nearest / show markers).
+- [x] Replace the old DM code in Modes.cs with this (aim, AWP flicks, prefire stay).
+- [ ] **User check in game.**
+
+Reference only (not the plan): Valve's DM via `game_type 1; game_mode 2; changelevel` was tested and works without
+a restart, but needs a map reload each switch:
+- [x] Test on 27115: `game_type 1; game_mode 2; changelevel <map>` really switches the rules (and back with 0 / 1);
+  `css_plugins unload MatchZy` / `load` at runtime work cleanly (no exceptions, commands gone/back); PracSkins survives.
+  Result (2026-11-19): works, no crash, no exception. DM = mp_respawn_on_death 1, mp_randomspawn 1, maxrounds 0,
+  buytime 0, teammates_are_enemies 1; bots added in DM play. Quirks: a re-load (load or start) adds a second
+  "MatchZy" entry (old one stays listed UNLOADED; cosmetic, the new one works); the load itself runs autostart
+  (kicks bots, warmup), then the changelevel runs it again, so load MatchZy *after* the changelevel to get one clean
+  practice start. PracSkins logs "nextlevel_changed: Invalid game event" in DM (harmless; RefreshScoreboard).

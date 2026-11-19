@@ -38,3 +38,19 @@
 	color: #ffffff;
 	margin-top: 2px;
 }
+
+/* Deathmatch hits, kills and streaks (Deathmatch.cs DmFeed), shown 2 s after each. */
+.ms-feed
+{
+	visibility: collapse;
+	horizontal-align: center;
+	font-size: 22px;
+	font-weight: bold;
+	color: #ff6a5a;
+	margin-top: 2px;
+}
+
+.ms-feed.on
+{
+	visibility: visible;
+}
